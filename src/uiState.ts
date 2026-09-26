@@ -22,6 +22,8 @@ export interface UiState {
   /** How many times the app has been opened; the install hint waits for the second. */
   launches: number;
   installHintDismissed: boolean;
+  /** Settings → «Анонимная статистика»: count launches (src/stats.ts). On unless turned off. */
+  statsEnabled: boolean;
 }
 
 function isAccent(value: unknown): value is Accent {
@@ -36,9 +38,10 @@ export function loadUiState(storage: Storage): UiState {
       accent: isAccent(parsed.accent) ? parsed.accent : 'amber',
       launches: typeof parsed.launches === 'number' ? parsed.launches : 0,
       installHintDismissed: parsed.installHintDismissed === true,
+      statsEnabled: parsed.statsEnabled !== false,
     };
   } catch {
-    return { hiddenBanners: {}, accent: 'amber', launches: 0, installHintDismissed: false };
+    return { hiddenBanners: {}, accent: 'amber', launches: 0, installHintDismissed: false, statsEnabled: true };
   }
 }
 

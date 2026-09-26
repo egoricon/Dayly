@@ -20,6 +20,9 @@ export interface SettingsProps {
   accent: Accent;
   onAccentChange: (accent: Accent) => void;
   install: InstallInfo;
+  /** «Анонимная статистика»: launches only, see src/stats.ts. */
+  statsEnabled: boolean;
+  onStatsChange: (enabled: boolean) => void;
   /** Deletes all data on this device and starts over from onboarding. */
   onReset: () => void;
   /** Replaces the data with a restored backup. */
@@ -102,6 +105,21 @@ export function Settings(props: SettingsProps) {
               <span className="list-name">Поделиться Dayly</span>
               <span className="list-sub">{copied ? 'ссылка скопирована' : 'отправить ссылку другу'}</span>
             </span>
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={props.statsEnabled}
+            className="list-row"
+            onClick={() => props.onStatsChange(!props.statsEnabled)}
+          >
+            <span className="list-text">
+              <span className="list-name">Анонимная статистика</span>
+              <span className="list-sub">считаем только открытия приложения, без сумм и операций</span>
+            </span>
+            <span className={`switch${props.statsEnabled ? ' is-on' : ''}`} aria-hidden="true" />
           </button>
         </li>
       </ul>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialData, recordDaySummary } from './appData';
 import { TabBar, type Tab } from './components/TabBar';
 import { calculateBudget } from './domain/budget';
@@ -12,7 +12,8 @@ import { Finances, type FinanceRoute, type Update } from './screens/Finances';
 import { Settings, type SettingsRoute } from './screens/Settings';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
-import { detectInAppBrowser } from './install';
+import { detectInAppBrowser, isStandalone } from './install';
+import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
 import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
@@ -42,6 +43,27 @@ function applyAccent(accent: Accent): void {
   document.documentElement.dataset.accent = accent;
 }
 
+/**
+ * Counts this launch, and a return from the background after a long while as another one: an app
+ * on the home screen can stay open for days.
+ */
+function useLaunchCounter(first: boolean, mode: ReturnType<typeof launchMode>, enabled: boolean): void {
+  const counted = useRef(false);
+  const settings = useRef({ enabled, mode });
+  settings.current = { enabled, mode };
+  useEffect(() => {
+    if (!counted.current && settings.current.enabled) countLaunch(first, settings.current.mode);
+    counted.current = true;
+    let hiddenAt: number | null = null;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') hiddenAt = Date.now();
+      else if (hiddenAt !== null && Date.now() - hiddenAt >= RESUME_AS_LAUNCH_MS && settings.current.enabled) countLaunch(false, settings.current.mode);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [first]);
+}
+
 export function App() {
   const [data, setData] = useState<AppData | null>(() => loadData(localStorage));
   // Each page load counts as a launch; the install hint waits for the second one.
@@ -53,6 +75,7 @@ export function App() {
   // Inside Telegram and similar apps a banner asks to open the real browser; hidden until the next launch.
   const [inApp] = useState(() => detectInAppBrowser(navigator.userAgent, 'TelegramWebviewProxy' in window));
   const [inAppDismissed, setInAppDismissed] = useState(false);
+  useLaunchCounter(ui.launches === 1, launchMode(isStandalone(), inApp), ui.statsEnabled);
   const showInApp = inApp !== null && !inAppDismissed;
   const shellClass = `app-shell${showInApp ? ' has-top-banner' : ''}`;
   const inAppBanner = showInApp && (
@@ -159,6 +182,8 @@ export function App() {
           update={update}
           accent={ui.accent}
           onAccentChange={(accent) => setUi((state) => ({ ...state, accent }))}
+          statsEnabled={ui.statsEnabled}
+          onStatsChange={(statsEnabled) => setUi((state) => ({ ...state, statsEnabled }))}
           install={install}
           onReset={reset}
           onImport={(restored) => {

@@ -395,3 +395,22 @@ test('small iPhone: «Добавить» keeps its size, a big overspend fits th
   await page.screenshot({ path: test.info().outputPath('small-iphone.png') });
   await context.close();
 });
+
+test('anonymous statistics: on by default, can be turned off, never counts on localhost', async ({ page }) => {
+  const hits: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('goatcounter')) hits.push(request.url());
+  });
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  const stats = page.getByRole('switch', { name: /Анонимная статистика/ });
+  await expect(stats).toHaveAttribute('aria-checked', 'true');
+  await stats.click();
+  await expect(stats).toHaveAttribute('aria-checked', 'false');
+  await page.reload();
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await expect(page.getByRole('switch', { name: /Анонимная статистика/ })).toHaveAttribute('aria-checked', 'false');
+  expect(hits).toEqual([]);
+});

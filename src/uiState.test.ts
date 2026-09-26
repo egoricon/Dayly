@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { detectInAppBrowser, detectPlatform } from './install';
 import { hideBanner, loadUiState, shouldShowInstallHint, UI_KEY, type UiState } from './uiState';
+import { canCount, launchHitUrl, launchMode } from './stats';
 
 function storageWith(value: string | null): Storage {
   const map = new Map<string, string>();
@@ -16,7 +17,7 @@ const DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Ch
 describe('ui state', () => {
   it('fills defaults for state saved before accents and the install hint', () => {
     const state = loadUiState(storageWith(JSON.stringify({ hiddenBanners: { a: '2026-09-26' } })));
-    expect(state).toEqual({ hiddenBanners: { a: '2026-09-26' }, accent: 'amber', launches: 0, installHintDismissed: false });
+    expect(state).toEqual({ hiddenBanners: { a: '2026-09-26' }, accent: 'amber', launches: 0, installHintDismissed: false, statsEnabled: true });
   });
 
   it('ignores an unknown accent', () => {
@@ -25,13 +26,13 @@ describe('ui state', () => {
   });
 
   it('keeps the accent when a banner is hidden', () => {
-    const state: UiState = { hiddenBanners: {}, accent: 'sky', launches: 3, installHintDismissed: false };
+    const state: UiState = { hiddenBanners: {}, accent: 'sky', launches: 3, installHintDismissed: false, statsEnabled: true };
     expect(hideBanner(state, 'x', '2026-09-26').accent).toBe('sky');
   });
 });
 
 describe('install hint', () => {
-  const base: UiState = { hiddenBanners: {}, accent: 'amber', launches: 2, installHintDismissed: false };
+  const base: UiState = { hiddenBanners: {}, accent: 'amber', launches: 2, installHintDismissed: false, statsEnabled: true };
 
   it('shows from the second launch on a phone in the browser', () => {
     expect(shouldShowInstallHint({ ...base, launches: 1 }, 'ios', false)).toBe(false);
@@ -63,5 +64,34 @@ describe('in-app browsers', () => {
     expect(detectInAppBrowser(`${IPHONE} Instagram 300.0`, false)).toBe('other');
     expect(detectInAppBrowser(IPHONE, false)).toBeNull();
     expect(detectInAppBrowser(ANDROID, false)).toBeNull();
+  });
+});
+
+describe('anonymous statistics', () => {
+  it('is on unless turned off', () => {
+    expect(loadUiState(storageWith('{}')).statsEnabled).toBe(true);
+    expect(loadUiState(storageWith(JSON.stringify({ statsEnabled: false }))).statsEnabled).toBe(false);
+  });
+
+  it('sends only how the app was opened', () => {
+    const url = new URL(launchHitUrl(true, launchMode(true, null), 'https://t.me/', 'x1'));
+    expect(url.origin + url.pathname).toBe('https://dayly.goatcounter.com/count');
+    expect(Object.fromEntries(['p', 't', 'r', 'rnd'].map((key) => [key, url.searchParams.get(key)]))).toEqual({
+      p: '/first/app',
+      t: 'Первый запуск, с главного экрана',
+      r: 'https://t.me/',
+      rnd: 'x1',
+    });
+    expect(url.search.split('&')).toHaveLength(4);
+    expect(new URL(launchHitUrl(false, launchMode(false, 'telegram'), '', 'x2')).searchParams.get('p')).toBe('/repeat/telegram');
+    expect(launchMode(false, null)).toBe('browser');
+    expect(launchMode(true, 'other')).toBe('in-app');
+  });
+
+  it('counts only the published app', () => {
+    expect(canCount(true, 'egoricon.github.io', false)).toBe(true);
+    expect(canCount(false, 'egoricon.github.io', false)).toBe(false);
+    expect(canCount(true, 'localhost', false)).toBe(false);
+    expect(canCount(true, 'egoricon.github.io', true)).toBe(false);
   });
 });

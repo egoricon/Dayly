@@ -157,7 +157,7 @@ describe('confirmations', () => {
   });
 
   it('«Ещё нет» hides a banner until tomorrow', () => {
-    const state = hideBanner({ hiddenBanners: { old: '2026-10-04' }, accent: 'amber', launches: 1, installHintDismissed: false }, 'income|x|2026-10-05', '2026-10-05');
+    const state = hideBanner({ hiddenBanners: { old: '2026-10-04' }, accent: 'amber', launches: 1, installHintDismissed: false, statsEnabled: true }, 'income|x|2026-10-05', '2026-10-05');
     expect(state.hiddenBanners).toEqual({ 'income|x|2026-10-05': '2026-10-05' });
     expect(isBannerHidden(state, 'income|x|2026-10-05', '2026-10-05')).toBe(true);
     expect(isBannerHidden(state, 'income|x|2026-10-05', '2026-10-06')).toBe(false);
