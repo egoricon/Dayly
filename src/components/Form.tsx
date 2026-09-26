@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode, type RefObject } from 'react';
 
 // Building blocks for the edit forms in settings («стандартные формы в стилистике макетов»).
 
@@ -35,11 +35,67 @@ export function Field({ label, hint, group = false, children }: { label: string;
   );
 }
 
+/** What a form still needs before its main button works, and the field to show for it. */
+export interface Missing {
+  text: string;
+  field?: RefObject<HTMLElement | null>;
+}
+
+/** The first thing still missing, or null when the form is ready. */
+export function firstMissing(checks: [boolean, Missing][]): Missing | null {
+  return checks.find(([isMissing]) => isMissing)?.[1] ?? null;
+}
+
+/**
+ * The main button of a form. While something is missing it looks inactive; a tap says what is
+ * missing and brings that field into view, instead of silently doing nothing.
+ */
+export function SubmitButton({ missing, onClick, children }: { missing: Missing | null; onClick: () => void; children: ReactNode }) {
+  const [asked, setAsked] = useState(false);
+  return (
+    <>
+      {asked && missing && (
+        <p className="form-missing" role="alert" data-testid="form-missing">
+          {missing.text}
+        </p>
+      )}
+      <button
+        type="button"
+        className={`button-primary button-large${missing ? ' is-incomplete' : ''}`}
+        aria-disabled={missing !== null}
+        onClick={() => {
+          if (!missing) {
+            onClick();
+            return;
+          }
+          setAsked(true);
+          const field = missing.field?.current;
+          field?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          if (field instanceof HTMLInputElement) field.focus({ preventScroll: true });
+        }}
+      >
+        {children}
+      </button>
+    </>
+  );
+}
+
 /** Money typed as text: '12,40'. The parent parses it with parseAmount. */
-export function AmountInput({ value, onChange, placeholder = '0,00' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+export function AmountInput({
+  value,
+  onChange,
+  placeholder = '0,00',
+  inputRef,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  inputRef?: RefObject<HTMLInputElement | null>;
+}) {
   return (
     <span className="amount-input">
       <input
+        ref={inputRef}
         className="input"
         inputMode="decimal"
         autoComplete="off"

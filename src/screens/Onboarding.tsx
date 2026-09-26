@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { INCOME_KIND_NAMES, type OnboardingResult } from '../appData';
 import { BottomSheet } from '../components/BottomSheet';
 import { Calendar } from '../components/Calendar';
-import { AmountInput, Field } from '../components/Form';
+import { AmountInput, Field, firstMissing, SubmitButton } from '../components/Form';
 import { StepProgress } from '../components/StepProgress';
 import { addDays, addMonths, diffDays } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
@@ -30,6 +30,8 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
   const [incomeAmount, setIncomeAmount] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>([]);
   const [addingPayment, setAddingPayment] = useState(false);
+  const incomeCalendar = useRef<HTMLDivElement>(null);
+  const incomeAmountInput = useRef<HTMLInputElement>(null);
 
   if (step === 'welcome') {
     return (
@@ -73,7 +75,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
         <StepProgress step={2} onBack={() => setStep('balance')} />
         <div className="step-title">
           <h1>Когда придут следующие деньги?</h1>
-          <p>До этого дня и будем растягивать бюджет. Остальные поступления добавишь в настройках.</p>
+          <p>До этого дня и будем растягивать бюджет. Остальные поступления добавишь потом во вкладке «Финансы».</p>
         </div>
         <div className="chips chips-left">
           {INCOME_KINDS.map((k) => (
@@ -82,23 +84,26 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
             </button>
           ))}
         </div>
-        <Calendar min={addDays(today, 1)} max={maxDate} value={incomeDate} onChange={setIncomeDate} />
+        <div ref={incomeCalendar}>
+          <Calendar min={addDays(today, 1)} max={maxDate} value={incomeDate} onChange={setIncomeDate} />
+        </div>
         <label className="card amount-row">
           <span className="amount-row-label">Сумма</span>
-          <AmountInput value={incomeAmount} onChange={setIncomeAmount} />
+          <AmountInput value={incomeAmount} onChange={setIncomeAmount} inputRef={incomeAmountInput} />
         </label>
         <div className="spacer" />
         <p className="step-caption">
           {incomeDate ? `${formatDayMonth(incomeDate)}, через ${formatDays(diffDays(today, incomeDate))}` : 'Выбери дату в календаре'}
         </p>
-        <button
-          type="button"
-          className="button-primary button-large"
-          disabled={!incomeDate || incomeKopecks === 0}
+        <SubmitButton
+          missing={firstMissing([
+            [!incomeDate, { text: 'Выбери в календаре, когда придут деньги', field: incomeCalendar }],
+            [incomeKopecks === 0, { text: 'Напиши, сколько придёт', field: incomeAmountInput }],
+          ])}
           onClick={() => setStep('payments')}
         >
           Дальше
-        </button>
+        </SubmitButton>
       </main>
     );
   }
@@ -176,7 +181,14 @@ function PaymentDraftSheet({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState<LocalDate | null>(null);
   const kopecks = parseAmount(amount) ?? 0;
-  const ready = name.trim() !== '' && kopecks > 0 && date !== null;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const calendar = useRef<HTMLDivElement>(null);
+  const missing = firstMissing([
+    [name.trim() === '', { text: 'Напиши, что оплатить', field: nameInput }],
+    [kopecks === 0, { text: 'Напиши сумму платежа', field: amountInput }],
+    [date === null, { text: 'Выбери в календаре день платежа', field: calendar }],
+  ]);
 
   return (
     <BottomSheet onClose={onClose} className="form-sheet">
@@ -186,26 +198,32 @@ function PaymentDraftSheet({
           <div className="sheet-body">
             <h2 className="sheet-title">Новый платёж</h2>
             <Field label="Что оплатить">
-              <input className="input" placeholder="Общежитие" value={name} onChange={(e) => setName(e.target.value)} />
+              <input
+                ref={nameInput}
+                className="input"
+                placeholder="Например, общежитие"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
             </Field>
             <Field label="Сумма">
-              <AmountInput value={amount} onChange={setAmount} />
+              <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
             </Field>
             <Field label="Когда" group hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
-              <Calendar min={min} max={max} value={date} onChange={setDate} />
+              <div ref={calendar}>
+                <Calendar min={min} max={max} value={date} onChange={setDate} />
+              </div>
             </Field>
           </div>
-          <button
-            type="button"
-            className="button-primary button-large"
-            disabled={!ready}
+          <SubmitButton
+            missing={missing}
             onClick={() => {
               onAdd({ name: name.trim(), amountKopecks: kopecks, date: date! });
               close();
             }}
           >
             Добавить
-          </button>
+          </SubmitButton>
         </>
       )}
     </BottomSheet>

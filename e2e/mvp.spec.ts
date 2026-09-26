@@ -26,7 +26,7 @@ async function onboard(page: Page) {
   ] as const) {
     await page.getByRole('button', { name: '+ Добавить платёж' }).click();
     const sheet = page.locator('.form-sheet');
-    await sheet.getByPlaceholder('Общежитие').fill(name);
+    await sheet.getByPlaceholder('Например, общежитие').fill(name);
     await sheet.getByPlaceholder('0,00').fill(amount);
     await sheet.getByRole('button', { name: 'Следующий месяц' }).click();
     await sheet.locator('.calendar-day', { hasText: new RegExp(`^${day}$`) }).click();
@@ -266,7 +266,7 @@ test('home: name, «+ Доход», favourites with undo; «Финансы» tab
   await page.getByRole('button', { name: 'Финансы' }).click();
   await expect(page.getByRole('heading', { name: 'Финансы' })).toBeVisible();
   await page.getByRole('button', { name: '+ Добавить любимую трату' }).click();
-  await page.getByPlaceholder('Кофе').fill('Кофе');
+  await page.getByPlaceholder('Например, кофе').fill('Кофе');
   await page.locator('.form-screen').getByPlaceholder('0,00').fill('3,5');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByTestId('finance-favorites')).toContainText('Кофе');
@@ -422,7 +422,7 @@ test('own categories: a reserve «Спорт», removing «Кафе» and bringi
 
   await page.getByRole('button', { name: 'Финансы' }).click();
   await page.getByRole('button', { name: '+ Добавить категорию' }).click();
-  await page.getByPlaceholder('Спорт').fill('Спорт');
+  await page.getByPlaceholder('Например, спорт').fill('Спорт');
   await page.getByRole('radio', { name: 'Из резерва' }).click();
   await page.locator('.form-screen').getByPlaceholder('0,00').fill('90');
   await expect(page.getByTestId('reserve-status')).toContainText('В этом периоде: 27,00 BYN');
@@ -455,4 +455,37 @@ test('own categories: a reserve «Спорт», removing «Кафе» and bringi
   await page.getByRole('button', { name: 'Финансы' }).click();
   await page.getByTestId('finance-categories').getByRole('button', { name: /^Кафе/ }).click();
   await expect(page.getByTestId('finance-categories')).toContainText('Кафеиз дневного лимита');
+});
+
+test('a payment without a name: «Добавить» says what is missing and shows the field', async ({ browser }) => {
+  // The tester's case: next money tomorrow, a short screen, the name field scrolled out of view.
+  const context = await browser.newContext({ viewport: { width: 375, height: 600 }, locale: 'ru-RU' });
+  const page = await context.newPage();
+  await page.clock.install({ time: TODAY });
+  await page.goto(BASE);
+  await page.getByRole('button', { name: 'Начать' }).click();
+  await typeAmount(page, '100');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  // The inactive button is aria-disabled, so Playwright needs force to tap it as a person can.
+  await page.getByRole('button', { name: 'Дальше' }).click({ force: true });
+  await expect(page.getByTestId('form-missing')).toHaveText('Выбери в календаре, когда придут деньги');
+  await page.locator('.calendar-day', { hasText: /^27$/ }).click();
+  await page.getByPlaceholder('0,00').fill('80');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+
+  await page.getByRole('button', { name: '+ Добавить платёж' }).click();
+  const sheet = page.locator('.form-sheet');
+  await sheet.getByPlaceholder('0,00').fill('80');
+  await sheet.locator('.calendar-day', { hasText: /^26$/ }).click();
+  await sheet.getByRole('button', { name: 'Добавить' }).click({ force: true });
+  await expect(sheet.getByTestId('form-missing')).toHaveText('Напиши, что оплатить');
+  const name = sheet.getByPlaceholder('Например, общежитие');
+  await expect(name).toBeFocused();
+  await expect(name).toBeInViewport();
+  await page.screenshot({ path: test.info().outputPath('payment-missing-name.png') });
+  await name.fill('Общежитие');
+  await expect(sheet.getByTestId('form-missing')).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Добавить' }).click();
+  await expect(page.getByTestId('onboarding-payments')).toContainText('Общежитие');
+  await context.close();
 });

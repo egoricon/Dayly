@@ -5,7 +5,7 @@
 // 10 minutes), so a new version reaches the phone on the next launch.
 
 // All paths are relative to this file, so the app works at the site root and under a subpath.
-const CACHE = 'dayly-v11';
+const CACHE = 'dayly-v12';
 const INDEX = new URL('./', self.location).href;
 const SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 

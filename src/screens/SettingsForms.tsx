@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   buyGoal,
   cancelGoal,
@@ -20,7 +20,7 @@ import {
   setCushionPercent,
   takeFromCushion,
 } from '../appData';
-import { AmountInput, amountText, DaySelect, Field, FormScreen, Segmented } from '../components/Form';
+import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
 import { activeCategories, findCategory, startCategory } from '../domain/categories';
 import { addDays, monthlyOccurrences, weekdayIndex } from '../domain/dates';
@@ -47,7 +47,12 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
   const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
   const [isMain, setIsMain] = useState(existing ? data.settings.mainIncomeSourceId === existing.id : data.settings.mainIncomeSourceId === null);
   const kopecks = parseAmount(amount) ?? 0;
-  const ready = name.trim() !== '' && kopecks > 0;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [name.trim() === '', { text: 'Напиши название дохода', field: nameInput }],
+    [kopecks === 0, { text: 'Напиши сумму', field: amountInput }],
+  ]);
 
   const save = () => {
     update((d) =>
@@ -87,10 +92,10 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
         ))}
       </div>
       <Field label="Название">
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+        <input ref={nameInput} className="input" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Сумма">
-        <AmountInput value={amount} onChange={setAmount} />
+        <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
       <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
         <Segmented
@@ -124,9 +129,9 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
           </label>
         </>
       )}
-      <button type="button" className="button-primary button-large" disabled={!ready} onClick={save}>
+      <SubmitButton missing={missing} onClick={save}>
         Сохранить
-      </button>
+      </SubmitButton>
       {existing && (
         <button
           type="button"
@@ -182,7 +187,12 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
   const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
   const kopecks = parseAmount(amount) ?? 0;
-  const ready = name.trim() !== '' && kopecks > 0;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [name.trim() === '', { text: 'Напиши, что оплатить', field: nameInput }],
+    [kopecks === 0, { text: 'Напиши сумму платежа', field: amountInput }],
+  ]);
 
   const occurrence = existing ? paymentOccurrence(data, existing.id, budget.period) : null;
   const paidWith = existing && occurrence ? paymentTransaction(data, existing.id, occurrence) : undefined;
@@ -217,18 +227,16 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
         </div>
       )}
       <Field label="Что оплатить">
-        <input className="input" placeholder="Общежитие" value={name} onChange={(e) => setName(e.target.value)} />
+        <input ref={nameInput} className="input" placeholder="Например, общежитие" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Сумма">
-        <AmountInput value={amount} onChange={setAmount} />
+        <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
       <Field label="Каждый месяц">
         <DaySelect value={day} onChange={setDay} />
       </Field>
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={!ready}
+      <SubmitButton
+        missing={missing}
         onClick={() => {
           update((d) =>
             savePayment(d, {
@@ -244,7 +252,7 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
         }}
       >
         Сохранить
-      </button>
+      </SubmitButton>
       {existing && (
         <button
           type="button"
@@ -275,7 +283,13 @@ export function CategoryForm({ data, today, update, id, onBack }: FormProps & { 
   const kopecks = parseAmount(amount === '' ? '0' : amount);
   const trimmed = name.trim();
   const duplicate = activeCategories(data).some((c) => c.id !== existing?.id && c.name.toLowerCase() === trimmed.toLowerCase());
-  const ready = trimmed !== '' && !duplicate && (mode === 'limit' || kopecks !== null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [trimmed === '', { text: 'Напиши название категории', field: nameInput }],
+    [duplicate, { text: 'Такая категория уже есть, назови её иначе', field: nameInput }],
+    [mode === 'reserve' && kopecks === null, { text: 'Проверь сумму резерва', field: amountInput }],
+  ]);
   const draft: ExpenseCategory = {
     id: existing?.id ?? newCategoryId,
     name: trimmed,
@@ -289,7 +303,7 @@ export function CategoryForm({ data, today, update, id, onBack }: FormProps & { 
   return (
     <FormScreen title={existing ? existing.name : 'Новая категория'} onBack={onBack}>
       <Field label="Название" hint={duplicate ? 'Такая категория уже есть' : undefined}>
-        <input className="input" placeholder="Спорт" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
+        <input ref={nameInput} className="input" placeholder="Например, спорт" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Траты идут" group>
         <Segmented
@@ -307,7 +321,7 @@ export function CategoryForm({ data, today, update, id, onBack }: FormProps & { 
             Траты этой категории идут из резерва и не уменьшают дневной лимит. Когда резерв кончается, остаток траты идёт из лимита.
           </p>
           <Field label="Резерв на период" hint="Сумма на полный период. В первом неполном периоде берётся часть по оставшимся дням.">
-            <AmountInput value={amount} onChange={setAmount} />
+            <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
           </Field>
           {state && (
             <div className="card status-card" data-testid="reserve-status">
@@ -321,17 +335,15 @@ export function CategoryForm({ data, today, update, id, onBack }: FormProps & { 
       ) : (
         <p className="form-note">Траты этой категории уменьшают дневной лимит.</p>
       )}
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={!ready}
+      <SubmitButton
+        missing={missing}
         onClick={() => {
           update((d) => saveCategory(d, draft));
           onBack();
         }}
       >
         Сохранить
-      </button>
+      </SubmitButton>
       {canRemove && (
         <button
           type="button"
@@ -428,8 +440,17 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
   const targetKopecks = parseAmount(target) ?? 0;
   const initialKopecks = parseAmount(initial === '' ? '0' : initial);
-  const ready =
-    name.trim() !== '' && targetKopecks > 0 && initialKopecks !== null && initialKopecks <= targetKopecks && deadline > today;
+  const nameInput = useRef<HTMLInputElement>(null);
+  const targetInput = useRef<HTMLInputElement>(null);
+  const initialInput = useRef<HTMLInputElement>(null);
+  const deadlineInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [name.trim() === '', { text: 'Напиши, на что копим', field: nameInput }],
+    [targetKopecks === 0, { text: 'Напиши, сколько нужно', field: targetInput }],
+    [initialKopecks === null || initialKopecks > targetKopecks, { text: 'Отложено не может быть больше цели', field: initialInput }],
+    [!(deadline > today), { text: 'Выбери дату позже сегодняшней', field: deadlineInput }],
+  ]);
+  const ready = missing === null;
 
   const draft = {
     id: existing?.id ?? newId(),
@@ -452,30 +473,35 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
         </div>
       )}
       <Field label="На что копим">
-        <input className="input" placeholder="Наушники" value={name} onChange={(e) => setName(e.target.value)} />
+        <input ref={nameInput} className="input" placeholder="Например, наушники" value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Сколько нужно">
-        <AmountInput value={target} onChange={setTarget} />
+        <AmountInput value={target} onChange={setTarget} inputRef={targetInput} />
       </Field>
       {!existing && (
         <Field label="Уже отложено">
-          <AmountInput value={initial} onChange={setInitial} />
+          <AmountInput value={initial} onChange={setInitial} inputRef={initialInput} />
         </Field>
       )}
       <Field label="К какой дате" hint={ready ? `Будем откладывать по ${formatMoney(perPeriod)} в этом периоде.` : undefined}>
-        <input className="input" type="date" min={addDays(today, 1)} value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <input
+          ref={deadlineInput}
+          className="input"
+          type="date"
+          min={addDays(today, 1)}
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+        />
       </Field>
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={!ready}
+      <SubmitButton
+        missing={missing}
         onClick={() => {
           update((d) => saveGoal(d, draft));
           onBack();
         }}
       >
         Сохранить
-      </button>
+      </SubmitButton>
       {existing && (
         <>
           <button
@@ -543,15 +569,20 @@ export function FavoriteForm({ data, update, id, onBack }: FormProps & { id: str
   const own = findCategory(data, existing?.category ?? null);
   const categories = own && !own.isActive ? [...activeCategories(data), own] : activeCategories(data);
   const kopecks = parseAmount(amount) ?? 0;
-  const ready = label.trim() !== '' && kopecks > 0;
+  const labelInput = useRef<HTMLInputElement>(null);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [label.trim() === '', { text: 'Напиши подпись для кнопки', field: labelInput }],
+    [kopecks === 0, { text: 'Напиши сумму', field: amountInput }],
+  ]);
 
   return (
     <FormScreen title={existing ? existing.label : 'Любимая трата'} onBack={onBack}>
       <Field label="Подпись" hint="Так кнопка будет называться на главной и в истории.">
-        <input className="input" placeholder="Кофе" maxLength={24} value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input ref={labelInput} className="input" placeholder="Например, кофе" maxLength={24} value={label} onChange={(e) => setLabel(e.target.value)} />
       </Field>
       <Field label="Сумма">
-        <AmountInput value={amount} onChange={setAmount} />
+        <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
       <Field label="Категория" group>
         <div className="chips chips-left">
@@ -568,17 +599,15 @@ export function FavoriteForm({ data, update, id, onBack }: FormProps & { id: str
           ))}
         </div>
       </Field>
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={!ready}
+      <SubmitButton
+        missing={missing}
         onClick={() => {
           update((d) => saveFavorite(d, { id: existing?.id ?? newId(), label: label.trim(), amountKopecks: kopecks, category }));
           onBack();
         }}
       >
         Сохранить
-      </button>
+      </SubmitButton>
       {existing && (
         <button
           type="button"
