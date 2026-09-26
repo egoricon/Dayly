@@ -1,4 +1,5 @@
 import { splitAllExpenses } from './budget';
+import { addDays } from './dates';
 import type { AppData, LocalDate, Transaction } from './types';
 
 // History 2h: operations grouped by day with «потрачено из лимита · перенос».
@@ -42,4 +43,14 @@ export function historyDays(data: AppData, today: LocalDate, todayLimitKopecks: 
       const carryKopecks = date === today || dailyLimitKopecks === null ? null : dailyLimitKopecks - spentFromLimitKopecks;
       return { date, entries, spentFromLimitKopecks, dailyLimitKopecks, carryKopecks };
     });
+}
+
+/** Expenses and incomes of the last `days` days up to today, newest first: the home screen list. */
+export function recentOperations(data: AppData, today: LocalDate, days: number): HistoryEntry[] {
+  const since = addDays(today, -(days - 1));
+  const splits = splitAllExpenses(data);
+  return data.transactions
+    .filter((t) => t.type !== 'adjustment' && t.date >= since && t.date <= today)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
+    .map((t) => ({ transaction: t, fromLimitKopecks: t.type === 'expense' ? (splits.get(t.id)?.fromLimitKopecks ?? t.amountKopecks) : 0 }));
 }

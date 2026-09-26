@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { deleteTransaction, MAX_FAVORITES, newId, saveFavorite } from '../appData';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, Transaction } from '../domain/types';
-import { CATEGORY_NAMES, formatTime } from '../ui/labels';
+import { CATEGORY_NAMES } from '../ui/labels';
 import { BottomSheet } from './BottomSheet';
 import { afterLeave } from '../ui/motion';
 
@@ -32,12 +32,13 @@ interface TransactionRowProps {
   transaction: Transaction;
   data: AppData;
   fromLimitKopecks: number;
-  showTime?: boolean;
+  /** Shown under the name: when the operation was entered. */
+  time?: string;
   onLongPress: () => void;
 }
 
 /** A row of an operations list. Long press (or right click) opens «Изменить / Удалить». */
-export function TransactionRow({ transaction: t, data, fromLimitKopecks, showTime = false, onLongPress }: TransactionRowProps) {
+export function TransactionRow({ transaction: t, data, fromLimitKopecks, time, onLongPress }: TransactionRowProps) {
   const timer = useRef<number | null>(null);
   const cancel = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -81,7 +82,7 @@ export function TransactionRow({ transaction: t, data, fromLimitKopecks, showTim
           {transactionName(t, data)}
           {note}
         </span>
-        {showTime && <span className="expense-time">{formatTime(t.createdAt)}</span>}
+        {time && <span className="expense-time">{time}</span>}
       </div>
       <span className="expense-amount">{signedAmount(t)}</span>
     </li>

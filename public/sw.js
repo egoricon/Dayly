@@ -1,16 +1,28 @@
 // Hand-written service worker: the app works offline after the first visit.
 // Pages go to the network first and fall back to the cached shell; built assets have
 // hashed names, so they are served from the cache and stored on first use.
+// Pages and the shell skip the browser's HTTP cache (GitHub Pages lets it keep a page for
+// 10 minutes), so a new version reaches the phone on the next launch.
 
 // All paths are relative to this file, so the app works at the site root and under a subpath.
-const CACHE = 'dayly-v8';
+const CACHE = 'dayly-v9';
 const INDEX = new URL('./', self.location).href;
 const SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+
+/** A request that revalidates with the server instead of taking the browser's HTTP cache. */
+function fresh(request) {
+  try {
+    return new Request(request, { cache: 'no-cache' });
+  } catch {
+    // A browser that cannot copy a page request keeps the plain one.
+    return request;
+  }
+}
 
 /** The shell plus the built script, styles and the fonts they use, found in index.html and the CSS. */
 async function precache() {
   const cache = await caches.open(CACHE);
-  await cache.addAll(SHELL);
+  await cache.addAll(SHELL.map(fresh));
   const html = await (await cache.match(INDEX)).text();
   const assets = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map((m) => new URL(m[1], INDEX).href);
   const fonts = [];
@@ -40,7 +52,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(fresh(request))
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(INDEX, copy));

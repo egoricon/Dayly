@@ -5,12 +5,13 @@ import { HeroAmount } from '../components/HeroAmount';
 import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
-import { cushionSavedBy, splitExpenses, type BudgetResult, type Occurrence } from '../domain/budget';
+import { cushionSavedBy, type BudgetResult, type Occurrence } from '../domain/budget';
+import { recentOperations } from '../domain/history';
 import { formatKopecks, formatMoney } from '../domain/money';
 import { incomesToConfirm } from '../domain/planned';
 import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
 import type { InstallPlatform } from '../uiState';
-import { formatDayHeader, formatDayMonth, untilPeriodEnd } from '../ui/labels';
+import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
 import { Explain } from './Explain';
 import type { FinanceRoute, Update } from './Finances';
 import { afterLeave } from '../ui/motion';
@@ -40,6 +41,10 @@ type SheetState = { open: false } | { open: true; mode?: EntryMode; incomePreset
 /** How long «Отменить» stays after a tap on a favourite. */
 const UNDO_MS = 5000;
 
+/** The home list shows the last two operations; «Развернуть» shows the last week. */
+const COLLAPSED_OPERATIONS = 2;
+const RECENT_DAYS = 7;
+
 interface Undo {
   transactionId: string;
   text: string;
@@ -54,6 +59,7 @@ export function Home(props: HomeProps) {
   const [intro] = useState(() => !introPlayed);
   introPlayed = true;
   const [undo, setUndo] = useState<Undo | null>(null);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     if (!undo) return;
     const timer = window.setTimeout(() => setUndo(null), UNDO_MS);
@@ -70,10 +76,8 @@ export function Home(props: HomeProps) {
   const deficit = budget.status === 'deficit';
   const fraction = deficit || overspent ? 1 : budget.dailyLimitKopecks === 0 ? 0 : budget.remainingTodayKopecks / budget.dailyLimitKopecks;
 
-  const splits = new Map(splitExpenses(data, today).map((s) => [s.transactionId, s]));
-  const todayExpenses = data.transactions
-    .filter((t) => t.type === 'expense' && t.date === today)
-    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  const recent = recentOperations(data, today, RECENT_DAYS);
+  const shown = expanded ? recent : recent.slice(0, COLLAPSED_OPERATIONS);
 
   const carry = budget.carryFromYesterdayKopecks;
   const banner = pickBanner(data, budget, today, isBannerHidden);
@@ -159,21 +163,28 @@ export function Home(props: HomeProps) {
 
         <Favorites favorites={data.settings.favorites} onAdd={addFavorite} onOpenFinances={onOpenFinances} />
 
-        {todayExpenses.length > 0 ? (
-          <ul className="card expense-list" data-testid="today-expenses">
-            {todayExpenses.map((t) => (
-              <TransactionRow
-                key={t.id}
-                transaction={t}
-                data={data}
-                fromLimitKopecks={splits.get(t.id)?.fromLimitKopecks ?? t.amountKopecks}
-                showTime
-                onLongPress={() => setActionsFor(t)}
-              />
-            ))}
-          </ul>
+        {recent.length > 0 ? (
+          <div className="card expense-list" data-testid="recent-operations">
+            <ul>
+              {shown.map(({ transaction: t, fromLimitKopecks }) => (
+                <TransactionRow
+                  key={t.id}
+                  transaction={t}
+                  data={data}
+                  fromLimitKopecks={fromLimitKopecks}
+                  time={formatOperationTime(t.date, t.createdAt, today)}
+                  onLongPress={() => setActionsFor(t)}
+                />
+              ))}
+            </ul>
+            {recent.length > COLLAPSED_OPERATIONS && (
+              <button type="button" className="list-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                {expanded ? 'Свернуть' : `Развернуть · ещё ${recent.length - COLLAPSED_OPERATIONS}`}
+              </button>
+            )}
+          </div>
         ) : (
-          <p className="empty-note">Сегодня трат пока нет</p>
+          <p className="empty-note">{data.transactions.some((t) => t.type !== 'adjustment') ? 'За неделю операций нет' : 'Операций пока нет'}</p>
         )}
       </div>
 

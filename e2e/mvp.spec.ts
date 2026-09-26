@@ -63,7 +63,7 @@ test('limit is large, balance secondary; an expense recounts the limit without a
   await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
   await expect(page.getByTestId('ring-caption')).toHaveText('BYN из 54,55');
   await expect(page.getByTestId('balance')).toHaveText('Баланс 582,50 BYN');
-  await expect(page.getByTestId('today-expenses')).toContainText('Кафе');
+  await expect(page.getByTestId('recent-operations')).toContainText('Кафе');
   expect(await page.evaluate(() => (window as unknown as { noReload?: boolean }).noReload)).toBe(true);
   console.log('after «+ Трата» → 3,5 → «Добавить»:', await page.locator('.ring-center').innerText());
 });
@@ -89,7 +89,7 @@ test('data survive a browser restart; the app opens offline', async ({}, testInf
     await page.goto(BASE);
     await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
     await expect(page.getByTestId('balance')).toHaveText('Баланс 582,50 BYN');
-    await expect(page.getByTestId('today-expenses')).toContainText('−3,50');
+    await expect(page.getByTestId('recent-operations')).toContainText('−3,50');
     console.log('after restart:', await page.locator('.ring-center').innerText(), '|', await page.getByTestId('balance').innerText());
 
     await context.setOffline(true);
@@ -274,11 +274,11 @@ test('home: name, «+ Доход», favourites with undo; «Финансы» tab
 
   await page.getByTestId('favorites').getByRole('button', { name: /Кофе/ }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
-  await expect(page.getByTestId('today-expenses')).toContainText('Кофе');
+  await expect(page.getByTestId('recent-operations')).toContainText('Кофе');
   await expect(page.getByRole('status')).toContainText('Кофе −3,50');
   await page.getByRole('button', { name: 'Отменить' }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
-  await expect(page.getByTestId('today-expenses')).toHaveCount(0);
+  await expect(page.getByTestId('recent-operations')).toHaveCount(0);
 
   // Long press → «В любимые» on an ordinary expense.
   await addExpense(page, '2');
@@ -336,7 +336,7 @@ test('backup: save a copy, reset everything, restore the copy', async ({ page },
   await expect(page.getByText(/Восстановить копию от 26 сентября/)).toBeVisible();
   await page.getByRole('button', { name: 'Восстановить', exact: true }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
-  await expect(page.getByTestId('today-expenses')).toContainText('−3,50');
+  await expect(page.getByTestId('recent-operations')).toContainText('−3,50');
 });
 
 test('inside Telegram a banner asks to open Safari, and the install hint stays hidden', async ({ browser }) => {
@@ -357,5 +357,41 @@ test('inside Telegram a banner asks to open Safari, and the install hint stays h
   await expect(page.getByTestId('install-hint')).toHaveCount(0);
   await page.getByRole('button', { name: 'Скрыть подсказку' }).click();
   await expect(page.getByTestId('in-app-banner')).toHaveCount(0);
+  await context.close();
+});
+
+test('small iPhone: «Добавить» keeps its size, a big overspend fits the ring, the list folds to two', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, locale: 'ru-RU' });
+  const page = await context.newPage();
+  await page.clock.install({ time: TODAY });
+  await page.goto(BASE);
+  await onboard(page);
+
+  await addExpense(page, '2');
+  await addExpense(page, '3');
+  await page.getByRole('button', { name: '+ Трата' }).click();
+  const add = page.getByRole('button', { name: 'Добавить', exact: true });
+  // The sheet slides up; measure once it has stopped.
+  await expect.poll(async () => (await add.boundingBox())!.y, { intervals: [100] }).toBeLessThan(667);
+  await page.waitForTimeout(400);
+  const box = (await add.boundingBox())!;
+  console.log(`«Добавить» on 375×667: ${box.height}px high, bottom at ${box.y + box.height}`);
+  expect(box.height).toBeGreaterThanOrEqual(56);
+  expect(box.y + box.height).toBeLessThanOrEqual(667);
+  await typeAmount(page, '545');
+  await add.click();
+
+  const hero = page.getByTestId('hero-amount');
+  await expect(hero).toHaveText('−495,45');
+  const fits = await hero.evaluate((el) => el.scrollWidth <= el.clientWidth);
+  expect(fits).toBe(true);
+
+  const list = page.getByTestId('recent-operations');
+  await expect(list.getByTestId('operation')).toHaveCount(2);
+  await list.getByRole('button', { name: 'Развернуть · ещё 1' }).click();
+  await expect(list.getByTestId('operation')).toHaveCount(3);
+  await list.getByRole('button', { name: 'Свернуть' }).click();
+  await expect(list.getByTestId('operation')).toHaveCount(2);
+  await page.screenshot({ path: test.info().outputPath('small-iphone.png') });
   await context.close();
 });

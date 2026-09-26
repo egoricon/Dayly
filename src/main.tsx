@@ -18,10 +18,36 @@ createRoot(document.getElementById('root')!).render(
 
 // Offline work and install to the home screen. In dev the service worker would cache stale code.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  // The first worker takes over a fresh page too; only a later one is a new version.
+  const hadWorker = navigator.serviceWorker.controller !== null;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {
-      // The app works without it, only not offline.
-    });
+    navigator.serviceWorker
+      .register('sw.js')
+      .then((registration) => {
+        // An app on the home screen comes back from the background without reloading, so look
+        // for a new version every time it is opened.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update().catch(() => {});
+        });
+      })
+      .catch(() => {
+        // The app works without it, only not offline.
+      });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadWorker) reloadIntoNewVersion();
+  });
+}
+
+/** Reloads into a new version at once, or when the app is next hidden if something is being entered. */
+function reloadIntoNewVersion(): void {
+  const busy = () => document.querySelector('[role="dialog"], .form-screen, input:focus') !== null;
+  if (document.visibilityState === 'hidden' || !busy()) {
+    window.location.reload();
+    return;
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') window.location.reload();
   });
 }
 

@@ -688,13 +688,45 @@ ul {
   font-weight: 800;
 }
 
-/* Four digits and more shrink to fit the ring. */
-.hero-amount.is-long .hero-whole {
-  font-size: 68px;
+/* Four characters and more (digits and the minus) shrink to fit the ring. */
+.hero-amount.size-4 .hero-whole {
+  font-size: 74px;
 }
 
-.hero-amount.is-long .hero-fraction {
-  font-size: 26px;
+.hero-amount.size-4 .hero-fraction {
+  font-size: 28px;
+}
+
+.hero-amount.size-5 .hero-whole {
+  font-size: 62px;
+}
+
+.hero-amount.size-5 .hero-fraction {
+  font-size: 24px;
+}
+
+.hero-amount.size-6 .hero-whole {
+  font-size: 52px;
+}
+
+.hero-amount.size-6 .hero-fraction {
+  font-size: 21px;
+}
+
+.hero-amount.size-7 .hero-whole {
+  font-size: 44px;
+}
+
+.hero-amount.size-7 .hero-fraction {
+  font-size: 18px;
+}
+
+.hero-amount.size-8 .hero-whole {
+  font-size: 38px;
+}
+
+.hero-amount.size-8 .hero-fraction {
+  font-size: 16px;
 }
 
 .carry-pill {
@@ -735,6 +767,15 @@ ul {
 
 .expense-list {
   padding: 4px 18px;
+}
+
+.list-toggle {
+  width: 100%;
+  height: 48px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-ink-strong);
 }
 
 .expense-row {
@@ -924,7 +965,22 @@ ul {
 /* 2g — expense sheet */
 
 .expense-sheet {
-  height: min(640px, calc(100% - env(safe-area-inset-top) - 24px));
+  height: min(720px, calc(100% - env(safe-area-inset-top) - 12px));
+  gap: 12px;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  overflow-y: auto;
+}
+
+/* Everything keeps its size; only the keypad gives up height on a short screen, so «Добавить» is
+   never squeezed. A screen too short even for that scrolls the sheet. */
+.expense-sheet > * {
+  flex-shrink: 0;
+}
+
+.expense-sheet > .keypad {
+  flex: 0 1 256px;
+  min-height: 176px;
+  grid-template-rows: repeat(4, 1fr);
 }
 
 .sheet-amount {
@@ -994,9 +1050,9 @@ ul {
 }
 
 .button-add {
-  height: 58px;
-  border-radius: 29px;
-  font-size: 18px;
+  height: 60px;
+  border-radius: 30px;
+  font-size: 19px;
 }
 
 /* Delete action */

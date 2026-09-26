@@ -57,6 +57,14 @@ export function formatHistoryDay(date: LocalDate, today: LocalDate): string {
   return `${formatDayMonth(date)}${year}, ${weekday}`;
 }
 
+/** When an operation was entered, for the home list: '09:12', 'вчера, 09:12', '24 сентября, 09:12'. */
+export function formatOperationTime(date: LocalDate, createdAt: string, today: LocalDate): string {
+  const time = formatTime(createdAt);
+  if (date === today) return time;
+  if (date === addDays(today, -1)) return `вчера, ${time}`;
+  return `${formatDayMonth(date)}, ${time}`;
+}
+
 /** Local time of an ISO timestamp: '09:12' */
 export function formatTime(iso: string): string {
   const d = new Date(iso);

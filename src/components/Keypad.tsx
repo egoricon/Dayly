@@ -5,7 +5,8 @@ interface KeypadProps {
   onKey: (key: KeypadKey) => void;
   onEnter?: () => void;
   onEscape?: () => void;
-  keyHeight: number;
+  /** Fixed key height; without it the keys share the keypad's height (the expense sheet). */
+  keyHeight?: number;
 }
 
 /** 3×4 amount keypad; a physical keyboard works too. */
@@ -37,7 +38,7 @@ export function Keypad({ onKey, onEnter, onEscape, keyHeight }: KeypadProps) {
           key={key}
           type="button"
           className="keypad-key"
-          style={{ height: keyHeight }}
+          style={keyHeight === undefined ? undefined : { height: keyHeight }}
           aria-label={key === 'backspace' ? 'Стереть' : key}
           onClick={() => onKey(key)}
         >

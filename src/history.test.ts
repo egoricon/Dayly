@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { addExpense, buyGoal, createInitialData, deleteTransaction, recordDaySummary, saveGoal, setCushionFixed, setReserve, updateExpense } from './appData';
 import { calculateBudget, previewExpense } from './domain/budget';
-import { historyDays } from './domain/history';
+import { historyDays, recentOperations } from './domain/history';
+import { formatOperationTime } from './ui/labels';
 import type { AppData } from './domain/types';
 
 // Stage 4: history 2h, editing expenses and the terms of «Как считается». Numbers of example А.
@@ -67,6 +68,29 @@ describe('history', () => {
     data = addExpense(data, 4000, 'fun', '2026-09-26', at('20:00'));
     const [day] = historyDays(data, '2026-09-27', 0);
     expect(day).toMatchObject({ date: '2026-09-26', spentFromLimitKopecks: 4350, carryKopecks: 2854 - 4350 });
+  });
+});
+
+describe('home list', () => {
+  it('recent operations: expenses and incomes of the last week, newest first, without adjustments', () => {
+    let data = withFirstDay();
+    data = addExpense(data, 500, 'delivery', '2026-10-02', new Date('2026-10-02T13:40:00'));
+    data = addExpense(data, 200, 'cafe', '2026-10-03', new Date('2026-10-03T08:05:00'));
+
+    const week = recentOperations(data, '2026-10-03', 7);
+    expect(week.map((e) => [e.transaction.date, e.fromLimitKopecks])).toEqual([
+      ['2026-10-03', 200],
+      ['2026-10-02', 500],
+    ]);
+    // 26 September is exactly 7 days before 3 October, so it is left out; the day after it is in.
+    expect(recentOperations(data, '2026-10-02', 7).map((e) => e.transaction.category)).toEqual(['delivery', 'groceries', 'cafe']);
+  });
+
+  it('the time says the day for earlier operations', () => {
+    const createdAt = new Date('2026-09-25T21:30:00').toISOString();
+    expect(formatOperationTime('2026-09-26', new Date('2026-09-26T09:05:00').toISOString(), '2026-09-26')).toBe('09:05');
+    expect(formatOperationTime('2026-09-25', createdAt, '2026-09-26')).toBe('вчера, 21:30');
+    expect(formatOperationTime('2026-09-25', createdAt, '2026-09-28')).toBe('25 сентября, 21:30');
   });
 });
 

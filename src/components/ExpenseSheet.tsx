@@ -146,7 +146,7 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
                   ))}
             </div>
             <div className="spacer" />
-            <Keypad keyHeight={50} onKey={(key) => setInput((value) => applyKey(value, key))} onEnter={submit} onEscape={close} />
+            <Keypad onKey={(key) => setInput((value) => applyKey(value, key))} onEnter={submit} onEscape={close} />
             <button type="button" className="button-primary button-add" disabled={amount === 0} onClick={submit}>
               {editing ? 'Сохранить' : 'Добавить'}
             </button>
