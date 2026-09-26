@@ -2,19 +2,21 @@
 // Pages go to the network first and fall back to the cached shell; built assets have
 // hashed names, so they are served from the cache and stored on first use.
 
-const CACHE = 'dayly-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+// All paths are relative to this file, so the app works at the site root and under a subpath.
+const CACHE = 'dayly-v2';
+const INDEX = new URL('./', self.location).href;
+const SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 /** The shell plus the built script, styles and the fonts they use, found in index.html and the CSS. */
 async function precache() {
   const cache = await caches.open(CACHE);
   await cache.addAll(SHELL);
-  const html = await (await cache.match('/')).text();
-  const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+  const html = await (await cache.match(INDEX)).text();
+  const assets = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map((m) => new URL(m[1], INDEX).href);
   const fonts = [];
   for (const css of assets.filter((a) => a.endsWith('.css'))) {
     const text = await (await fetch(css)).text();
-    fonts.push(...[...text.matchAll(/url\((\/assets\/[^)]+\.woff2)\)/g)].map((m) => m[1]));
+    fonts.push(...[...text.matchAll(/url\(([^)]+\.woff2)\)/g)].map((m) => new URL(m[1], css).href));
   }
   await cache.addAll([...new Set([...assets, ...fonts])]);
 }
@@ -41,10 +43,10 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/', copy));
+          caches.open(CACHE).then((cache) => cache.put(INDEX, copy));
           return response;
         })
-        .catch(() => caches.match('/')),
+        .catch(() => caches.match(INDEX)),
     );
     return;
   }

@@ -103,7 +103,7 @@ test('data survive a browser restart; the app opens offline', async ({}, testInf
 test('PWA: manifest and service worker are served', async ({ page }) => {
   await page.goto('/');
   const manifest = await (await page.request.get('/manifest.webmanifest')).json();
-  expect(manifest).toMatchObject({ short_name: 'Dayly', display: 'standalone', start_url: '/' });
+  expect(manifest).toMatchObject({ short_name: 'Dayly', display: 'standalone', start_url: './' });
   const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
   expect(scope).toBe(BASE);
   const persisted = await page.evaluate(() => navigator.storage.persisted());
