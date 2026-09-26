@@ -1,12 +1,11 @@
 import { addDays, daysInclusive, diffDays, getPeriod, isRegular, maxDate, monthlyOccurrences, scheduleOccurrences, type Period } from './dates';
-import type { AppData, Category, Goal, LocalDate, ReserveCategory, Transaction } from './types';
+import { reserveCategories } from './categories';
+import type { AppData, Category, ExpenseCategory, Goal, LocalDate, Transaction } from './types';
 
 // Daily limit model: CLAUDE.md «Модель расчёта», full algorithm in PROJECT_MAP.md section 2.
 
-export const RESERVE_CATEGORIES: readonly ReserveCategory[] = ['groceries', 'transport'];
-
 export interface ReserveState {
-  category: ReserveCategory;
+  category: Category;
   budgetKopecks: number;
   usedKopecks: number;
   remainingKopecks: number;
@@ -35,7 +34,7 @@ export interface CheckpointBreakdown {
   // Terms behind the sums, for «Как считается»
   incomes: Occurrence[];
   payments: Occurrence[];
-  reserveTerms: { category: ReserveCategory; kopecks: number }[];
+  reserveTerms: { category: Category; kopecks: number }[];
   goalTerms: { goalId: string; kopecks: number }[];
 }
 
@@ -65,10 +64,6 @@ export interface BudgetResult {
   unpaidPayments: Occurrence[];
 }
 
-function isReserveCategory(category: Category | null): category is ReserveCategory {
-  return category === 'groceries' || category === 'transport';
-}
-
 function byTime(a: Transaction, b: Transaction): number {
   if (a.date !== b.date) return a.date < b.date ? -1 : 1;
   if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
@@ -88,15 +83,9 @@ function periodOf(data: AppData, date: LocalDate): Period {
   return getPeriod(date, main?.dayOfMonth ?? null, main?.weekday ?? null);
 }
 
-function reserveSettingKopecks(data: AppData, category: ReserveCategory): number {
-  return category === 'groceries'
-    ? data.settings.reserves.groceriesKopecks
-    : data.settings.reserves.transportKopecks;
-}
-
 /** Reserve budget for a period; the first partial period is proportional to the tracked days. */
-function reserveBudget(data: AppData, category: ReserveCategory, period: Period): number {
-  const full = reserveSettingKopecks(data, category);
+function reserveBudget(data: AppData, category: ExpenseCategory, period: Period): number {
+  const full = category.reserveKopecks ?? 0;
   const from = maxDate(period.start, data.settings.trackingStartDate);
   if (from > period.end) return 0;
   if (from === period.start) return full;
@@ -105,11 +94,11 @@ function reserveBudget(data: AppData, category: ReserveCategory, period: Period)
 
 /** Walks the period's expenses in order: reserve categories spend their reserve, overflow goes to the limit. */
 function splitPeriodExpenses(data: AppData, period: Period): { splits: Map<string, ExpenseSplit>; reserves: ReserveState[] } {
-  const remaining = new Map<ReserveCategory, number>();
-  const reserves: ReserveState[] = RESERVE_CATEGORIES.map((category) => {
+  const remaining = new Map<Category, number>();
+  const reserves: ReserveState[] = reserveCategories(data).map((category) => {
     const budgetKopecks = reserveBudget(data, category, period);
-    remaining.set(category, budgetKopecks);
-    return { category, budgetKopecks, usedKopecks: 0, remainingKopecks: budgetKopecks };
+    remaining.set(category.id, budgetKopecks);
+    return { category: category.id, budgetKopecks, usedKopecks: 0, remainingKopecks: budgetKopecks };
   });
   const splits = new Map<string, ExpenseSplit>();
   const expenses = data.transactions
@@ -120,7 +109,7 @@ function splitPeriodExpenses(data: AppData, period: Period): { splits: Map<strin
     let fromReserve = 0;
     if (t.paymentId !== null || t.goalId !== null) {
       fromLimit = 0;
-    } else if (isReserveCategory(t.category)) {
+    } else if (t.category !== null && remaining.has(t.category)) {
       const left = remaining.get(t.category)!;
       fromReserve = Math.min(left, t.amountKopecks);
       fromLimit = t.amountKopecks - fromReserve;

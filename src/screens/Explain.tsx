@@ -4,7 +4,8 @@ import type { BudgetResult, CheckpointBreakdown } from '../domain/budget';
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData } from '../domain/types';
-import { CATEGORY_NAMES, formatDayMonth, formatDays, untilIncome } from '../ui/labels';
+import { categoryName } from '../domain/categories';
+import { formatDayMonth, formatDays, untilIncome } from '../ui/labels';
 
 interface ExplainProps {
   data: AppData;
@@ -72,8 +73,8 @@ export function Explain({ data, budget, onBack }: ExplainProps) {
     rows.push(
       <Row
         key={r.category}
-        label={`− Резерв на ${r.category === 'groceries' ? 'продукты' : 'транспорт'}`}
-        sub={`траты «${CATEGORY_NAMES[r.category]}» идут отсюда`}
+        label={`− Резерв «${categoryName(data, r.category)}»`}
+        sub="траты этой категории идут отсюда"
         value={formatKopecks(r.kopecks)}
       />,
     );

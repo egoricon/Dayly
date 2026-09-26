@@ -7,25 +7,27 @@ import {
   markPaymentPaid,
   newId,
   reconcileBalance,
+  removeCategory,
   removeFavorite,
   removeIncomeSource,
   removePayment,
+  saveCategory,
   saveFavorite,
   saveGoal,
   saveIncomeSource,
   savePayment,
   setCushionFixed,
   setCushionPercent,
-  setReserve,
   takeFromCushion,
 } from '../appData';
 import { AmountInput, amountText, DaySelect, Field, FormScreen, Segmented } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
+import { activeCategories, findCategory, startCategory } from '../domain/categories';
 import { addDays, monthlyOccurrences, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { Category, IncomeSource, ReserveCategory } from '../domain/types';
-import { CATEGORY_NAMES, CATEGORY_ORDER, formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
+import type { Category, ExpenseCategory, IncomeSource } from '../domain/types';
+import { formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
 import type { FinanceProps } from './Finances';
 
 type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
@@ -263,45 +265,86 @@ function nextOccurrence(dayOfMonth: number, periodEnd: string): string {
   return monthlyOccurrences(dayOfMonth, addDays(periodEnd, 1), addDays(periodEnd, 32))[0]!;
 }
 
-const RESERVE_TITLES: Record<ReserveCategory, string> = {
-  groceries: 'Резерв на продукты',
-  transport: 'Резерв на транспорт',
-};
-
-export function ReserveForm({ data, budget, today, update, category, onBack }: FormProps & { category: ReserveCategory }) {
-  const current = category === 'groceries' ? data.settings.reserves.groceriesKopecks : data.settings.reserves.transportKopecks;
-  const [amount, setAmount] = useState(amountText(current));
+/** A category: its name, and whether its expenses go to the daily limit or spend a reserve first. */
+export function CategoryForm({ data, today, update, id, onBack }: FormProps & { id: string | null }) {
+  const existing = data.settings.categories.find((c) => c.id === id);
+  const [newCategoryId] = useState(newId);
+  const [name, setName] = useState(existing?.name ?? '');
+  const [mode, setMode] = useState<'limit' | 'reserve'>(existing && existing.reserveKopecks !== null ? 'reserve' : 'limit');
+  const [amount, setAmount] = useState(amountText(existing?.reserveKopecks ?? 0));
   const kopecks = parseAmount(amount === '' ? '0' : amount);
-  // Shows the period with the typed amount before it is saved.
-  const reserves = kopecks === null || kopecks === current ? budget.reserves : calculateBudget(setReserve(data, category, kopecks), today).reserves;
-  const state = reserves.find((r) => r.category === category)!;
+  const trimmed = name.trim();
+  const duplicate = activeCategories(data).some((c) => c.id !== existing?.id && c.name.toLowerCase() === trimmed.toLowerCase());
+  const ready = trimmed !== '' && !duplicate && (mode === 'limit' || kopecks !== null);
+  const draft: ExpenseCategory = {
+    id: existing?.id ?? newCategoryId,
+    name: trimmed,
+    reserveKopecks: mode === 'reserve' ? (kopecks ?? 0) : null,
+    isActive: existing?.isActive ?? true,
+  };
+  // Shows the period with the typed reserve before it is saved.
+  const state = mode === 'reserve' ? calculateBudget(saveCategory(data, draft), today).reserves.find((r) => r.category === draft.id) : undefined;
+  const canRemove = existing !== undefined && existing.isActive && activeCategories(data).length > 1;
 
   return (
-    <FormScreen title={RESERVE_TITLES[category]} onBack={onBack}>
-      <p className="form-note">
-        Траты «{category === 'groceries' ? 'Продукты' : 'Транспорт'}» идут из резерва и не уменьшают дневной лимит. Когда
-        резерв кончается, остаток траты идёт из лимита.
-      </p>
-      <Field label="На месяц" hint="Сумма на полный период. В первом неполном периоде берётся часть по оставшимся дням.">
-        <AmountInput value={amount} onChange={setAmount} />
+    <FormScreen title={existing ? existing.name : 'Новая категория'} onBack={onBack}>
+      <Field label="Название" hint={duplicate ? 'Такая категория уже есть' : undefined}>
+        <input className="input" placeholder="Спорт" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
-      <div className="card status-card" data-testid="reserve-status">
-        <span>
-          В этом периоде: {formatMoney(state.budgetKopecks)}, потрачено {formatMoney(state.usedKopecks)}, осталось{' '}
-          {formatMoney(state.remainingKopecks)}
-        </span>
-      </div>
+      <Field label="Траты идут" group>
+        <Segmented
+          options={[
+            { value: 'limit', label: 'Из лимита' },
+            { value: 'reserve', label: 'Из резерва' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
+      </Field>
+      {mode === 'reserve' ? (
+        <>
+          <p className="form-note">
+            Траты этой категории идут из резерва и не уменьшают дневной лимит. Когда резерв кончается, остаток траты идёт из лимита.
+          </p>
+          <Field label="Резерв на период" hint="Сумма на полный период. В первом неполном периоде берётся часть по оставшимся дням.">
+            <AmountInput value={amount} onChange={setAmount} />
+          </Field>
+          {state && (
+            <div className="card status-card" data-testid="reserve-status">
+              <span>
+                В этом периоде: {formatMoney(state.budgetKopecks)}, потрачено {formatMoney(state.usedKopecks)}, осталось{' '}
+                {formatMoney(state.remainingKopecks)}
+              </span>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="form-note">Траты этой категории уменьшают дневной лимит.</p>
+      )}
       <button
         type="button"
         className="button-primary button-large"
-        disabled={kopecks === null}
+        disabled={!ready}
         onClick={() => {
-          update((d) => setReserve(d, category, kopecks!));
+          update((d) => saveCategory(d, draft));
           onBack();
         }}
       >
         Сохранить
       </button>
+      {canRemove && (
+        <button
+          type="button"
+          className="link-danger"
+          onClick={() => {
+            update((d) => removeCategory(d, existing.id));
+            onBack();
+          }}
+        >
+          Убрать категорию
+        </button>
+      )}
+      {canRemove && <p className="form-note">Старые траты останутся в истории, остаток резерва вернётся в лимит. Убранную категорию можно вернуть.</p>}
     </FormScreen>
   );
 }
@@ -495,7 +538,10 @@ export function FavoriteForm({ data, update, id, onBack }: FormProps & { id: str
   const existing = data.settings.favorites.find((f) => f.id === id);
   const [label, setLabel] = useState(existing?.label ?? '');
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [category, setCategory] = useState<Category>(existing?.category ?? data.settings.lastCategory);
+  const [category, setCategory] = useState<Category>(existing?.category ?? startCategory(data));
+  // A favourite of a removed category keeps showing it.
+  const own = findCategory(data, existing?.category ?? null);
+  const categories = own && !own.isActive ? [...activeCategories(data), own] : activeCategories(data);
   const kopecks = parseAmount(amount) ?? 0;
   const ready = label.trim() !== '' && kopecks > 0;
 
@@ -509,15 +555,15 @@ export function FavoriteForm({ data, update, id, onBack }: FormProps & { id: str
       </Field>
       <Field label="Категория" group>
         <div className="chips chips-left">
-          {CATEGORY_ORDER.map((c) => (
+          {categories.map((c) => (
             <button
-              key={c}
+              key={c.id}
               type="button"
-              className={`chip${c === category ? ' is-selected' : ''}`}
-              aria-pressed={c === category}
-              onClick={() => setCategory(c)}
+              className={`chip${c.id === category ? ' is-selected' : ''}`}
+              aria-pressed={c.id === category}
+              onClick={() => setCategory(c.id)}
             >
-              {CATEGORY_NAMES[c]}
+              {c.name}
             </button>
           ))}
         </div>

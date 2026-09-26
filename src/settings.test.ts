@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addExpense,
   addIncome,
   buyGoal,
   createInitialData,
   markPaymentPaid,
   reconcileBalance,
+  removeCategory,
   removeIncomeSource,
+  restoreCategory,
+  saveCategory,
   saveGoal,
   setCushionFixed,
   setCushionPercent,
@@ -14,6 +18,8 @@ import {
 } from './appData';
 import { calculateBudget, cushionSavedBy } from './domain/budget';
 import { incomesToConfirm, occurrenceToClose, paymentOccurrence } from './domain/planned';
+import { transactionName } from './components/TransactionRow';
+import { activeCategories, MAX_CATEGORIES } from './domain/categories';
 import type { AppData } from './domain/types';
 import { hideBanner, isBannerHidden } from './uiState';
 
@@ -74,6 +80,56 @@ describe('onboarding', () => {
     expect(r.period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
     expect(r.expectedIncomes).toEqual([]);
     expect(r.dailyLimitKopecks).toBe(1000); // 300,00 ÷ 30
+  });
+});
+
+describe('own categories', () => {
+  const sport = { id: 'sport', name: 'Спорт', reserveKopecks: 9000, isActive: true };
+
+  it('an own reserve: set aside like «Продукты», its expenses do not touch the limit', () => {
+    const before = calculateBudget(configured(), '2026-09-26');
+    const data = saveCategory(configured(), sport);
+    const withSport = calculateBudget(data, '2026-09-26');
+    // 90,00 per full period of 30 days, 9 of them tracked: 27,00 this period.
+    expect(withSport.reserves.find((r) => r.category === 'sport')).toMatchObject({ budgetKopecks: 2700, remainingKopecks: 2700 });
+    expect(withSport.breakdown.reservesKopecks).toBe(before.breakdown.reservesKopecks + 2700);
+    expect(withSport.dailyLimitKopecks).toBe(Math.floor((before.breakdown.freeKopecks - 2700) / 9));
+
+    const spent = calculateBudget(addExpense(data, 1500, 'sport', '2026-09-26', NOW), '2026-09-26');
+    expect(spent.reserves.find((r) => r.category === 'sport')!.remainingKopecks).toBe(1200);
+    expect(spent.dailyLimitKopecks).toBe(withSport.dailyLimitKopecks);
+    expect(spent.spentTodayKopecks).toBe(0);
+  });
+
+  it('a removed category leaves the sheet, keeps its name on old expenses and returns its reserve; it comes back', () => {
+    let data = addExpense(saveCategory(configured(), sport), 1500, 'sport', '2026-09-26', NOW);
+    const expense = data.transactions.at(-1)!;
+    const withSport = calculateBudget(data, '2026-09-26');
+    data = removeCategory(data, 'sport');
+    expect(activeCategories(data).map((c) => c.id)).not.toContain('sport');
+    expect(transactionName(expense, data)).toBe('Спорт');
+    const removed = calculateBudget(data, '2026-09-26');
+    expect(removed.reserves.map((r) => r.category)).toEqual(['groceries', 'transport']);
+    // The expense now counts in the limit, and what was left of the reserve is free again.
+    expect(removed.spentTodayKopecks).toBe(1500);
+    expect(removed.breakdown.reservesKopecks).toBe(withSport.breakdown.reservesKopecks - 1200);
+    expect(calculateBudget(restoreCategory(data, 'sport'), '2026-09-26')).toEqual(withSport);
+  });
+
+  it('the last category stays, and at most MAX_CATEGORIES are active', () => {
+    let data = configured();
+    for (const c of activeCategories(data).slice(1)) data = removeCategory(data, c.id);
+    expect(removeCategory(data, 'cafe')).toBe(data);
+    data = configured();
+    for (let i = activeCategories(data).length; i < MAX_CATEGORIES; i++) {
+      data = saveCategory(data, { id: `own${i}`, name: `Своя ${i}`, reserveKopecks: null, isActive: true });
+    }
+    expect(activeCategories(data)).toHaveLength(MAX_CATEGORIES);
+    expect(saveCategory(data, { id: 'extra', name: 'Лишняя', reserveKopecks: null, isActive: true })).toBe(data);
+    data = removeCategory(data, 'own9');
+    expect(restoreCategory(saveCategory(data, { id: 'extra', name: 'Лишняя', reserveKopecks: null, isActive: true }), 'own9')).toEqual(
+      saveCategory(data, { id: 'extra', name: 'Лишняя', reserveKopecks: null, isActive: true }),
+    );
   });
 });
 

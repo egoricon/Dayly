@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addExpense, addFavoriteExpense, createInitialData, deleteTransaction, recordDaySummary, removeFavorite, saveFavorite } from './appData';
+import { addExpense, addFavoriteExpense, createInitialData, deleteTransaction, recordDaySummary, removeFavorite, saveFavorite, setReserve } from './appData';
 import { transactionName } from './components/TransactionRow';
 import { calculateBudget } from './domain/budget';
 import { backupFileName, makeBackup, parseBackup } from './backup';
@@ -85,10 +85,31 @@ describe('storage', () => {
   it('upgrades version 1 data: incomes get weekday null, favourites start empty', () => {
     const storage = memoryStorage();
     const data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
-    const { favorites: _f, ...v1Settings } = data.settings;
+    const { favorites: _f, categories: _c, ...rest } = data.settings;
+    const v1Settings = { ...rest, reserves: { groceriesKopecks: 0, transportKopecks: 0 } };
     const v1 = { ...data, schemaVersion: 1, settings: v1Settings, incomeSources: data.incomeSources.map(({ weekday: _, ...rest }) => rest) };
     storage.setItem(DATA_KEY, JSON.stringify(v1));
     expect(loadData(storage)).toEqual(data);
+  });
+
+  it('upgrades version 3 data: reserves become «Продукты» and «Транспорт» with a reserve, the limit stays', () => {
+    const storage = memoryStorage();
+    let data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
+    data = addExpense(setReserve(setReserve(data, 'groceries', 50000), 'transport', 10000), 1840, 'groceries', '2026-09-26', NOW);
+    const { categories: _c, ...rest } = data.settings;
+    const v3 = { ...data, schemaVersion: 3, settings: { ...rest, reserves: { groceriesKopecks: 50000, transportKopecks: 10000 } } };
+    storage.setItem(DATA_KEY, JSON.stringify(v3));
+    const loaded = loadData(storage)!;
+    expect(loaded).toEqual(data);
+    expect(loaded.settings.categories.map((c) => [c.name, c.reserveKopecks])).toEqual([
+      ['Кафе', null],
+      ['Доставка', null],
+      ['Покупки', null],
+      ['Развлечения', null],
+      ['Продукты', 50000],
+      ['Транспорт', 10000],
+    ]);
+    expect(calculateBudget(loaded, '2026-09-26')).toEqual(calculateBudget(data, '2026-09-26'));
   });
 
   it('keeps unreadable data aside instead of losing it', () => {
@@ -132,7 +153,8 @@ describe('backup', () => {
   });
 
   it('upgrades a copy made by an older version', () => {
-    const { favorites: _f, ...oldSettings } = data.settings;
+    const { favorites: _f, categories: _c, ...rest } = data.settings;
+    const oldSettings = { ...rest, reserves: { groceriesKopecks: 0, transportKopecks: 0 } };
     const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: { ...data, schemaVersion: 2, settings: oldSettings } };
     expect(parseBackup(JSON.stringify(old))?.data).toEqual(data);
   });

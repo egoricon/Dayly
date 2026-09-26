@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calculateBudget, previewExpense, splitExpenses } from './budget';
 import type { AppData, Category, Goal, IncomeSource, MandatoryPayment, Transaction } from './types';
+import { defaultCategories } from './categories';
 
 // Reference numbers: PROJECT_MAP.md section 2, examples А and Б.
 
@@ -40,12 +41,12 @@ function payment(id: string, amountKopecks: number, dayOfMonth: number, startDat
 
 function emptyData(trackingStartDate: string): AppData {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     settings: {
       onboardingCompleted: true,
       trackingStartDate,
       mainIncomeSourceId: null,
-      reserves: { groceriesKopecks: 0, transportKopecks: 0 },
+      categories: defaultCategories(),
       cushion: { mode: 'fixed', amountKopecks: 0 },
       theme: 'auto',
       lastCategory: 'cafe',
@@ -82,7 +83,7 @@ function exampleA(options: { full?: boolean; balanceKopecks?: number } = {}): Ap
   data.payments = [payment('dorm', 4500, 1, start), payment('internet', 3000, 3, start), payment('phone', 2000, 4, start)];
   data.transactions = [tx({ type: 'adjustment', amountKopecks: options.balanceKopecks ?? 58600, date: start })];
   if (options.full ?? true) {
-    data.settings.reserves = { groceriesKopecks: 50000, transportKopecks: 10000 };
+    data.settings.categories = defaultCategories(50000, 10000);
     data.settings.cushion = { mode: 'fixed', amountKopecks: 3000 };
     data.goals = [headphones];
   }
@@ -94,7 +95,7 @@ function exampleB(): AppData {
   const start = '2026-10-05';
   const data = emptyData(start);
   data.settings.mainIncomeSourceId = 'scholarship';
-  data.settings.reserves = { groceriesKopecks: 40000, transportKopecks: 4000 };
+  data.settings.categories = defaultCategories(40000, 4000);
   data.settings.cushion = { mode: 'fixed', amountKopecks: 5000 };
   data.incomeSources = [source('scholarship', 'scholarship', 22000, 5, start), source('salary', 'salary', 50000, 20, start)];
   data.payments = [payment('dorm', 4500, 1, start), payment('internet', 3000, 3, start), payment('phone', 2000, 4, start)];

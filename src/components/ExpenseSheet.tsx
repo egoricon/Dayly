@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { addExpense, addIncome, updateExpense } from '../appData';
-import { calculateBudget, previewExpense, RESERVE_CATEGORIES, type ReserveState } from '../domain/budget';
+import { calculateBudget, previewExpense, type ReserveState } from '../domain/budget';
+import { activeCategories, findCategory, isReserveCategory, startCategory } from '../domain/categories';
 import { formatMoney, parseAmount } from '../domain/money';
 import { occurrenceToClose } from '../domain/planned';
-import type { AppData, Category, LocalDate, ReserveCategory, Transaction } from '../domain/types';
+import type { AppData, Category, LocalDate, Transaction } from '../domain/types';
 import { applyKey } from '../ui/amountInput';
-import { CATEGORY_NAMES, CATEGORY_ORDER, RESERVE_NAMES } from '../ui/labels';
 import { BottomSheet } from './BottomSheet';
 import { amountText, Segmented } from './Form';
 import { Keypad } from './Keypad';
@@ -32,10 +32,6 @@ interface ExpenseSheetProps {
   onClose: () => void;
 }
 
-function isReserve(category: Category): category is ReserveCategory {
-  return (RESERVE_CATEGORIES as readonly Category[]).includes(category);
-}
-
 const OTHER_INCOME = 'other';
 
 /**
@@ -45,10 +41,15 @@ const OTHER_INCOME = 'other';
 export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomePreset, initialMode, editing, onSave, onClose }: ExpenseSheetProps) {
   const [mode, setMode] = useState<EntryMode>(incomePreset ? 'income' : (initialMode ?? 'expense'));
   const [input, setInput] = useState(() => (editing ? amountText(editing.amountKopecks) : ''));
-  const [category, setCategory] = useState<Category>(editing?.category ?? data.settings.lastCategory);
+  const [category, setCategory] = useState<Category>(editing?.category ?? startCategory(data));
   const [incomeSource, setIncomeSource] = useState(incomePreset?.sourceId ?? OTHER_INCOME);
   const amount = parseAmount(input) ?? 0;
   const sources = data.incomeSources.filter((s) => s.isActive);
+  // An edited expense of a removed category still shows its category.
+  const edited = findCategory(data, editing?.category ?? null);
+  const categories = edited && !edited.isActive ? [...activeCategories(data), edited] : activeCategories(data);
+  const isReserve = (id: Category) => isReserveCategory(data, id);
+  const name = findCategory(data, category)?.name ?? '';
 
   let hint: string;
   let danger = false;
@@ -59,12 +60,12 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
     const preview = previewExpense(data, today, amount, category, editing?.id ?? null);
     next = editing ? updateExpense(data, editing.id, amount, category) : addExpense(data, amount, category, today, now);
     if (isReserve(category) && preview.fromLimitKopecks === 0) {
-      hint = `Из резерва ${RESERVE_NAMES[category]} · дневной лимит не изменится`;
+      hint = `Из резерва «${name}» · дневной лимит не изменится`;
     } else if (isReserve(category)) {
       const configured = reserves.some((r) => r.category === category && r.budgetKopecks > 0);
       hint = configured
-        ? `Резерв ${RESERVE_NAMES[category]} кончился, ${formatMoney(preview.fromLimitKopecks)} из лимита`
-        : `Резерв ${RESERVE_NAMES[category]} не задан, трата идёт из лимита`;
+        ? `Резерв «${name}» кончился, ${formatMoney(preview.fromLimitKopecks)} из лимита`
+        : `Резерв «${name}» не задан, трата идёт из лимита`;
       danger = preview.remainingTodayKopecks < 0;
     } else if (preview.remainingTodayKopecks >= 0) {
       hint = `Останется на сегодня ${formatMoney(preview.remainingTodayKopecks)}`;
@@ -122,15 +123,15 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
             </div>
             <div className="chips">
               {mode === 'expense'
-                ? CATEGORY_ORDER.map((c) => (
+                ? categories.map((c) => (
                     <button
-                      key={c}
+                      key={c.id}
                       type="button"
-                      className={`chip${c === category ? ' is-selected' : ''}${isReserve(c) ? ' is-reserve' : ''}`}
-                      aria-pressed={c === category}
-                      onClick={() => setCategory(c)}
+                      className={`chip${c.id === category ? ' is-selected' : ''}${isReserve(c.id) ? ' is-reserve' : ''}`}
+                      aria-pressed={c.id === category}
+                      onClick={() => setCategory(c.id)}
                     >
-                      {isReserve(c) ? `${CATEGORY_NAMES[c]} · резерв` : CATEGORY_NAMES[c]}
+                      {isReserve(c.id) ? `${c.name} · резерв` : c.name}
                     </button>
                   ))
                 : [...sources.map((s) => ({ id: s.id, name: s.name })), { id: OTHER_INCOME, name: 'Другое' }].map((s) => (

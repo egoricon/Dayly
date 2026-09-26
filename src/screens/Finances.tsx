@@ -1,18 +1,19 @@
 import { useEffect, useRef } from 'react';
-import { MAX_FAVORITES } from '../appData';
+import { MAX_FAVORITES, restoreCategory } from '../appData';
 import { cushionSavedBy, goalSavedBy, type BudgetResult } from '../domain/budget';
+import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/categories';
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
-import type { AppData, LocalDate, ReserveCategory } from '../domain/types';
-import { CATEGORY_NAMES, formatDayMonth, incomeScheduleText } from '../ui/labels';
-import { CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm, ReserveForm } from './SettingsForms';
+import type { AppData, LocalDate } from '../domain/types';
+import { formatDayMonth, incomeScheduleText } from '../ui/labels';
+import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
 
 export type FinanceRoute =
   | { screen: 'main' }
   | { screen: 'income'; id: string | null }
   | { screen: 'payments' }
   | { screen: 'payment'; id: string | null }
-  | { screen: 'reserve'; category: ReserveCategory }
+  | { screen: 'category'; id: string | null }
   | { screen: 'cushion' }
   | { screen: 'goal'; id: string | null }
   | { screen: 'reconcile' }
@@ -29,9 +30,9 @@ export interface FinanceProps {
   update: Update;
 }
 
-/** «Финансы» (2i without the app settings): incomes, what is set aside, goals, favourites, balance. Each row opens a form. */
+/** «Финансы» (2i without the app settings): incomes, what is set aside, goals, categories, favourites, balance. Each row opens a form. */
 export function Finances(props: FinanceProps) {
-  const { data, budget, today, route, onNavigate } = props;
+  const { data, budget, today, route, onNavigate, update } = props;
   const back = () => onNavigate({ screen: 'main' });
   // «Назад» brings the list back from the left; everything else enters from the right.
   const previous = useRef(route.screen);
@@ -47,8 +48,8 @@ export function Finances(props: FinanceProps) {
       return <PaymentsList {...props} onBack={back} />;
     case 'payment':
       return <PaymentForm {...props} id={route.id} onBack={() => onNavigate({ screen: 'payments' })} />;
-    case 'reserve':
-      return <ReserveForm {...props} category={route.category} onBack={back} />;
+    case 'category':
+      return <CategoryForm {...props} id={route.id} onBack={back} />;
     case 'cushion':
       return <CushionForm {...props} onBack={back} />;
     case 'goal':
@@ -64,7 +65,8 @@ export function Finances(props: FinanceProps) {
   const incomes = data.incomeSources.filter((s) => s.isActive);
   const payments = data.payments.filter((p) => p.isActive);
   const unpaid = budget.unpaidPayments.reduce((sum, p) => sum + p.amountKopecks, 0);
-  const reserve = (category: ReserveCategory) => budget.reserves.find((r) => r.category === category)!.remainingKopecks;
+  const categories = activeCategories(data);
+  const removedCategories = data.settings.categories.filter((c) => !c.isActive);
   const cushion = data.settings.cushion;
   const goals = data.goals.filter((g) => g.status === 'active');
   const periodEnd = addDays(budget.period.end, 1);
@@ -104,18 +106,14 @@ export function Finances(props: FinanceProps) {
             <span className="list-value">{formatKopecks(unpaid)}</span>
           </button>
         </li>
-        <li>
-          <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'reserve', category: 'groceries' })}>
-            <span className="list-name">Резерв на продукты</span>
-            <span className="list-value">{formatKopecks(reserve('groceries'))}</span>
-          </button>
-        </li>
-        <li>
-          <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'reserve', category: 'transport' })}>
-            <span className="list-name">Резерв на транспорт</span>
-            <span className="list-value">{formatKopecks(reserve('transport'))}</span>
-          </button>
-        </li>
+        {budget.reserves.map((r) => (
+          <li key={r.category}>
+            <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'category', id: r.category })}>
+              <span className="list-name">Резерв «{categoryName(data, r.category)}»</span>
+              <span className="list-value">{formatKopecks(r.remainingKopecks)}</span>
+            </button>
+          </li>
+        ))}
         <li>
           <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'cushion' })}>
             <span className="list-name">Подушка{cushion.mode === 'percent' ? ` · ${cushion.percent}% дохода` : ''}</span>
@@ -149,6 +147,42 @@ export function Finances(props: FinanceProps) {
         + Добавить цель
       </button>
 
+      <span className="section-label">Категории трат</span>
+      <ul className="card list" data-testid="finance-categories">
+        {categories.map((c) => (
+          <li key={c.id}>
+            <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'category', id: c.id })}>
+              <span className="list-text">
+                <span className="list-name">{c.name}</span>
+                <span className="list-sub">
+                  {c.reserveKopecks === null ? 'из дневного лимита' : c.reserveKopecks === 0 ? 'резерв не задан' : `резерв ${formatMoney(c.reserveKopecks)} на период`}
+                </span>
+              </span>
+            </button>
+          </li>
+        ))}
+        {removedCategories.map((c) => (
+          <li key={c.id}>
+            <button
+              type="button"
+              className="list-row is-removed"
+              disabled={categories.length >= MAX_CATEGORIES}
+              onClick={() => update((d) => restoreCategory(d, c.id))}
+            >
+              <span className="list-text">
+                <span className="list-name">{c.name}</span>
+                <span className="list-sub">убрана · нажми, чтобы вернуть</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {categories.length < MAX_CATEGORIES && (
+        <button type="button" className="button-dashed" onClick={() => onNavigate({ screen: 'category', id: null })}>
+          + Добавить категорию
+        </button>
+      )}
+
       <span className="section-label">Любимые траты</span>
       {favorites.length > 0 && (
         <ul className="card list" data-testid="finance-favorites">
@@ -157,7 +191,7 @@ export function Finances(props: FinanceProps) {
               <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'favorite', id: f.id })}>
                 <span className="list-text">
                   <span className="list-name">{f.label}</span>
-                  <span className="list-sub">{CATEGORY_NAMES[f.category]}</span>
+                  <span className="list-sub">{categoryName(data, f.category)}</span>
                 </span>
                 <span className="list-value">{formatKopecks(f.amountKopecks)}</span>
               </button>

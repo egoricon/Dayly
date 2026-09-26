@@ -414,3 +414,45 @@ test('anonymous statistics: on by default, can be turned off, never counts on lo
   await expect(page.getByRole('switch', { name: /Анонимная статистика/ })).toHaveAttribute('aria-checked', 'false');
   expect(hits).toEqual([]);
 });
+
+test('own categories: a reserve «Спорт», removing «Кафе» and bringing it back', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await page.getByRole('button', { name: '+ Добавить категорию' }).click();
+  await page.getByPlaceholder('Спорт').fill('Спорт');
+  await page.getByRole('radio', { name: 'Из резерва' }).click();
+  await page.locator('.form-screen').getByPlaceholder('0,00').fill('90');
+  await expect(page.getByTestId('reserve-status')).toContainText('В этом периоде: 27,00 BYN');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('finance-categories')).toContainText('Спортрезерв 90,00 BYN на период');
+  await expect(page.getByTestId('settings-set-aside')).toContainText('Резерв «Спорт»27,00');
+
+  // The limit makes room for the reserve; an expense from it leaves the limit as it is.
+  await page.getByRole('button', { name: 'Сегодня' }).click();
+  // 27,00 set aside over 9 days: 54,55 → 51,55.
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,55');
+  await page.getByRole('button', { name: '+ Трата' }).click();
+  await page.getByRole('button', { name: 'Спорт · резерв', exact: true }).click();
+  await typeAmount(page, '15');
+  await expect(page.getByTestId('sheet-hint')).toHaveText('Из резерва «Спорт» · дневной лимит не изменится');
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,55');
+  await expect(page.getByTestId('recent-operations')).toContainText('Спорт · из резерва');
+
+  // «Кафе» leaves the sheet and comes back from the list of removed ones.
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await page.getByTestId('finance-categories').getByRole('button', { name: /^Кафе/ }).click();
+  await page.getByRole('button', { name: 'Убрать категорию' }).click();
+  await expect(page.getByTestId('finance-categories')).toContainText('Кафеубрана · нажми, чтобы вернуть');
+  await page.screenshot({ path: test.info().outputPath('categories.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Сегодня' }).click();
+  await page.getByRole('button', { name: '+ Трата' }).click();
+  await expect(page.locator('.chip', { hasText: 'Кафе' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await page.getByTestId('finance-categories').getByRole('button', { name: /^Кафе/ }).click();
+  await expect(page.getByTestId('finance-categories')).toContainText('Кафеиз дневного лимита');
+});

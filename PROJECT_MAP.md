@@ -247,7 +247,7 @@ calculateBudget(data: AppData, today: LocalDate): BudgetResult
 type LocalDate = string; // 'YYYY-MM-DD', локальная дата устройства
 
 interface AppData {
-  schemaVersion: 3;                      // 2: weekday у доходов; 3: settings.favorites (26.09.2026)
+  schemaVersion: 4;                      // 2: weekday у доходов; 3: settings.favorites; 4: settings.categories вместо reserves (26.09.2026)
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];
@@ -260,10 +260,12 @@ interface Settings {
   onboardingCompleted: boolean;
   trackingStartDate: LocalDate;          // дата первого запуска
   mainIncomeSourceId: string | null;     // задаёт период; null — календарный месяц
-  reserves: {
-    groceriesKopecks: number;            // на полный период
-    transportKopecks: number;
-  };
+  categories: {                          // категории трат в порядке шторки; активных 1–10
+    id: Category;
+    name: string;
+    reserveKopecks: number | null;       // null — траты из лимита; число — резерв на полный период
+    isActive: boolean;                   // false — убрана из шторки, старые траты хранят название, резерва нет
+  }[];
   cushion:
     | { mode: 'fixed'; amountKopecks: number }
     | { mode: 'percent'; percent: number; baseKopecks: number; sinceDate: LocalDate };
@@ -302,8 +304,9 @@ interface Goal {
   status: 'active' | 'done' | 'cancelled';
 }
 
-// 'groceries' и 'transport' тратятся из резервов
-type Category = 'cafe' | 'delivery' | 'shopping' | 'fun' | 'groceries' | 'transport';
+// Встроенные 'cafe' | 'delivery' | 'shopping' | 'fun' | 'groceries' | 'transport' (у двух последних
+// резерв с начала), свои категории — сгенерированные id. Резерв может быть у любой (settings.categories).
+type Category = string;
 
 interface Transaction {
   id: string;

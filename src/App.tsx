@@ -146,7 +146,7 @@ export function App() {
           budget={budget}
           onSetupReserves={() => {
             setShowFirstLimit(false);
-            openFinances({ screen: 'reserve', category: 'groceries' });
+            openFinances({ screen: 'category', id: 'groceries' });
           }}
           onDone={() => setShowFirstLimit(false)}
         />

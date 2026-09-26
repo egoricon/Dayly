@@ -1,14 +1,15 @@
 import { cushionSavedBy } from './domain/budget';
+import { activeCategories, defaultCategories, MAX_CATEGORIES } from './domain/categories';
 import { addDays, isRegular } from './domain/dates';
 import type {
   AppData,
   Category,
+  ExpenseCategory,
   Favorite,
   Goal,
   IncomeSource,
   LocalDate,
   MandatoryPayment,
-  ReserveCategory,
   Transaction,
 } from './domain/types';
 
@@ -83,12 +84,12 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     isActive: true,
   };
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
       mainIncomeSourceId: income?.id ?? null,
-      reserves: { groceriesKopecks: 0, transportKopecks: 0 },
+      categories: defaultCategories(),
       cushion: { mode: 'fixed', amountKopecks: 0 },
       theme: 'auto',
       lastCategory: 'cafe',
@@ -207,11 +208,43 @@ export function markPaymentPaid(data: AppData, payment: MandatoryPayment, planne
   });
 }
 
-// Reserves and cushion
+// Categories, reserves and cushion
 
-export function setReserve(data: AppData, category: ReserveCategory, amountKopecks: number): AppData {
-  const key = category === 'groceries' ? 'groceriesKopecks' : 'transportKopecks';
-  return { ...data, settings: { ...data.settings, reserves: { ...data.settings.reserves, [key]: amountKopecks } } };
+function withCategories(data: AppData, categories: ExpenseCategory[]): AppData {
+  return { ...data, settings: { ...data.settings, categories } };
+}
+
+/** Sets the reserve of a category (per full period); null makes its expenses go to the limit. */
+export function setReserve(data: AppData, category: Category, amountKopecks: number | null): AppData {
+  return withCategories(
+    data,
+    data.settings.categories.map((c) => (c.id === category ? { ...c, reserveKopecks: amountKopecks } : c)),
+  );
+}
+
+/** Adds a category at the end or changes one; a new one only while fewer than MAX_CATEGORIES are active. */
+export function saveCategory(data: AppData, category: ExpenseCategory): AppData {
+  const isNew = !data.settings.categories.some((c) => c.id === category.id);
+  if (isNew && activeCategories(data).length >= MAX_CATEGORIES) return data;
+  return withCategories(data, upsert(data.settings.categories, category));
+}
+
+/** Removes a category from the sheet; its expenses stay, its reserve goes back to the limit. One always stays. */
+export function removeCategory(data: AppData, id: Category): AppData {
+  if (activeCategories(data).filter((c) => c.id !== id).length === 0) return data;
+  return withCategories(
+    data,
+    data.settings.categories.map((c) => (c.id === id ? { ...c, isActive: false } : c)),
+  );
+}
+
+/** Brings a removed category back, with its reserve, while there is room. */
+export function restoreCategory(data: AppData, id: Category): AppData {
+  if (activeCategories(data).length >= MAX_CATEGORIES) return data;
+  return withCategories(
+    data,
+    data.settings.categories.map((c) => (c.id === id ? { ...c, isActive: true } : c)),
+  );
 }
 
 export function setCushionFixed(data: AppData, amountKopecks: number): AppData {

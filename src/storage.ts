@@ -1,3 +1,4 @@
+import { defaultCategories } from './domain/categories';
 import type { AppData, IncomeSource } from './domain/types';
 
 export const DATA_KEY = 'dayly:data';
@@ -5,7 +6,7 @@ const CORRUPT_KEY = 'dayly:data:corrupt';
 
 /**
  * Upgrades saved data step by step: version 2 added a weekday for weekly incomes,
- * version 3 added favourite expenses.
+ * version 3 added favourite expenses, version 4 own categories and reserves.
  */
 function migrate(data: { schemaVersion: number }): AppData | null {
   let current = data as unknown as Record<string, unknown> & { schemaVersion: number };
@@ -18,7 +19,15 @@ function migrate(data: { schemaVersion: number }): AppData | null {
     const settings = current.settings as Omit<AppData['settings'], 'favorites'>;
     current = { ...current, schemaVersion: 3, settings: { ...settings, favorites: [] } };
   }
-  return current.schemaVersion === 3 ? (current as unknown as AppData) : null;
+  if (current.schemaVersion === 3) {
+    // Reserves became categories with a reserve; the built-in six keep their ids, so expenses stay as they are.
+    const { reserves, ...settings } = current.settings as Record<string, unknown> & {
+      reserves?: { groceriesKopecks?: number; transportKopecks?: number };
+    };
+    const categories = defaultCategories(reserves?.groceriesKopecks ?? 0, reserves?.transportKopecks ?? 0);
+    current = { ...current, schemaVersion: 4, settings: { ...settings, categories } };
+  }
+  return current.schemaVersion === 4 ? (current as unknown as AppData) : null;
 }
 
 /** Any saved or exported data brought to the current version; null when it is not Dayly data. */

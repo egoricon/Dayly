@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { deleteTransaction, MAX_FAVORITES, newId, saveFavorite } from '../appData';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, Transaction } from '../domain/types';
-import { CATEGORY_NAMES } from '../ui/labels';
+import { categoryName } from '../domain/categories';
 import { BottomSheet } from './BottomSheet';
 import { afterLeave } from '../ui/motion';
 
@@ -13,7 +13,7 @@ const LONG_PRESS_MS = 500;
 
 export function transactionName(t: Transaction, data: AppData): string {
   // A favourite's label (and a payment's or goal's name) is kept in the note.
-  if (t.type === 'expense') return t.note ?? (t.category ? CATEGORY_NAMES[t.category] : 'Трата');
+  if (t.type === 'expense') return t.note ?? categoryName(data, t.category);
   if (t.type === 'income') return data.incomeSources.find((s) => s.id === t.incomeSourceId)?.name ?? t.note ?? 'Доход';
   return t.note ?? 'Сверка баланса';
 }

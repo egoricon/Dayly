@@ -1,23 +1,6 @@
 import { addDays, diffDays } from '../domain/dates';
 import type { BudgetResult } from '../domain/budget';
-import type { AppData, Category, IncomeSource, LocalDate, ReserveCategory } from '../domain/types';
-
-export const CATEGORY_ORDER: readonly Category[] = ['cafe', 'delivery', 'shopping', 'fun', 'groceries', 'transport'];
-
-export const CATEGORY_NAMES: Record<Category, string> = {
-  cafe: 'Кафе',
-  delivery: 'Доставка',
-  shopping: 'Покупки',
-  fun: 'Развлечения',
-  groceries: 'Продукты',
-  transport: 'Транспорт',
-};
-
-/** Genitive: «из резерва продуктов». */
-export const RESERVE_NAMES: Record<ReserveCategory, string> = {
-  groceries: 'продуктов',
-  transport: 'транспорта',
-};
+import type { AppData, IncomeSource, LocalDate } from '../domain/types';
 
 const UNTIL_INCOME: Record<IncomeSource['kind'], string> = {
   scholarship: 'до стипендии',

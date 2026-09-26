@@ -1989,6 +1989,16 @@ label.list-row {
   transform: translateX(20px);
 }
 
+/* A removed category: muted until brought back. */
+.list-row.is-removed .list-name {
+  color: var(--muted);
+}
+
+.list-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .list-sub.is-danger {
   color: var(--danger);
 }

@@ -2,10 +2,16 @@
 
 export type LocalDate = string; // 'YYYY-MM-DD', device-local calendar day
 
-// 'groceries' and 'transport' are spent from reserves
-export type Category = 'cafe' | 'delivery' | 'shopping' | 'fun' | 'groceries' | 'transport';
+/** Id of an expense category: 'cafe', 'delivery', 'shopping', 'fun', 'groceries', 'transport' built in, own ones generated. */
+export type Category = string;
 
-export type ReserveCategory = 'groceries' | 'transport';
+/** An expense category of the input sheet. With a reserve, its expenses spend the reserve first. */
+export interface ExpenseCategory {
+  id: Category;
+  name: string;
+  reserveKopecks: number | null; // per full period; null: expenses go to the daily limit
+  isActive: boolean; // false: removed from the sheet, old expenses keep its name; can be brought back
+}
 
 export type Cushion =
   | { mode: 'fixed'; amountKopecks: number }
@@ -23,7 +29,7 @@ export interface Settings {
   onboardingCompleted: boolean;
   trackingStartDate: LocalDate;
   mainIncomeSourceId: string | null; // defines the period; null means calendar month
-  reserves: { groceriesKopecks: number; transportKopecks: number }; // per full period
+  categories: ExpenseCategory[]; // in the sheet's order; at most MAX_CATEGORIES active, at least one
   cushion: Cushion;
   theme: 'light' | 'dark' | 'auto';
   lastCategory: Category;
@@ -80,7 +86,7 @@ export interface DaySummary {
 }
 
 export interface AppData {
-  schemaVersion: 3; // 2 added IncomeSource.weekday, 3 added settings.favorites
+  schemaVersion: 4; // 2 added IncomeSource.weekday, 3 settings.favorites, 4 settings.categories instead of reserves
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];
