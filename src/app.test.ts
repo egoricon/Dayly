@@ -41,13 +41,13 @@ describe('keypad input', () => {
 });
 
 describe('first launch and quick entry', () => {
-  it('starting balance becomes an adjustment; the period is the calendar month', () => {
+  it('starting balance becomes an adjustment; without an income the period is a month from the start', () => {
     const data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: null, payments: [] }, NOW);
     const budget = calculateBudget(data, '2026-09-26');
     expect(budget.balanceKopecks).toBe(58600);
-    expect(budget.period).toEqual({ start: '2026-09-01', end: '2026-09-30' });
-    expect(budget.dailyLimitKopecks).toBe(11720); // 586,00 ÷ 5 days
-    expect(untilPeriodEnd(data, budget)).toBe('до конца месяца 5 дн.');
+    expect(budget.period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
+    expect(budget.dailyLimitKopecks).toBe(1953); // 586,00 ÷ 30 days
+    expect(untilPeriodEnd(data, budget)).toBe('до конца периода 30 дн.');
     expect(formatDayHeader('2026-09-26')).toBe('Сб, 26 сентября');
   });
 
@@ -55,13 +55,13 @@ describe('first launch and quick entry', () => {
     let data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: null, payments: [] }, NOW);
     data = addExpense(data, 350, 'delivery', '2026-09-26', NOW);
     const budget = calculateBudget(data, '2026-09-26');
-    expect(budget.remainingTodayKopecks).toBe(11720 - 350);
+    expect(budget.remainingTodayKopecks).toBe(1953 - 350);
     expect(budget.balanceKopecks).toBe(58250);
     expect(data.settings.lastCategory).toBe('delivery');
 
     const expense = data.transactions.find((t) => t.type === 'expense')!;
     data = deleteTransaction(data, expense.id);
-    expect(calculateBudget(data, '2026-09-26').remainingTodayKopecks).toBe(11720);
+    expect(calculateBudget(data, '2026-09-26').remainingTodayKopecks).toBe(1953);
   });
 
   it('records the day limit once per value', () => {

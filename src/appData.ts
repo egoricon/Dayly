@@ -1,6 +1,6 @@
 import { cushionSavedBy } from './domain/budget';
 import { activeCategories, defaultCategories, MAX_CATEGORIES } from './domain/categories';
-import { addDays, isRegular } from './domain/dates';
+import { addDays, isRegular, weekdayIndex } from './domain/dates';
 import type {
   AppData,
   Category,
@@ -56,13 +56,14 @@ function dayOf(date: LocalDate): number {
 
 export interface OnboardingResult {
   balanceKopecks: number;
-  income: { kind: IncomeSource['kind']; amountKopecks: number; date: LocalDate } | null;
+  /** `weekly`: comes every week on the weekday of `date`; otherwise every month on its day. */
+  income: { kind: IncomeSource['kind']; amountKopecks: number; date: LocalDate; weekly?: boolean } | null;
   payments: { name: string; amountKopecks: number; date: LocalDate }[];
 }
 
 /**
  * Data after onboarding. The balance becomes a starting adjustment. The next income becomes
- * the main one: its day of month defines the period, and it is not expected before `date`.
+ * the main one: its day of month (or weekday) defines the period, and it is not expected before `date`.
  * Payments are monthly on the day of their date.
  */
 export function createInitialData(today: LocalDate, result: OnboardingResult, now: Date): AppData {
@@ -78,8 +79,8 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     kind: result.income.kind,
     name: INCOME_KIND_NAMES[result.income.kind],
     amountKopecks: result.income.amountKopecks,
-    dayOfMonth: dayOf(result.income.date),
-    weekday: null,
+    dayOfMonth: result.income.weekly ? null : dayOf(result.income.date),
+    weekday: result.income.weekly ? weekdayIndex(result.income.date) + 1 : null,
     startDate: result.income.date,
     isActive: true,
   };

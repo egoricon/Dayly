@@ -62,6 +62,18 @@ function configured(): AppData {
 const scholarshipId = (data: AppData) => data.settings.mainIncomeSourceId!;
 
 describe('onboarding', () => {
+  it('a weekly income: every Friday, the period is a week', () => {
+    const data = createInitialData(
+      '2026-09-26',
+      { balanceKopecks: 10000, income: { kind: 'salary', amountKopecks: 5000, date: '2026-10-02', weekly: true }, payments: [] },
+      NOW,
+    );
+    expect(data.incomeSources[0]).toMatchObject({ dayOfMonth: null, weekday: 5, startDate: '2026-10-02' });
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.period).toEqual({ start: '2026-09-25', end: '2026-10-01' });
+    expect(r.dailyLimitKopecks).toBe(1666); // 100,00 ÷ 6 days until Friday
+  });
+
   it('first limit (2e): (586,00 − 95,00) ÷ 9 = 54,55 until 5 October', () => {
     const r = calculateBudget(onboarded(), '2026-09-26');
     expect(r.period).toEqual({ start: '2026-09-05', end: '2026-10-04' });
@@ -180,11 +192,11 @@ describe('settings', () => {
     expect(r.dailyLimitKopecks).toBe(1455);
   });
 
-  it('removing the main income falls back to the calendar month', () => {
+  it('removing the main income falls back to a month from the start of tracking', () => {
     const base = configured();
     const data = removeIncomeSource(base, scholarshipId(base));
     expect(data.settings.mainIncomeSourceId).toBeNull();
-    expect(calculateBudget(data, '2026-09-26').period).toEqual({ start: '2026-09-01', end: '2026-09-30' });
+    expect(calculateBudget(data, '2026-09-26').period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
   });
 });
 

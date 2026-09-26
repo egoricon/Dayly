@@ -2,12 +2,12 @@ import { useRef, useState } from 'react';
 import { INCOME_KIND_NAMES, type OnboardingResult } from '../appData';
 import { BottomSheet } from '../components/BottomSheet';
 import { Calendar } from '../components/Calendar';
-import { AmountInput, Field, firstMissing, SubmitButton } from '../components/Form';
+import { AmountInput, Field, firstMissing, Segmented, SubmitButton } from '../components/Form';
 import { StepProgress } from '../components/StepProgress';
-import { addDays, addMonths, diffDays } from '../domain/dates';
+import { addDays, addMonths, diffDays, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import type { IncomeSource, LocalDate } from '../domain/types';
-import { formatDayMonth, formatDays } from '../ui/labels';
+import { formatDayMonth, formatDays, incomeScheduleText } from '../ui/labels';
 import { StartBalance } from './StartBalance';
 
 type Step = 'welcome' | 'balance' | 'income' | 'payments';
@@ -27,6 +27,9 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
   const [balance, setBalance] = useState(0);
   const [kind, setKind] = useState<IncomeSource['kind']>('scholarship');
   const [incomeDate, setIncomeDate] = useState<LocalDate | null>(null);
+  const [weekly, setWeekly] = useState(false);
+  // «Настрою позже»: no planned income yet, the money stretches over a month from today.
+  const [incomeLater, setIncomeLater] = useState(false);
   const [incomeAmount, setIncomeAmount] = useState('');
   const [payments, setPayments] = useState<PaymentDraft[]>([]);
   const [addingPayment, setAddingPayment] = useState(false);
@@ -68,14 +71,19 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
   const incomeKopecks = parseAmount(incomeAmount) ?? 0;
 
   if (step === 'income') {
-    // Up to the same day next month: an earlier occurrence of that day would cut the period short.
-    const maxDate = addMonths(today, 1);
+    // Up to the same day next month (next week for a weekly income): an earlier occurrence of
+    // that day would cut the period short.
+    const maxDate = weekly ? addDays(today, 7) : addMonths(today, 1);
+    const repeats = incomeDate && weekly ? `, дальше ${incomeScheduleText({ dayOfMonth: null, weekday: weekdayIndex(incomeDate) + 1 })}` : '';
     return (
       <main className="screen onboarding">
         <StepProgress step={2} onBack={() => setStep('balance')} />
         <div className="step-title">
           <h1>Когда придут следующие деньги?</h1>
-          <p>До этого дня и будем растягивать бюджет. Остальные поступления добавишь потом во вкладке «Финансы».</p>
+          <p>
+            До этого дня и будем растягивать бюджет. Если даты пока нет, жми «Настрою позже»: растянем деньги на месяц, а доход
+            добавишь во вкладке «Финансы».
+          </p>
         </div>
         <div className="chips chips-left">
           {INCOME_KINDS.map((k) => (
@@ -84,6 +92,19 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
             </button>
           ))}
         </div>
+        <Segmented
+          options={[
+            { value: 'monthly', label: 'Раз в месяц' },
+            { value: 'weekly', label: 'Раз в неделю' },
+          ]}
+          value={weekly ? 'weekly' : 'monthly'}
+          onChange={(value) => {
+            const nextWeekly = value === 'weekly';
+            setWeekly(nextWeekly);
+            // A date more than a week away is not the next weekly income.
+            if (nextWeekly && incomeDate && incomeDate > addDays(today, 7)) setIncomeDate(null);
+          }}
+        />
         <div ref={incomeCalendar}>
           <Calendar min={addDays(today, 1)} max={maxDate} value={incomeDate} onChange={setIncomeDate} />
         </div>
@@ -93,22 +114,37 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
         </label>
         <div className="spacer" />
         <p className="step-caption">
-          {incomeDate ? `${formatDayMonth(incomeDate)}, через ${formatDays(diffDays(today, incomeDate))}` : 'Выбери дату в календаре'}
+          {incomeDate ? `${formatDayMonth(incomeDate)}, через ${formatDays(diffDays(today, incomeDate))}${repeats}` : 'Выбери дату в календаре'}
         </p>
         <SubmitButton
           missing={firstMissing([
             [!incomeDate, { text: 'Выбери в календаре, когда придут деньги', field: incomeCalendar }],
             [incomeKopecks === 0, { text: 'Напиши, сколько придёт', field: incomeAmountInput }],
           ])}
-          onClick={() => setStep('payments')}
+          onClick={() => {
+            setIncomeLater(false);
+            setStep('payments');
+          }}
         >
           Дальше
         </SubmitButton>
+        <button
+          type="button"
+          className="link-muted"
+          onClick={() => {
+            setIncomeLater(true);
+            setStep('payments');
+          }}
+        >
+          Настрою позже
+        </button>
       </main>
     );
   }
 
-  const income = { kind, amountKopecks: incomeKopecks, date: incomeDate! };
+  const income = incomeLater ? null : { kind, amountKopecks: incomeKopecks, date: incomeDate!, weekly };
+  // Payments count up to the next income, or without one up to a month from today.
+  const until = income?.date ?? addMonths(today, 1);
   const total = payments.reduce((sum, p) => sum + p.amountKopecks, 0);
   const finish = (list: PaymentDraft[]) => onComplete({ balanceKopecks: balance, income, payments: list });
 
@@ -116,7 +152,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
     <main className="screen onboarding">
       <StepProgress step={3} onBack={() => setStep('income')} />
       <div className="step-title">
-        <h1>Что нужно оплатить до {formatDayMonth(income.date)}?</h1>
+        <h1>Что нужно оплатить до {formatDayMonth(until)}?</h1>
         <p>Эти деньги сразу отложим, и в дневной лимит они не попадут.</p>
       </div>
       {payments.length > 0 && (
@@ -157,7 +193,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
       {addingPayment && (
         <PaymentDraftSheet
           min={today}
-          max={addDays(income.date, -1)}
+          max={addDays(until, -1)}
           onAdd={(p) => setPayments([...payments, p].sort((a, b) => (a.date < b.date ? -1 : 1)))}
           onClose={() => setAddingPayment(false)}
         />

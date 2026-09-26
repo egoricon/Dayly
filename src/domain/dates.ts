@@ -72,7 +72,8 @@ export interface Period {
 
 /**
  * Period containing `today`: from the main income day to the day before the next one.
- * A weekly main income gives a week. Without a main income day it is the calendar month.
+ * A weekly main income gives a week. Without a day (dayOfMonth null) it is the calendar month;
+ * the budget passes the day tracking started instead, so the money stretches over a month from it.
  */
 export function getPeriod(today: LocalDate, dayOfMonth: number | null, weekday: number | null = null): Period {
   if (weekday !== null) {

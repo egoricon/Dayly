@@ -80,7 +80,11 @@ function ceilDiv(numerator: number, denominator: number): number {
 
 function periodOf(data: AppData, date: LocalDate): Period {
   const main = data.incomeSources.find((s) => s.id === data.settings.mainIncomeSourceId);
-  return getPeriod(date, main?.dayOfMonth ?? null, main?.weekday ?? null);
+  // Without a main income the money stretches over a month from the day tracking started (26.09.2026).
+  if (!main || (main.dayOfMonth === null && main.weekday === null)) {
+    return getPeriod(date, Number(data.settings.trackingStartDate.slice(8, 10)));
+  }
+  return getPeriod(date, main.dayOfMonth, main.weekday);
 }
 
 /** Reserve budget for a period; the first partial period is proportional to the tracked days. */

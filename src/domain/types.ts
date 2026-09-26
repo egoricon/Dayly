@@ -28,7 +28,7 @@ export interface Favorite {
 export interface Settings {
   onboardingCompleted: boolean;
   trackingStartDate: LocalDate;
-  mainIncomeSourceId: string | null; // defines the period; null means calendar month
+  mainIncomeSourceId: string | null; // defines the period; null: a month from the day of trackingStartDate
   categories: ExpenseCategory[]; // in the sheet's order; at most MAX_CATEGORIES active, at least one
   cushion: Cushion;
   theme: 'light' | 'dark' | 'auto';

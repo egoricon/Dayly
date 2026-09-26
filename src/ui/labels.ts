@@ -54,9 +54,9 @@ export function formatTime(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** 'до стипендии', 'до зарплаты'…; without a source — the end of the calendar month. */
+/** 'до стипендии', 'до зарплаты'…; without a source — the end of the period (a month from the start). */
 export function untilIncome(source: IncomeSource | undefined): string {
-  return source ? UNTIL_INCOME[source.kind] : 'до конца месяца';
+  return source ? UNTIL_INCOME[source.kind] : 'до конца периода';
 }
 
 /** Right side of the home header: 'до стипендии 9 дн.' */

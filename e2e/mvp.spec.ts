@@ -489,3 +489,48 @@ test('a payment without a name: «Добавить» says what is missing and sh
   await expect(page.getByTestId('onboarding-payments')).toContainText('Общежитие');
   await context.close();
 });
+
+test('onboarding with a weekly income: next Friday, then every Friday', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Начать' }).click();
+  await typeAmount(page, '100');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Зарплата' }).click();
+  await page.getByRole('radio', { name: 'Раз в неделю' }).click();
+  // Only the next seven days can be picked.
+  await expect(page.locator('.calendar-day', { hasText: /^30$/ })).toBeEnabled();
+  await page.getByRole('button', { name: 'Следующий месяц' }).click();
+  await expect(page.locator('.calendar-day', { hasText: /^4$/ })).toBeDisabled();
+  await page.locator('.calendar-day', { hasText: /^2$/ }).click();
+  await page.getByPlaceholder('0,00').fill('50');
+  await expect(page.locator('.step-caption')).toHaveText('2 октября, через 6 дней, дальше по пятницам');
+  await page.screenshot({ path: test.info().outputPath('weekly-income.png') });
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Посчитать лимит' }).click();
+  await expect(page.getByTestId('first-limit')).toHaveText('16,66BYN');
+  await page.getByRole('button', { name: 'На главную' }).click();
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await expect(page.getByTestId('settings-incomes')).toContainText('Зарплата · по пятницам');
+});
+
+test('onboarding without a planned income: «Настрою позже» stretches the money over a month', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Начать' }).click();
+  await typeAmount(page, '100');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Настрою позже' }).click();
+  await expect(page.getByRole('heading', { name: 'Что нужно оплатить до 26 октября?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Посчитать лимит' }).click();
+  await expect(page.locator('.first-limit-title')).toHaveText('Каждый день до 26 октября можно тратить');
+  await expect(page.getByTestId('first-limit')).toHaveText('3,33BYN'); // 100,00 ÷ 30 days
+  await page.getByRole('button', { name: 'На главную' }).click();
+  await expect(page.locator('.home-dates')).toContainText('до конца периода 30 дн.');
+  // A planned income added later becomes the main one and sets the period.
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await page.getByRole('button', { name: '+ Добавить доход' }).click();
+  await page.locator('.form-screen').getByPlaceholder('0,00').fill('200');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('settings-incomes')).toContainText('основное, от него считается период');
+});

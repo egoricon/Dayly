@@ -287,13 +287,15 @@ describe('negative free money', () => {
 });
 
 describe('zero categories', () => {
-  it('only a balance: limit = balance ÷ days to the end of the calendar month', () => {
+  it('only a balance: limit = balance ÷ days of a month from the start of tracking', () => {
     const data = emptyData('2026-09-26');
     data.transactions = [tx({ type: 'adjustment', amountKopecks: 10000, date: '2026-09-26' })];
     const r = calculateBudget(data, '2026-09-26');
-    expect(r.period).toEqual({ start: '2026-09-01', end: '2026-09-30' });
-    expect(r.breakdown).toMatchObject({ days: 5, paymentsKopecks: 0, reservesKopecks: 0, goalsKopecks: 0, cushionKopecks: 0 });
-    expect(r.dailyLimitKopecks).toBe(2000);
+    expect(r.period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
+    expect(r.breakdown).toMatchObject({ days: 30, paymentsKopecks: 0, reservesKopecks: 0, goalsKopecks: 0, cushionKopecks: 0 });
+    expect(r.dailyLimitKopecks).toBe(333);
+    // Later periods keep the day: from the 26th to the 25th.
+    expect(calculateBudget(data, '2026-11-02').period).toEqual({ start: '2026-10-26', end: '2026-11-25' });
     expect(r.reserves.every((x) => x.budgetKopecks === 0)).toBe(true);
   });
 
@@ -382,7 +384,8 @@ describe('weekly income', () => {
   });
 
   it('a weekly income that is not the main one is expected every week of the period', () => {
-    const data = emptyData('2026-09-26');
+    // Tracking since 1 September and no main income: the period is September.
+    const data = emptyData('2026-09-01');
     data.incomeSources = [source('tips', 'other', 5000, null, '2026-09-26', 3)];
     data.transactions = [tx({ type: 'adjustment', amountKopecks: 10000, date: '2026-09-26' })];
     const r = calculateBudget(data, '2026-09-26');
