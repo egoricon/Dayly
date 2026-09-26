@@ -14,13 +14,24 @@ export function FormScreen({ title, onBack, children }: { title: string; onBack:
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="field">
+/**
+ * A labelled field. `group` is for a set of buttons (segmented choice, calendar): a <label> around
+ * them would name the first button after the whole field and press it on a tap on the caption.
+ */
+export function Field({ label, hint, group = false, children }: { label: string; hint?: string; group?: boolean; children: ReactNode }) {
+  const content = (
+    <>
       <span className="field-label">{label}</span>
       {children}
       {hint && <span className="field-hint">{hint}</span>}
-    </label>
+    </>
+  );
+  return group ? (
+    <div className="field" role="group" aria-label={label}>
+      {content}
+    </div>
+  ) : (
+    <label className="field">{content}</label>
   );
 }
 

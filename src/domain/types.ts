@@ -26,7 +26,8 @@ export interface IncomeSource {
   kind: 'scholarship' | 'salary' | 'parents' | 'other';
   name: string;
   amountKopecks: number;
-  dayOfMonth: number | null; // null: irregular, not forecast
+  dayOfMonth: number | null; // monthly income; null for weekly and irregular
+  weekday: number | null; // weekly income: 1 = Monday … 7 = Sunday; both null means irregular, not forecast
   startDate: LocalDate;
   isActive: boolean;
 }
@@ -70,7 +71,7 @@ export interface DaySummary {
 }
 
 export interface AppData {
-  schemaVersion: 1;
+  schemaVersion: 2; // 2 added IncomeSource.weekday
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];

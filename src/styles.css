@@ -1740,3 +1740,16 @@ select.input {
     transition-duration: 1ms !important;
   }
 }
+
+/* Three or seven options must fit on a narrow phone. */
+.segmented button {
+  min-width: 0;
+  padding: 0 2px;
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .segmented button {
+    font-size: 14px;
+  }
+}

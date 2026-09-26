@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysInclusive, diffDays, getPeriod, monthlyOccurrences, toLocalDate } from './dates';
+import { addDays, daysInclusive, diffDays, getPeriod, monthlyOccurrences, toLocalDate, weeklyOccurrences } from './dates';
 
 describe('dates', () => {
   it('adds and diffs days across months and years', () => {
@@ -30,5 +30,17 @@ describe('dates', () => {
       '2026-04-30',
     ]);
     expect(monthlyOccurrences(5, '2026-10-06', '2026-10-04')).toEqual([]);
+  });
+
+  it('builds a week-long period around a weekly main income (26.09.2026 is a Saturday)', () => {
+    expect(getPeriod('2026-09-26', null, 5)).toEqual({ start: '2026-09-25', end: '2026-10-01' });
+    expect(getPeriod('2026-09-26', null, 6)).toEqual({ start: '2026-09-26', end: '2026-10-02' });
+    expect(getPeriod('2026-09-26', null, 7)).toEqual({ start: '2026-09-20', end: '2026-09-26' });
+  });
+
+  it('lists weekly occurrences', () => {
+    expect(weeklyOccurrences(5, '2026-09-26', '2026-10-17')).toEqual(['2026-10-02', '2026-10-09', '2026-10-16']);
+    expect(weeklyOccurrences(6, '2026-09-26', '2026-10-03')).toEqual(['2026-09-26', '2026-10-03']);
+    expect(weeklyOccurrences(1, '2026-09-26', '2026-09-27')).toEqual([]);
   });
 });

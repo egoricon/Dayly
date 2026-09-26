@@ -232,3 +232,20 @@ test('iPhone fixes: a step back keeps the input, the payment button fits a short
   expect(scroll).toEqual([0, 0, 0]);
   await context.close();
 });
+
+test('weekly income: «Раз в неделю» with a weekday shows in settings', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: /Добавить доход/ }).click();
+  await page.getByRole('radio', { name: 'Раз в неделю' }).click();
+  await page.getByRole('radio', { name: 'Пт' }).click();
+  await page.locator('.form-screen').getByPlaceholder('0,00').fill('50');
+  const [scrollWidth, clientWidth] = await page.locator('.segmented').first().evaluate((el) => [el.scrollWidth, el.clientWidth] as const);
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  await page.screenshot({ path: test.info().outputPath('weekly-income.png') });
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('settings-incomes')).toContainText('по пятницам');
+  console.log('incomes:', (await page.getByTestId('settings-incomes').innerText()).replace(/\n/g, ' | '));
+});

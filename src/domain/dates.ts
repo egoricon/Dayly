@@ -59,6 +59,12 @@ function shiftMonth(year: number, month: number, delta: number): [number, number
   return [Math.floor(index / 12), (index % 12) + 1];
 }
 
+/** A monthly (dayOfMonth) or weekly (weekday, 1 = Monday … 7 = Sunday) schedule; both null means none. */
+export interface Schedule {
+  dayOfMonth: number | null;
+  weekday: number | null;
+}
+
 export interface Period {
   start: LocalDate;
   end: LocalDate; // inclusive
@@ -66,9 +72,13 @@ export interface Period {
 
 /**
  * Period containing `today`: from the main income day to the day before the next one.
- * Without a main income day it is the calendar month.
+ * A weekly main income gives a week. Without a main income day it is the calendar month.
  */
-export function getPeriod(today: LocalDate, dayOfMonth: number | null): Period {
+export function getPeriod(today: LocalDate, dayOfMonth: number | null, weekday: number | null = null): Period {
+  if (weekday !== null) {
+    const start = addDays(today, -((weekdayIndex(today) - (weekday - 1) + 7) % 7));
+    return { start, end: addDays(start, 6) };
+  }
   const [y, m] = parts(today);
   if (dayOfMonth === null) {
     return { start: makeDate(y, m, 1), end: makeDate(y, m, daysInMonth(y, m)) };
@@ -94,6 +104,26 @@ export function monthlyOccurrences(dayOfMonth: number, from: LocalDate, to: Loca
     [y, m] = shiftMonth(y, m, 1);
   }
   return result;
+}
+
+/** All dates on the given weekday (1 = Monday … 7 = Sunday) within [from, to], inclusive. */
+export function weeklyOccurrences(weekday: number, from: LocalDate, to: LocalDate): LocalDate[] {
+  const result: LocalDate[] = [];
+  for (let date = addDays(from, (weekday - 1 - weekdayIndex(from) + 7) % 7); date <= to; date = addDays(date, 7)) {
+    result.push(date);
+  }
+  return result;
+}
+
+/** Occurrences of a monthly or weekly schedule within [from, to]; none for an irregular one. */
+export function scheduleOccurrences(schedule: Schedule, from: LocalDate, to: LocalDate): LocalDate[] {
+  if (schedule.weekday !== null) return weeklyOccurrences(schedule.weekday, from, to);
+  if (schedule.dayOfMonth !== null) return monthlyOccurrences(schedule.dayOfMonth, from, to);
+  return [];
+}
+
+export function isRegular(schedule: Schedule): boolean {
+  return schedule.dayOfMonth !== null || schedule.weekday !== null;
 }
 
 /** The same day `months` months later; 29–31 fall back to the last day of that month. */

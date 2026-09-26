@@ -191,7 +191,7 @@ function PaymentDraftSheet({
             <Field label="Сумма">
               <AmountInput value={amount} onChange={setAmount} />
             </Field>
-            <Field label="Когда" hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
+            <Field label="Когда" group hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
               <Calendar min={min} max={max} value={date} onChange={setDate} />
             </Field>
           </div>

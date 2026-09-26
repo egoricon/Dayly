@@ -1,4 +1,4 @@
-import { addDays, daysInclusive, diffDays, getPeriod, maxDate, monthlyOccurrences, type Period } from './dates';
+import { addDays, daysInclusive, diffDays, getPeriod, isRegular, maxDate, monthlyOccurrences, scheduleOccurrences, type Period } from './dates';
 import type { AppData, Category, Goal, LocalDate, ReserveCategory, Transaction } from './types';
 
 // Daily limit model: CLAUDE.md «Модель расчёта», full algorithm in PROJECT_MAP.md section 2.
@@ -83,14 +83,9 @@ function ceilDiv(numerator: number, denominator: number): number {
   return Math.ceil(numerator / denominator);
 }
 
-function mainDayOfMonth(data: AppData): number | null {
-  const id = data.settings.mainIncomeSourceId;
-  const source = data.incomeSources.find((s) => s.id === id);
-  return source?.dayOfMonth ?? null;
-}
-
 function periodOf(data: AppData, date: LocalDate): Period {
-  return getPeriod(date, mainDayOfMonth(data));
+  const main = data.incomeSources.find((s) => s.id === data.settings.mainIncomeSourceId);
+  return getPeriod(date, main?.dayOfMonth ?? null, main?.weekday ?? null);
 }
 
 function reserveSettingKopecks(data: AppData, category: ReserveCategory): number {
@@ -202,9 +197,9 @@ function expectedIncomes(data: AppData, today: LocalDate, period: Period): Occur
   );
   const result: Occurrence[] = [];
   for (const source of data.incomeSources) {
-    if (!source.isActive || source.dayOfMonth === null) continue;
+    if (!source.isActive || !isRegular(source)) continue;
     const from = maxDate(today, maxDate(source.startDate, data.settings.trackingStartDate));
-    for (const date of monthlyOccurrences(source.dayOfMonth, from, period.end)) {
+    for (const date of scheduleOccurrences(source, from, period.end)) {
       if (!confirmed.has(occurrenceKey(source.id, date))) {
         result.push({ sourceId: source.id, date, amountKopecks: source.amountKopecks });
       }

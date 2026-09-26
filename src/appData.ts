@@ -1,5 +1,5 @@
 import { cushionSavedBy } from './domain/budget';
-import { addDays } from './domain/dates';
+import { addDays, isRegular } from './domain/dates';
 import type {
   AppData,
   Category,
@@ -77,11 +77,12 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     name: INCOME_KIND_NAMES[result.income.kind],
     amountKopecks: result.income.amountKopecks,
     dayOfMonth: dayOf(result.income.date),
+    weekday: null,
     startDate: result.income.date,
     isActive: true,
   };
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
@@ -168,7 +169,7 @@ export function recordDaySummary(data: AppData, date: LocalDate, dailyLimitKopec
 
 export function saveIncomeSource(data: AppData, source: IncomeSource, isMain: boolean): AppData {
   const main = data.settings.mainIncomeSourceId;
-  const mainIncomeSourceId = isMain && source.dayOfMonth !== null ? source.id : main === source.id ? null : main;
+  const mainIncomeSourceId = isMain && isRegular(source) ? source.id : main === source.id ? null : main;
   return { ...data, incomeSources: upsert(data.incomeSources, source), settings: { ...data.settings, mainIncomeSourceId } };
 }
 

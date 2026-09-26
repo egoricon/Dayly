@@ -76,6 +76,17 @@ export function untilPeriodEnd(data: AppData, budget: BudgetResult): string {
   return `${label} ${days} дн.`;
 }
 
+/** Weekday 1 = Monday … 7 = Sunday, short: 'Пн'. */
+export const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEKDAY_EVERY = ['по понедельникам', 'по вторникам', 'по средам', 'по четвергам', 'по пятницам', 'по субботам', 'по воскресеньям'];
+
+/** How often an income comes: '5-го', 'по пятницам', 'нерегулярно'. */
+export function incomeScheduleText(source: { dayOfMonth: number | null; weekday: number | null }): string {
+  if (source.weekday !== null) return WEEKDAY_EVERY[source.weekday - 1]!;
+  if (source.dayOfMonth !== null) return `${source.dayOfMonth}-го`;
+  return 'нерегулярно';
+}
+
 const MONTHS_NOMINATIVE = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',

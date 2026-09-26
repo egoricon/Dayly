@@ -1,5 +1,5 @@
 import type { Occurrence } from './budget';
-import { addDays, diffDays, maxDate, monthlyOccurrences, type Period } from './dates';
+import { addDays, diffDays, isRegular, maxDate, monthlyOccurrences, scheduleOccurrences, type Period } from './dates';
 import type { AppData, LocalDate, Transaction } from './types';
 
 // Planned incomes and payments: which occurrences are waiting for a confirmation.
@@ -25,9 +25,9 @@ function incomeOccurrences(data: AppData, from: LocalDate, to: LocalDate): Occur
   const confirmed = confirmedIncomes(data);
   const result: Occurrence[] = [];
   for (const source of data.incomeSources) {
-    if (!source.isActive || source.dayOfMonth === null) continue;
+    if (!source.isActive || !isRegular(source)) continue;
     const start = maxDate(from, maxDate(source.startDate, data.settings.trackingStartDate));
-    for (const date of monthlyOccurrences(source.dayOfMonth, start, to)) {
+    for (const date of scheduleOccurrences(source, start, to)) {
       if (!confirmed.has(key(source.id, date))) {
         result.push({ sourceId: source.id, date, amountKopecks: source.amountKopecks });
       }

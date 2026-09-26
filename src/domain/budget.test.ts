@@ -23,8 +23,15 @@ function tx(fields: Partial<Transaction> & Pick<Transaction, 'type' | 'amountKop
 const expense = (date: string, amountKopecks: number, category: Category) =>
   tx({ type: 'expense', amountKopecks, date, category });
 
-function source(id: string, kind: IncomeSource['kind'], amountKopecks: number, dayOfMonth: number | null, startDate: string): IncomeSource {
-  return { id, kind, name: id, amountKopecks, dayOfMonth, startDate, isActive: true };
+function source(
+  id: string,
+  kind: IncomeSource['kind'],
+  amountKopecks: number,
+  dayOfMonth: number | null,
+  startDate: string,
+  weekday: number | null = null,
+): IncomeSource {
+  return { id, kind, name: id, amountKopecks, dayOfMonth, weekday, startDate, isActive: true };
 }
 
 function payment(id: string, amountKopecks: number, dayOfMonth: number, startDate: string): MandatoryPayment {
@@ -33,7 +40,7 @@ function payment(id: string, amountKopecks: number, dayOfMonth: number, startDat
 
 function emptyData(trackingStartDate: string): AppData {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     settings: {
       onboardingCompleted: true,
       trackingStartDate,
@@ -356,5 +363,33 @@ describe('periods and carry-over', () => {
     data.daySummaries = [{ date: '2026-09-26', dailyLimitKopecks: 2854 }];
     expect(calculateBudget(data, '2026-09-27').carryFromYesterdayKopecks).toBe(2504);
     expect(calculateBudget(data, '2026-09-28').carryFromYesterdayKopecks).toBeNull();
+  });
+});
+
+describe('weekly income', () => {
+  // 26 September 2026 is a Saturday.
+  it('a weekly main income makes the period a week: Friday to Thursday', () => {
+    const data = emptyData('2026-09-26');
+    data.incomeSources = [source('job', 'salary', 5000, null, '2026-09-26', 5)];
+    data.settings.mainIncomeSourceId = 'job';
+    data.transactions = [tx({ type: 'adjustment', amountKopecks: 10000, date: '2026-09-26' })];
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.period).toEqual({ start: '2026-09-25', end: '2026-10-01' });
+    expect(r.checkpoints.map((c) => c.date)).toEqual(['2026-10-02']);
+    expect(r.dailyLimitKopecks).toBe(1666); // 100,00 ÷ 6 days, rounded down
+  });
+
+  it('a weekly income that is not the main one is expected every week of the period', () => {
+    const data = emptyData('2026-09-26');
+    data.incomeSources = [source('tips', 'other', 5000, null, '2026-09-26', 3)];
+    data.transactions = [tx({ type: 'adjustment', amountKopecks: 10000, date: '2026-09-26' })];
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.period).toEqual({ start: '2026-09-01', end: '2026-09-30' });
+    // Wednesday 30 September: 100,00 ÷ 4 = 25,00; to 1 October: 150,00 ÷ 5 = 30,00.
+    expect(r.checkpoints.map((c) => [c.date, c.limitKopecks])).toEqual([
+      ['2026-09-30', 2500],
+      ['2026-10-01', 3000],
+    ]);
+    expect(r.dailyLimitKopecks).toBe(2500);
   });
 });

@@ -247,7 +247,7 @@ calculateBudget(data: AppData, today: LocalDate): BudgetResult
 type LocalDate = string; // 'YYYY-MM-DD', локальная дата устройства
 
 interface AppData {
-  schemaVersion: 1;
+  schemaVersion: 2;                      // 2: добавлен weekday у доходов (26.09.2026)
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];
@@ -276,7 +276,8 @@ interface IncomeSource {
   kind: 'scholarship' | 'salary' | 'parents' | 'other'; // для подписи «до стипендии»
   name: string;
   amountKopecks: number;                 // ожидаемая сумма
-  dayOfMonth: number | null;             // null — нерегулярный, в прогноз не входит
+  dayOfMonth: number | null;             // ежемесячный доход; null — недельный или нерегулярный
+  weekday: number | null;                // недельный доход: 1 = пн … 7 = вс; оба null — нерегулярный, в прогноз не входит
   startDate: LocalDate;                  // вхождения раньше этой даты не ожидаются
   isActive: boolean;
 }

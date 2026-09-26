@@ -38,7 +38,7 @@
 
 Чистая функция `calculateBudget(data, today)` в `src/domain/`, без зависимостей от UI и хранилища. Полный алгоритм и эталонные числа для тестов — `PROJECT_MAP.md`, раздел 2 (примеры А и Б).
 
-1. **Период** — от дня основного поступления (`settings.mainIncomeSourceId`) до дня перед следующим таким же. Если основного поступления нет — календарный месяц. Если в месяце нет 29–31-го числа, берётся последний день.
+1. **Период** — от дня основного поступления (`settings.mainIncomeSourceId`) до дня перед следующим таким же. Если основного поступления нет — календарный месяц. Если в месяце нет 29–31-го числа, берётся последний день. Недельное основное поступление (`weekday`) даёт период в неделю.
 2. **Баланс** не хранится: это сумма операций (стартовый баланс и сверка — `adjustment`).
 3. **Резервы** «Продукты» и «Транспорт» задаются на полный период. В первом неполном периоде (учёт начат посреди) бюджет пропорционален оставшимся дням. Траты этих категорий по порядку расходуют резерв, переполнение идёт в лимит. Остаток в конце периода не копится.
 4. **Трата из лимита**: обычная категория — вся сумма, резервная — только переполнение, оплата платежа и покупка по цели — 0.
@@ -63,7 +63,7 @@ type LocalDate = string; // 'YYYY-MM-DD'
 type Category = 'cafe' | 'delivery' | 'shopping' | 'fun' | 'groceries' | 'transport';
 
 interface AppData {
-  schemaVersion: 1;
+  schemaVersion: 2; // 1 → 2 (26.09.2026): weekday у доходов, старые данные переносятся с weekday: null
   settings: {
     onboardingCompleted: boolean;
     trackingStartDate: LocalDate;
@@ -76,7 +76,8 @@ interface AppData {
     lastCategory: Category;
   };
   incomeSources: { id: string; kind: 'scholarship' | 'salary' | 'parents' | 'other'; name: string;
-    amountKopecks: number; dayOfMonth: number | null; startDate: LocalDate; isActive: boolean }[];
+    amountKopecks: number; dayOfMonth: number | null; weekday: number | null; // weekday 1 = пн … 7 = вс; оба null — нерегулярный
+    startDate: LocalDate; isActive: boolean }[];
   payments: { id: string; name: string; amountKopecks: number; dayOfMonth: number;
     startDate: LocalDate; isActive: boolean }[];
   goals: { id: string; name: string; targetKopecks: number; initialSavedKopecks: number;

@@ -19,11 +19,11 @@ import {
 } from '../appData';
 import { AmountInput, amountText, DaySelect, Field, FormScreen, Segmented } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
-import { addDays, monthlyOccurrences } from '../domain/dates';
+import { addDays, monthlyOccurrences, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
 import type { IncomeSource, ReserveCategory } from '../domain/types';
-import { formatDayMonth } from '../ui/labels';
+import { formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
 import type { SettingsProps } from './Settings';
 
 type FormProps = Omit<SettingsProps, 'route'> & { onBack: () => void };
@@ -35,8 +35,12 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
   const [kind, setKind] = useState(existing?.kind ?? 'salary');
   const [name, setName] = useState(existing?.name ?? INCOME_KIND_NAMES.salary);
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [regular, setRegular] = useState(existing ? existing.dayOfMonth !== null : true);
+  const [schedule, setSchedule] = useState<'monthly' | 'weekly' | 'irregular'>(
+    existing?.weekday != null ? 'weekly' : existing && existing.dayOfMonth === null ? 'irregular' : 'monthly',
+  );
+  const regular = schedule !== 'irregular';
   const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
+  const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
   const [isMain, setIsMain] = useState(existing ? data.settings.mainIncomeSourceId === existing.id : data.settings.mainIncomeSourceId === null);
   const kopecks = parseAmount(amount) ?? 0;
   const ready = name.trim() !== '' && kopecks > 0;
@@ -50,7 +54,8 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
           kind,
           name: name.trim(),
           amountKopecks: kopecks,
-          dayOfMonth: regular ? day : null,
+          dayOfMonth: schedule === 'monthly' ? day : null,
+          weekday: schedule === 'weekly' ? weekday : null,
           startDate: existing?.startDate ?? today,
           isActive: true,
         },
@@ -83,21 +88,32 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} />
       </Field>
-      <Field label="Когда приходит" hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
+      <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
         <Segmented
           options={[
-            { value: 'regular', label: 'Каждый месяц' },
+            { value: 'monthly', label: 'Раз в месяц' },
+            { value: 'weekly', label: 'Раз в неделю' },
             { value: 'irregular', label: 'Нерегулярно' },
           ]}
-          value={regular ? 'regular' : 'irregular'}
-          onChange={(v) => setRegular(v === 'regular')}
+          value={schedule}
+          onChange={setSchedule}
         />
       </Field>
       {regular && (
         <>
-          <Field label="Число месяца">
-            <DaySelect value={day} onChange={setDay} />
-          </Field>
+          {schedule === 'monthly' ? (
+            <Field label="Число месяца">
+              <DaySelect value={day} onChange={setDay} />
+            </Field>
+          ) : (
+            <Field label="День недели" group>
+              <Segmented
+                options={WEEKDAY_SHORT.map((label, i) => ({ value: String(i + 1), label }))}
+                value={String(weekday)}
+                onChange={(v) => setWeekday(Number(v))}
+              />
+            </Field>
+          )}
           <label className="checkbox-row">
             <input type="checkbox" checked={isMain} onChange={(e) => setIsMain(e.target.checked)} />
             <span>Основное поступление: бюджет растягивается до него</span>

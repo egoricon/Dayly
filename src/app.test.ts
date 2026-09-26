@@ -80,6 +80,14 @@ describe('storage', () => {
     expect(loadData(storage)).toEqual(data);
   });
 
+  it('upgrades version 1 data: incomes get weekday null', () => {
+    const storage = memoryStorage();
+    const data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
+    const v1 = { ...data, schemaVersion: 1, incomeSources: data.incomeSources.map(({ weekday: _, ...rest }) => rest) };
+    storage.setItem(DATA_KEY, JSON.stringify(v1));
+    expect(loadData(storage)).toEqual(data);
+  });
+
   it('keeps unreadable data aside instead of losing it', () => {
     const storage = memoryStorage();
     storage.setItem(DATA_KEY, '{broken');

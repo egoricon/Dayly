@@ -7,7 +7,7 @@ import { setTheme } from '../appData';
 import { FormScreen, Segmented } from '../components/Form';
 import { InstallSteps, type InstallInfo } from '../components/InstallHint';
 import { ACCENTS, type Accent } from '../uiState';
-import { formatDayMonth } from '../ui/labels';
+import { formatDayMonth, incomeScheduleText } from '../ui/labels';
 import { CushionForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm, ReserveForm } from './SettingsForms';
 
 export type SettingsRoute =
@@ -87,7 +87,7 @@ export function Settings(props: SettingsProps) {
               <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'income', id: s.id })}>
                 <span className="list-text">
                   <span className="list-name">
-                    {s.name} · {s.dayOfMonth === null ? 'нерегулярно' : `${s.dayOfMonth}-го`}
+                    {s.name} · {incomeScheduleText(s)}
                   </span>
                   {s.id === data.settings.mainIncomeSourceId && <span className="list-sub">основное, от него считается период</span>}
                 </span>
