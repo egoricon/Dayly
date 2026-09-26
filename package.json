@@ -1,0 +1,28 @@
+{
+  "name": "dayly",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "build": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/vite/bin/vite.js build",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "e2e": "node node_modules/@playwright/test/cli.js test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.1",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@fontsource/manrope": "^5.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}

@@ -1,0 +1,119 @@
+import { describe, expect, it } from 'vitest';
+import { addExpense, buyGoal, createInitialData, deleteTransaction, recordDaySummary, saveGoal, setCushionFixed, setReserve, updateExpense } from './appData';
+import { calculateBudget, previewExpense } from './domain/budget';
+import { historyDays } from './domain/history';
+import type { AppData } from './domain/types';
+
+// Stage 4: history 2h, editing expenses and the terms of «Как считается». Numbers of example А.
+
+const at = (time: string) => new Date(`2026-09-26T${time}:00`);
+
+function configured(): AppData {
+  let data = createInitialData(
+    '2026-09-26',
+    {
+      balanceKopecks: 58600,
+      income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' },
+      payments: [
+        { name: 'Общежитие', amountKopecks: 4500, date: '2026-10-01' },
+        { name: 'Интернет', amountKopecks: 3000, date: '2026-10-03' },
+        { name: 'Телефон', amountKopecks: 2000, date: '2026-10-04' },
+      ],
+    },
+    at('08:00'),
+  );
+  data = setReserve(data, 'groceries', 50000);
+  data = setReserve(data, 'transport', 10000);
+  data = setCushionFixed(data, 3000);
+  return saveGoal(data, {
+    id: 'headphones',
+    name: 'Наушники',
+    targetKopecks: 15000,
+    initialSavedKopecks: 0,
+    startDate: '2026-09-26',
+    deadline: '2026-11-20',
+    status: 'active',
+  });
+}
+
+/** 26 September: cafe 3,50 and groceries 18,40; the app recorded the limit 28,54. */
+function withFirstDay(): AppData {
+  let data = configured();
+  data = addExpense(data, 350, 'cafe', '2026-09-26', at('09:12'));
+  data = addExpense(data, 1840, 'groceries', '2026-09-26', at('18:30'));
+  return recordDaySummary(data, '2026-09-26', calculateBudget(data, '2026-09-26').dailyLimitKopecks);
+}
+
+describe('history', () => {
+  it('groups by day, newest first: spent from the limit, the limit and the carry', () => {
+    let data = withFirstDay();
+    data = addExpense(data, 500, 'delivery', '2026-09-27', new Date('2026-09-27T13:40:00'));
+    const days = historyDays(data, '2026-09-27', 3104);
+
+    expect(days.map((d) => d.date)).toEqual(['2026-09-27', '2026-09-26']);
+    expect(days[0]).toMatchObject({ spentFromLimitKopecks: 500, dailyLimitKopecks: 3104, carryKopecks: null });
+    // Groceries come from the reserve and are not in «из лимита»: 28,54 − 3,50 = +25,04
+    expect(days[1]).toMatchObject({ spentFromLimitKopecks: 350, dailyLimitKopecks: 2854, carryKopecks: 2504 });
+    expect(days[1]!.entries.map((e) => [e.transaction.category ?? e.transaction.note, e.fromLimitKopecks])).toEqual([
+      ['groceries', 0],
+      ['cafe', 350],
+      ['Стартовый баланс', 0],
+    ]);
+    expect(calculateBudget(data, '2026-09-27').carryFromYesterdayKopecks).toBe(days[1]!.carryKopecks);
+  });
+
+  it('an overspent day carries a negative amount', () => {
+    let data = withFirstDay();
+    data = addExpense(data, 4000, 'fun', '2026-09-26', at('20:00'));
+    const [day] = historyDays(data, '2026-09-27', 0);
+    expect(day).toMatchObject({ date: '2026-09-26', spentFromLimitKopecks: 4350, carryKopecks: 2854 - 4350 });
+  });
+});
+
+describe('editing expenses', () => {
+  it('a changed amount and category recount the limit; the time stays', () => {
+    const data = withFirstDay();
+    const cafe = data.transactions.find((t) => t.category === 'cafe')!;
+    expect(previewExpense(data, '2026-09-26', 4000, 'fun', cafe.id).remainingTodayKopecks).toBe(-1146);
+
+    const next = updateExpense(data, cafe.id, 4000, 'fun');
+    const edited = next.transactions.find((t) => t.id === cafe.id)!;
+    expect(edited).toMatchObject({ amountKopecks: 4000, category: 'fun', createdAt: cafe.createdAt, date: '2026-09-26' });
+    expect(calculateBudget(next, '2026-09-26').remainingTodayKopecks).toBe(-1146);
+  });
+
+  it('an edited reserve expense previews its overflow in its own place', () => {
+    const data = withFirstDay();
+    const groceries = data.transactions.find((t) => t.category === 'groceries')!;
+    expect(previewExpense(data, '2026-09-26', 16000, 'groceries', groceries.id)).toEqual({
+      fromLimitKopecks: 1000,
+      fromReserveKopecks: 15000,
+      remainingTodayKopecks: 2854 - 350 - 1000,
+    });
+  });
+
+  it('deleting a goal purchase makes the goal active again', () => {
+    const bought = buyGoal(configured(), 'headphones', 15000, '2026-09-26', at('12:00'));
+    const purchase = bought.transactions.find((t) => t.goalId === 'headphones')!;
+    const restored = deleteTransaction(bought, purchase.id);
+    expect(restored.goals[0]!.status).toBe('active');
+    expect(calculateBudget(restored, '2026-09-26').dailyLimitKopecks).toBe(2854);
+  });
+});
+
+describe('«Как считается»', () => {
+  it('shows the terms behind each sum of the binding checkpoint', () => {
+    const r = calculateBudget(configured(), '2026-09-26');
+    const b = r.breakdown;
+    expect(b.payments.map((p) => p.date)).toEqual(['2026-10-01', '2026-10-03', '2026-10-04']);
+    expect(b.reserveTerms).toEqual([
+      { category: 'groceries', kopecks: 15000 },
+      { category: 'transport', kopecks: 3000 },
+    ]);
+    expect(b.goalTerms).toEqual([{ goalId: 'headphones', kopecks: 2411 }]);
+    expect(b.startOfDayKopecks + b.incomeKopecks - b.paymentsKopecks - b.reservesKopecks - b.goalsKopecks - b.cushionKopecks).toBe(
+      b.freeKopecks,
+    );
+    expect(Math.floor(b.freeKopecks / b.days)).toBe(r.dailyLimitKopecks);
+  });
+});

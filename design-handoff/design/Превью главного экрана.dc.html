@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+body{margin:0;background:#e8e7e3;font-family:'Onest',sans-serif;color:#1c1b18;-webkit-font-smoothing:antialiased}
+a{color:#1c1b18;text-decoration:underline}a:hover{color:#6b6a65}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+
+<section style="padding:64px 72px 48px;display:flex;flex-direction:column;gap:40px;border-bottom:1px solid #d6d4ce">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:780px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#6b6a65;letter-spacing:.04em">ПРЕВЬЮ 2 · ПОЛНЫЙ СЦЕНАРИЙ</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em;line-height:1.1">Цифра из 1a и кольцо из 1b. Светлая тема, тёмная как опция</div>
+    <div style="font-size:17px;line-height:1.5;color:#4a4944;text-wrap:pretty">При быстром старте спрашиваем только деньги, дату поступления и обязательные платежи. Резервы и подушку пользователь настраивает позже, приложение само ему это предложит. Навигация через таб-бар, трата вводится в нижней шторке.</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:22px;font-weight:600">Первый запуск</div>
+    <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+      <div id="2a" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2a</span><span style="font-size:15px;color:#4a4944">Приветствие</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:24px 28px 40px;gap:20px">
+              <div style="flex:1"></div>
+              <div style="width:96px;height:96px;border-radius:50%;border:12px solid oklch(0.82 0.14 85);box-sizing:border-box"></div>
+              <div style="font-size:38px;font-weight:800;letter-spacing:-0.03em;line-height:1.1;text-wrap:pretty">Сколько можно потратить сегодня?</div>
+              <div style="font-size:17px;line-height:1.5;color:#6e6d68;text-wrap:pretty">Приложение считает, сколько можно тратить каждый день, чтобы денег хватило до следующей стипендии или зарплаты. Настройка займёт минуту.</div>
+              <div style="flex:1"></div>
+              <div style="height:60px;border-radius:30px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">Начать</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2b" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2b</span><span style="font-size:15px;color:#4a4944">Шаг 1 из 3 · деньги сейчас</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 24px;gap:18px">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 8px"><div style="height:4px;border-radius:2px;background:#18181a"></div><div style="height:4px;border-radius:2px;background:#e0ddd5"></div><div style="height:4px;border-radius:2px;background:#e0ddd5"></div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:16px 8px 0">
+                <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1.15">Сколько у тебя сейчас денег?</div>
+                <div style="font-size:15px;line-height:1.45;color:#6e6d68">Сложи карту и наличные. Точность до рубля не нужна.</div>
+              </div>
+              <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;padding:28px 0 0">
+                <span style="font-size:72px;font-weight:800;letter-spacing:-0.04em;line-height:1">586</span>
+                <span style="font-size:22px;color:#6e6d68;font-weight:600">BYN</span>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:24px;font-weight:600">
+                <div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">1</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">2</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">3</div>
+                <div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">4</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">5</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">6</div>
+                <div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">7</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">8</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">9</div>
+                <div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">,</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">0</div><div style="height:54px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">⌫</div>
+              </div>
+              <div style="height:60px;border-radius:30px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">Дальше</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2c" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2c</span><span style="font-size:15px;color:#4a4944">Шаг 2 из 3 · следующее поступление</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 24px;gap:18px">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 8px"><div style="height:4px;border-radius:2px;background:#18181a"></div><div style="height:4px;border-radius:2px;background:#18181a"></div><div style="height:4px;border-radius:2px;background:#e0ddd5"></div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:16px 8px 0">
+                <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1.15">Когда придут следующие деньги?</div>
+                <div style="font-size:15px;line-height:1.45;color:#6e6d68;text-wrap:pretty">До этого дня и будем растягивать бюджет. Остальные поступления добавишь в настройках.</div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 8px">
+                <span style="height:40px;padding:0 16px;border-radius:20px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;font-size:15px;font-weight:600">Стипендия</span>
+                <span style="height:40px;padding:0 16px;border-radius:20px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600">Зарплата</span>
+                <span style="height:40px;padding:0 16px;border-radius:20px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600">От родителей</span>
+              </div>
+              <div style="background:#fff;border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700"><span>Октябрь 2026</span><span style="color:#6e6d68;font-weight:600">‹ ›</span></div>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:13px;color:#6e6d68;font-weight:600"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:16px;font-weight:600">
+                  <span></span><span></span><span></span>
+                  <span style="height:38px;display:flex;align-items:center;justify-content:center">1</span><span style="height:38px;display:flex;align-items:center;justify-content:center">2</span><span style="height:38px;display:flex;align-items:center;justify-content:center">3</span><span style="height:38px;display:flex;align-items:center;justify-content:center">4</span>
+                  <span style="height:38px;display:flex;align-items:center;justify-content:center;border-radius:19px;background:oklch(0.82 0.14 85)">5</span><span style="height:38px;display:flex;align-items:center;justify-content:center">6</span><span style="height:38px;display:flex;align-items:center;justify-content:center">7</span><span style="height:38px;display:flex;align-items:center;justify-content:center">8</span><span style="height:38px;display:flex;align-items:center;justify-content:center">9</span><span style="height:38px;display:flex;align-items:center;justify-content:center">10</span><span style="height:38px;display:flex;align-items:center;justify-content:center">11</span>
+                  <span style="height:38px;display:flex;align-items:center;justify-content:center">12</span><span style="height:38px;display:flex;align-items:center;justify-content:center">13</span><span style="height:38px;display:flex;align-items:center;justify-content:center">14</span><span style="height:38px;display:flex;align-items:center;justify-content:center">15</span><span style="height:38px;display:flex;align-items:center;justify-content:center">16</span><span style="height:38px;display:flex;align-items:center;justify-content:center">17</span><span style="height:38px;display:flex;align-items:center;justify-content:center">18</span>
+                </div>
+              </div>
+              <div style="background:#fff;border-radius:18px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;font-size:16px"><span style="color:#6e6d68">Сумма</span><span style="font-weight:700">220,00 BYN</span></div>
+              <div style="flex:1"></div>
+              <div style="text-align:center;font-size:15px;color:#6e6d68">5 октября, через 9 дней</div>
+              <div style="height:60px;border-radius:30px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">Дальше</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2d" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2d</span><span style="font-size:15px;color:#4a4944">Шаг 3 из 3 · обязательные платежи</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 24px;gap:18px">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 8px"><div style="height:4px;border-radius:2px;background:#18181a"></div><div style="height:4px;border-radius:2px;background:#18181a"></div><div style="height:4px;border-radius:2px;background:#18181a"></div></div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:16px 8px 0">
+                <div style="font-size:28px;font-weight:800;letter-spacing:-0.02em;line-height:1.15">Что нужно оплатить до 5 октября?</div>
+                <div style="font-size:15px;line-height:1.45;color:#6e6d68;text-wrap:pretty">Эти деньги сразу отложим, и в дневной лимит они не попадут.</div>
+              </div>
+              <div style="background:#fff;border-radius:22px;padding:4px 18px;display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #eeece6;font-size:16px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Общежитие</span><span style="font-size:13px;color:#6e6d68">1 октября</span></div><span style="font-weight:700">45,00</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #eeece6;font-size:16px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Интернет</span><span style="font-size:13px;color:#6e6d68">3 октября</span></div><span style="font-weight:700">30,00</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;font-size:16px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Телефон</span><span style="font-size:13px;color:#6e6d68">4 октября</span></div><span style="font-weight:700">20,00</span></div>
+              </div>
+              <div style="height:52px;border-radius:18px;border:1.5px dashed #cfccc3;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#6e6d68">+ Добавить платёж</div>
+              <div style="flex:1"></div>
+              <div style="display:flex;justify-content:space-between;font-size:16px;padding:0 8px"><span style="color:#6e6d68">Итого отложим</span><span style="font-weight:700">95,00 BYN</span></div>
+              <div style="height:60px;border-radius:30px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">Посчитать лимит</div>
+              <div style="text-align:center;font-size:15px;color:#6e6d68;font-weight:600">Пропустить</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2e" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2e</span><span style="font-size:15px;color:#4a4944">Показываем первый лимит</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:12px 24px 24px;gap:20px">
+              <div style="flex:1"></div>
+              <div style="font-size:20px;font-weight:600">Каждый день до 5 октября можно тратить</div>
+              <div style="display:flex;align-items:baseline;gap:4px">
+                <span style="font-size:112px;font-weight:800;letter-spacing:-0.05em;line-height:1">54</span>
+                <span style="font-size:38px;font-weight:800">,55</span>
+                <span style="font-size:22px;font-weight:600;margin-left:6px;color:#6e6d68">BYN</span>
+              </div>
+              <div style="font-size:15px;line-height:1.5;color:#6e6d68">586,00 − 95,00 платежей = 491,00 на 9 дней</div>
+              <div style="background:#fff;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:8px;margin-top:12px">
+                <span style="font-size:17px;font-weight:700">Пока лимит завышен</span>
+                <span style="font-size:15px;line-height:1.45;color:#6e6d68;text-wrap:pretty">В нём ещё сидят продукты и проезд. Добавь резервы на них, и лимит станет честным. Займёт полминуты.</span>
+                <span style="font-size:15px;font-weight:700;color:oklch(0.52 0.12 70);padding-top:4px">Настроить резервы →</span>
+              </div>
+              <div style="flex:1"></div>
+              <div style="height:60px;border-radius:30px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">На главную</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;padding-top:16px">
+    <div style="font-size:22px;font-weight:600">Каждый день</div>
+    <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+
+      <div id="2f" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2f</span><span style="font-size:15px;color:#4a4944">Главная</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:8px 22px 16px;gap:18px">
+              <div style="display:flex;justify-content:space-between;font-size:15px;color:#6e6d68;font-weight:600"><span>Сб, 26 сентября</span><span>до стипендии 9 дн.</span></div>
+              <div style="position:relative;width:300px;height:300px;align-self:center">
+                <svg width="300" height="300" viewBox="0 0 300 300">
+                  <circle cx="150" cy="150" r="136" fill="none" style="stroke:#e6e3da;stroke-width:12px"></circle>
+                  <circle cx="150" cy="150" r="136" fill="none" transform="rotate(-90 150 150)" style="stroke:oklch(0.82 0.14 85);stroke-width:12px;stroke-linecap:round;stroke-dasharray:854.5;stroke-dashoffset:269.2"></circle>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+                  <span style="font-size:16px;font-weight:600;color:#6e6d68">Сегодня можно</span>
+                  <div style="display:flex;align-items:baseline"><span style="font-size:96px;font-weight:800;letter-spacing:-0.05em;line-height:1">18</span><span style="font-size:34px;font-weight:800">,50</span></div>
+                  <span style="font-size:16px;font-weight:600;color:#6e6d68">BYN из 27,00</span>
+                </div>
+              </div>
+              <div style="align-self:center;height:34px;padding:0 14px;border-radius:17px;background:oklch(0.93 0.06 85);color:oklch(0.42 0.1 70);display:flex;align-items:center;font-size:15px;font-weight:700">+3,20 с вчера</div>
+              <div style="background:#fff;border-radius:22px;padding:4px 18px;display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #eeece6"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">Кафе</span><span style="font-size:13px;color:#6e6d68">09:12</span></div><span style="font-size:16px;font-weight:700">−3,50</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">Доставка</span><span style="font-size:13px;color:#6e6d68">13:40</span></div><span style="font-size:16px;font-weight:700">−5,00</span></div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <span style="font-size:14px;color:#6e6d68;font-weight:600;line-height:1.4">Баланс 577,50 BYN<br>завтра можно 27,00</span>
+                <div style="height:56px;padding:0 24px;border-radius:28px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;font-size:17px;font-weight:700">+ Трата</div>
+              </div>
+            </div>
+            <div style="height:84px;border-top:1px solid #e6e4de;background:#f4f3ef;display:grid;grid-template-columns:repeat(3,1fr);padding-top:10px;box-sizing:border-box;font-size:12px;font-weight:700;text-align:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:50%;border:3px solid #18181a;box-sizing:border-box"></div><span>Сегодня</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #9b9a95;box-sizing:border-box"></div><span>История</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #9b9a95;box-sizing:border-box;transform:rotate(45deg) scale(.85)"></div><span>Настройки</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2g" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2g</span><span style="font-size:15px;color:#4a4944">Шторка ввода · 3 действия</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:40px"><span style="font-size:16px;font-weight:600;color:#6e6d68">Сегодня можно</span><span style="font-size:72px;font-weight:800;letter-spacing:-0.05em;line-height:1">18,50</span></div>
+            <div style="position:absolute;inset:0;background:rgba(20,20,22,.38)"></div>
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="position:absolute;left:0;right:0;bottom:0;height:640px;background:#f4f3ef;border-radius:32px 32px 0 0;display:flex;flex-direction:column;padding:10px 20px 28px;gap:16px;box-sizing:border-box">
+              <div style="width:40px;height:5px;border-radius:3px;background:#d0cdc4;align-self:center"></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:8px">
+                <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:64px;font-weight:800;letter-spacing:-0.04em;line-height:1">12,40</span><span style="font-size:20px;font-weight:600;color:#6e6d68">BYN</span></div>
+                <span style="font-size:15px;font-weight:600;color:#6e6d68">Останется на сегодня 6,10 BYN</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+                <span style="height:38px;padding:0 14px;border-radius:19px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;font-size:15px;font-weight:600">Кафе</span>
+                <span style="height:38px;padding:0 14px;border-radius:19px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600">Доставка</span>
+                <span style="height:38px;padding:0 14px;border-radius:19px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600">Покупки</span>
+                <span style="height:38px;padding:0 14px;border-radius:19px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600">Развлечения</span>
+                <span style="height:38px;padding:0 14px;border-radius:19px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600;color:#6e6d68">Продукты · резерв</span>
+                <span style="height:38px;padding:0 14px;border-radius:19px;border:1px solid #d9d6ce;display:flex;align-items:center;font-size:15px;font-weight:600;color:#6e6d68">Транспорт · резерв</span>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:24px;font-weight:600">
+                <div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">1</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">2</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">3</div>
+                <div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">4</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">5</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">6</div>
+                <div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">7</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">8</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">9</div>
+                <div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">,</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">0</div><div style="height:50px;border-radius:14px;background:#e9e7e1;display:flex;align-items:center;justify-content:center">⌫</div>
+              </div>
+              <div style="height:58px;border-radius:29px;background:#18181a;color:#f4f3ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700">Добавить</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2h" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2h</span><span style="font-size:15px;color:#4a4944">История · по дням</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:8px 20px 16px;gap:14px;overflow:hidden">
+              <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;padding:0 4px">История</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px"><span style="font-size:15px;font-weight:700">Сегодня</span><span style="font-size:14px;font-weight:600;color:#6e6d68">8,50 из 27,00</span></div>
+                <div style="background:#fff;border-radius:20px;padding:2px 16px;display:flex;flex-direction:column">
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eeece6;font-size:16px"><span style="font-weight:600">Доставка</span><span style="font-weight:700">−5,00</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:16px"><span style="font-weight:600">Кафе</span><span style="font-weight:700">−3,50</span></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px"><span style="font-size:15px;font-weight:700">Вчера, пт</span><span style="font-size:14px;font-weight:600;color:oklch(0.48 0.1 70)">23,80 из 27,00 · +3,20</span></div>
+                <div style="background:#fff;border-radius:20px;padding:2px 16px;display:flex;flex-direction:column">
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eeece6;font-size:16px"><span style="font-weight:600">Кино</span><span style="font-weight:700">−12,00</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eeece6;font-size:16px"><span style="font-weight:600">Кафе</span><span style="font-weight:700">−11,80</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:16px;color:#6e6d68"><span style="font-weight:600">Продукты · из резерва</span><span style="font-weight:700">−18,40</span></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 4px"><span style="font-size:15px;font-weight:700">24 сентября, чт</span><span style="font-size:14px;font-weight:600;color:oklch(0.52 0.17 28)">34,00 из 27,00 · −7,00</span></div>
+                <div style="background:#fff;border-radius:20px;padding:2px 16px;display:flex;flex-direction:column">
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eeece6;font-size:16px"><span style="font-weight:600">Покупки</span><span style="font-weight:700">−25,00</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:12px 0;font-size:16px"><span style="font-weight:600">Доставка</span><span style="font-weight:700">−9,00</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="height:84px;border-top:1px solid #e6e4de;background:#f4f3ef;display:grid;grid-template-columns:repeat(3,1fr);padding-top:10px;box-sizing:border-box;font-size:12px;font-weight:700;text-align:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:22px;height:22px;border-radius:50%;border:2px solid #9b9a95;box-sizing:border-box"></div><span>Сегодня</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:5px;border:3px solid #18181a;box-sizing:border-box"></div><span>История</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #9b9a95;box-sizing:border-box;transform:rotate(45deg) scale(.85)"></div><span>Настройки</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2i" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2i</span><span style="font-size:15px;color:#4a4944">Настройки</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f4f3ef;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#18181a">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:8px 20px 16px;gap:12px;overflow:hidden">
+              <div style="font-size:32px;font-weight:800;letter-spacing:-0.02em;padding:0 4px 4px">Настройки</div>
+              <span style="font-size:13px;font-weight:700;color:#6e6d68;padding:0 4px">ДОХОДЫ</span>
+              <div style="background:#fff;border-radius:20px;padding:2px 16px;display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eeece6;font-size:15px"><span style="font-weight:600">Стипендия · 5-го</span><span style="font-weight:700">220,00</span></div>
+                <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eeece6;font-size:15px"><span style="font-weight:600">От родителей · 10-го</span><span style="font-weight:700">300,00</span></div>
+                <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:15px"><span style="font-weight:600">Подработка · 20-го</span><span style="font-weight:700">500,00</span></div>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#6e6d68;padding:6px 4px 0">ОТКЛАДЫВАЕМ ДО 5 ОКТЯБРЯ</span>
+              <div style="background:#fff;border-radius:20px;padding:2px 16px;display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eeece6;font-size:15px"><span style="font-weight:600">Обязательные платежи · 3</span><span style="font-weight:700">95,00</span></div>
+                <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eeece6;font-size:15px"><span style="font-weight:600">Резерв на продукты</span><span style="font-weight:700">150,00</span></div>
+                <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eeece6;font-size:15px"><span style="font-weight:600">Резерв на транспорт</span><span style="font-weight:700">30,00</span></div>
+                <div style="display:flex;justify-content:space-between;padding:11px 0;font-size:15px"><span style="font-weight:600">Подушка · 3% дохода</span><span style="font-weight:700">30,00</span></div>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#6e6d68;padding:6px 4px 0">КОПЛЮ НА</span>
+              <div style="background:#fff;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:15px"><span style="font-weight:600">Наушники</span><span style="font-weight:700">38 из 150</span></div>
+                <div style="height:6px;border-radius:3px;background:#eeece6"><div style="width:25%;height:100%;border-radius:3px;background:oklch(0.82 0.14 85)"></div></div>
+                <span style="font-size:13px;color:#6e6d68">по 38,00 за период · к 20 ноября</span>
+              </div>
+              <div style="background:#fff;border-radius:20px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:15px">
+                <span style="font-weight:600">Тема</span>
+                <div style="display:flex;gap:2px;background:#eeece6;border-radius:10px;padding:3px;font-size:14px;font-weight:700"><span style="padding:5px 12px;border-radius:8px;background:#fff">Светлая</span><span style="padding:5px 12px;color:#6e6d68">Тёмная</span><span style="padding:5px 12px;color:#6e6d68">Авто</span></div>
+              </div>
+            </div>
+            <div style="height:84px;border-top:1px solid #e6e4de;background:#f4f3ef;display:grid;grid-template-columns:repeat(3,1fr);padding-top:10px;box-sizing:border-box;font-size:12px;font-weight:700;text-align:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:22px;height:22px;border-radius:50%;border:2px solid #9b9a95;box-sizing:border-box"></div><span>Сегодня</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#9b9a95"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #9b9a95;box-sizing:border-box"></div><span>История</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:5px;border:3px solid #18181a;box-sizing:border-box;transform:rotate(45deg) scale(.85)"></div><span>Настройки</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="2j" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">2j</span><span style="font-size:15px;color:#4a4944">Главная · тёмная тема</span></div>
+        <div style="width:390px;height:844px;border-radius:54px;background:#000;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.2)">
+          <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#121417;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#eef0f2">
+            <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000"></div>
+            <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+            <div style="flex:1;display:flex;flex-direction:column;padding:8px 22px 16px;gap:18px">
+              <div style="display:flex;justify-content:space-between;font-size:15px;color:#9aa1a9;font-weight:600"><span>Сб, 26 сентября</span><span>до стипендии 9 дн.</span></div>
+              <div style="position:relative;width:300px;height:300px;align-self:center">
+                <svg width="300" height="300" viewBox="0 0 300 300">
+                  <circle cx="150" cy="150" r="136" fill="none" style="stroke:#23282e;stroke-width:12px"></circle>
+                  <circle cx="150" cy="150" r="136" fill="none" transform="rotate(-90 150 150)" style="stroke:oklch(0.82 0.14 85);stroke-width:12px;stroke-linecap:round;stroke-dasharray:854.5;stroke-dashoffset:269.2"></circle>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+                  <span style="font-size:16px;font-weight:600;color:#9aa1a9">Сегодня можно</span>
+                  <div style="display:flex;align-items:baseline"><span style="font-size:96px;font-weight:800;letter-spacing:-0.05em;line-height:1">18</span><span style="font-size:34px;font-weight:800">,50</span></div>
+                  <span style="font-size:16px;font-weight:600;color:#9aa1a9">BYN из 27,00</span>
+                </div>
+              </div>
+              <div style="align-self:center;height:34px;padding:0 14px;border-radius:17px;background:#2a2619;color:oklch(0.85 0.12 85);display:flex;align-items:center;font-size:15px;font-weight:700">+3,20 с вчера</div>
+              <div style="background:#1d2126;border-radius:22px;padding:4px 18px;display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #2a2f35"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">Кафе</span><span style="font-size:13px;color:#9aa1a9">09:12</span></div><span style="font-size:16px;font-weight:700">−3,50</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:600">Доставка</span><span style="font-size:13px;color:#9aa1a9">13:40</span></div><span style="font-size:16px;font-weight:700">−5,00</span></div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+                <span style="font-size:14px;color:#9aa1a9;font-weight:600;line-height:1.4">Баланс 577,50 BYN<br>завтра можно 27,00</span>
+                <div style="height:56px;padding:0 24px;border-radius:28px;background:oklch(0.82 0.14 85);color:#121417;display:flex;align-items:center;font-size:17px;font-weight:800">+ Трата</div>
+              </div>
+            </div>
+            <div style="height:84px;border-top:1px solid #23282e;background:#121417;display:grid;grid-template-columns:repeat(3,1fr);padding-top:10px;box-sizing:border-box;font-size:12px;font-weight:700;text-align:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px"><div style="width:22px;height:22px;border-radius:50%;border:3px solid #eef0f2;box-sizing:border-box"></div><span>Сегодня</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#6f7780"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #6f7780;box-sizing:border-box"></div><span>История</span></div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#6f7780"><div style="width:20px;height:20px;border-radius:5px;border:2px solid #6f7780;box-sizing:border-box;transform:rotate(45deg) scale(.85)"></div><span>Настройки</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:64px 72px 96px;display:flex;flex-direction:column;gap:40px">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:760px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#6b6a65;letter-spacing:.04em">ФИНАНСОВЫЙ ПОМОЩНИК СТУДЕНТА · ПРЕВЬЮ 1</div>
+    <div style="font-size:40px;font-weight:600;letter-spacing:-0.02em;line-height:1.1">Главный экран: три подхода к подаче дневного лимита</div>
+    <div style="font-size:17px;line-height:1.5;color:#4a4944;text-wrap:pretty">Пример: 26 сентября, следующее поступление (стипендия) 5 октября, 9 дней. Свободно на период 243,00 BYN → 27,00 BYN в день. Экран <a href="#1d">1d</a> рабочий: введённая трата сразу пересчитывает лимит на <a href="#1a">1a</a>–<a href="#1c">1c</a>.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+    <!-- 1a -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1a</span>
+        <span style="font-size:15px;color:#4a4944">Крупная цифра · минимум отвлечений</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f6f4ef;position:relative;display:flex;flex-direction:column;font-family:'Onest',sans-serif;color:#1c1b18">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:600">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:12px 24px 24px;gap:28px;min-height:0">
+            <div style="display:flex;justify-content:space-between;font-size:15px;color:#6b6a65">
+              <span>Сб, 26 сентября</span><span>до 5 окт · 9 дн.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding-top:24px">
+              <div style="font-size:20px;font-weight:500">{{ headlineA }}</div>
+              <div style="display:flex;align-items:baseline;gap:4px;color:{{ bigColor }}">
+                <span style="font-size:124px;font-weight:600;letter-spacing:-0.05em;line-height:1;font-variant-numeric:tabular-nums">{{ remInt }}</span>
+                <span style="font-size:40px;font-weight:600;letter-spacing:-0.02em">{{ remFrac }}</span>
+                <span style="font-size:22px;font-weight:500;margin-left:6px;color:#6b6a65">BYN</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="height:8px;border-radius:4px;background:#e2dfd6;overflow:hidden">
+                <div style="height:100%;border-radius:4px;background:{{ barColor }};width:{{ spentPct }}"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:15px;color:#4a4944;font-variant-numeric:tabular-nums">
+                <span>Потрачено {{ spentFmt }}</span><span>Лимит {{ limitFmt }}</span>
+              </div>
+              <div style="font-size:15px;color:{{ tomorrowColor }};font-variant-numeric:tabular-nums">{{ tomorrowNote }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid #e2dfd6;padding-top:18px">
+              <sc-for list="{{ entriesView }}" as="e" hint-placeholder-count="2">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <span style="font-size:16px;font-weight:500">{{ e.title }}</span>
+                    <span style="font-size:13px;color:#6b6a65">{{ e.meta }}</span>
+                  </div>
+                  <span style="font-size:16px;font-weight:500;font-variant-numeric:tabular-nums">{{ e.amountFmt }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1"></div>
+            <sc-if value="{{ showBalance }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;justify-content:space-between;font-size:14px;color:#6b6a65;font-variant-numeric:tabular-nums">
+                <span>Баланс {{ balanceFmt }}</span><span>свободно на период {{ freeFmt }}</span>
+              </div>
+            </sc-if>
+            <a href="#1d" style="height:64px;border-radius:20px;background:#1c1b18;color:#f6f4ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;text-decoration:none">+ Добавить трату</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1b</span>
+        <span style="font-size:15px;color:#4a4944">Кольцо дня · тёмная тема, остаток «убывает»</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#000;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.2)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#121417;position:relative;display:flex;flex-direction:column;font-family:'Manrope',sans-serif;color:#eef0f2">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:700">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;padding:16px 24px 24px;gap:28px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <span style="font-size:15px;color:#9aa1a9">Суббота, 26 сентября</span>
+              <span style="font-size:13px;color:#9aa1a9;background:#1d2126;padding:5px 12px;border-radius:20px">до стипендии 9 дней</span>
+            </div>
+            <div style="position:relative;width:280px;height:280px;margin-top:8px">
+              <svg width="280" height="280" viewBox="0 0 280 280">
+                <circle cx="140" cy="140" r="120" fill="none" style="stroke:#23282e;stroke-width:16px"></circle>
+                <circle cx="140" cy="140" r="120" fill="none" transform="rotate(-90 140 140)" style="stroke:{{ ringColor }};stroke-width:16px;stroke-linecap:round;stroke-dasharray:753.98;stroke-dashoffset:{{ ringOffset }}"></circle>
+              </svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                <span style="font-size:15px;color:#9aa1a9">{{ headlineB }}</span>
+                <span style="font-size:76px;font-weight:800;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums;color:{{ bigColorDark }}">{{ remInt }}<span style="font-size:30px">{{ remFrac }}</span></span>
+                <span style="font-size:15px;color:#9aa1a9">из {{ limitFmt }}</span>
+              </div>
+            </div>
+            <div style="width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:#1d2126;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px">
+                <span style="font-size:13px;color:#9aa1a9">Потрачено сегодня</span>
+                <span style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ spentFmt }}</span>
+              </div>
+              <div style="background:#1d2126;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px">
+                <span style="font-size:13px;color:#9aa1a9">Завтра можно</span>
+                <span style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ tomorrowFmt }}</span>
+              </div>
+            </div>
+            <div style="width:100%;font-size:14px;line-height:1.45;color:#9aa1a9;text-align:center;text-wrap:pretty">{{ carryNote }}</div>
+            <div style="flex:1"></div>
+            <sc-if value="{{ showBalance }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:14px;color:#6f7780;font-variant-numeric:tabular-nums">Баланс {{ balanceFmt }}</div>
+            </sc-if>
+            <a href="#1d" style="width:100%;height:64px;border-radius:32px;background:oklch(0.8 0.14 85);color:#121417;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;text-decoration:none">+ Трата</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c -->
+    <div id="1c" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1c</span>
+        <span style="font-size:15px;color:#4a4944">Календарь периода · видно, на сколько дней хватит</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f3f5f7;position:relative;display:flex;flex-direction:column;font-family:'IBM Plex Sans',sans-serif;color:#14181f">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:600">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:12px 20px 24px;gap:20px">
+            <div style="background:#fff;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:8px">
+              <span style="font-size:16px;color:#5a6270">{{ headlineA }}</span>
+              <div style="display:flex;align-items:baseline;gap:6px;color:{{ bigColorCool }}">
+                <span style="font-size:80px;font-weight:600;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums">{{ remInt }}{{ remFrac }}</span>
+                <span style="font-size:20px;color:#5a6270">BYN</span>
+              </div>
+              <span style="font-size:14px;color:#5a6270;font-variant-numeric:tabular-nums">потрачено {{ spentFmt }} из {{ limitFmt }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline">
+                <span style="font-size:17px;font-weight:600">До стипендии</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#5a6270">26.09 — 05.10</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px">
+                <sc-for list="{{ days }}" as="d" hint-placeholder-count="10">
+                  <div style="border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;background:{{ d.bg }};color:{{ d.fg }};border:{{ d.border }}">
+                    <span style="font-size:11px;opacity:.75">{{ d.wd }}</span>
+                    <span style="font-size:18px;font-weight:600">{{ d.num }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px">{{ d.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="font-size:13px;color:#5a6270;line-height:1.4;text-wrap:pretty">Сэкономишь сегодня — сумма распределится на оставшиеся дни. Перерасход уменьшит лимит на каждый из них.</span>
+            </div>
+            <div style="flex:1"></div>
+            <sc-if value="{{ showBalance }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;justify-content:space-between;font-size:14px;color:#5a6270;font-variant-numeric:tabular-nums;padding:0 4px">
+                <span>Баланс {{ balanceFmt }}</span><a href="#1f" style="color:oklch(0.52 0.16 260)">Как считается?</a>
+              </div>
+            </sc-if>
+            <a href="#1d" style="height:60px;border-radius:16px;background:oklch(0.52 0.16 260);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;text-decoration:none">Записать трату</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:760px;padding-top:32px">
+    <div style="font-size:28px;font-weight:600;letter-spacing:-0.02em">Сценарий в стиле <a href="#1a">1a</a></div>
+    <div style="font-size:17px;line-height:1.5;color:#4a4944;text-wrap:pretty">Ввод траты за 3 действия: сумма → категория (запоминается последняя) → «Добавить». Продукты и транспорт списываются из своих резервов и не трогают дневной лимит.</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+    <!-- 1d -->
+    <div id="1d" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1d</span>
+        <span style="font-size:15px;color:#4a4944">Быстрый ввод траты · работает</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f6f4ef;position:relative;display:flex;flex-direction:column;font-family:'Onest',sans-serif;color:#1c1b18">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:600">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:8px 20px 24px;gap:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px">
+              <a href="#1a" style="color:#6b6a65;text-decoration:none">Отмена</a>
+              <span style="font-weight:600">Новая трата</span>
+              <span style="width:52px"></span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 0 4px">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-size:72px;font-weight:600;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums;color:{{ amountColor }}">{{ amountDisplay }}</span>
+                <span style="font-size:22px;color:#6b6a65">BYN</span>
+              </div>
+              <span style="font-size:15px;color:{{ previewColor }};font-variant-numeric:tabular-nums">{{ previewNote }}</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+              <sc-for list="{{ cats }}" as="c" hint-placeholder-count="6">
+                <button onClick="{{ c.onPick }}" style="height:40px;padding:0 16px;border-radius:20px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font-size:15px;font-weight:500">{{ c.name }}</button>
+              </sc-for>
+            </div>
+            <div style="flex:1"></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+                <button onClick="{{ k.onPress }}" style="height:58px;border-radius:16px;border:none;background:#ebe8e0;color:#1c1b18;font-size:24px;font-weight:500" style-active="background:#dcd8cd">{{ k.label }}</button>
+              </sc-for>
+            </div>
+            <button onClick="{{ addExpense }}" style="height:64px;border-radius:20px;border:none;background:{{ addBg }};color:#f6f4ef;font-size:18px;font-weight:600">Добавить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1e -->
+    <div id="1e" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1e</span>
+        <span style="font-size:15px;color:#4a4944">Перерасход за день · без паники, с пересчётом</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f6f4ef;position:relative;display:flex;flex-direction:column;font-family:'Onest',sans-serif;color:#1c1b18">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:600">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:12px 24px 24px;gap:28px">
+            <div style="display:flex;justify-content:space-between;font-size:15px;color:#6b6a65">
+              <span>Сб, 26 сентября</span><span>до 5 окт · 9 дн.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;padding-top:24px">
+              <div style="font-size:20px;font-weight:500">Сегодня перерасход</div>
+              <div style="display:flex;align-items:baseline;gap:4px;color:oklch(0.55 0.17 28)">
+                <span style="font-size:124px;font-weight:600;letter-spacing:-0.05em;line-height:1">−12</span>
+                <span style="font-size:40px;font-weight:600">,00</span>
+                <span style="font-size:22px;font-weight:500;margin-left:6px;color:#6b6a65">BYN</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="height:8px;border-radius:4px;background:oklch(0.55 0.17 28)"></div>
+              <div style="display:flex;justify-content:space-between;font-size:15px;color:#4a4944">
+                <span>Потрачено 39,00 BYN</span><span>Лимит 27,00 BYN</span>
+              </div>
+            </div>
+            <div style="background:#ece9e1;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:17px;font-weight:600">Лимит на остальные дни пересчитан</span>
+              <span style="font-size:15px;line-height:1.45;color:#4a4944">С завтра можно тратить 25,50 BYN в день вместо 27,00. До стипендии денег хватит.</span>
+            </div>
+            <div style="flex:1"></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;color:#6b6a65">
+              <span>Баланс 547,00 BYN</span><span>свободно на период 204,00 BYN</span>
+            </div>
+            <a href="#1d" style="height:64px;border-radius:20px;background:#1c1b18;color:#f6f4ef;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;text-decoration:none">+ Добавить трату</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1f -->
+    <div id="1f" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;background:#1c1b18;color:#f6f4ef;padding:4px 10px;border-radius:6px">1f</span>
+        <span style="font-size:15px;color:#4a4944">«Откуда 27 BYN» · прозрачный расчёт</span>
+      </div>
+      <div style="width:390px;height:844px;border-radius:54px;background:#111;padding:10px;box-sizing:border-box;box-shadow:0 30px 60px rgba(0,0,0,.16)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;background:#f6f4ef;position:relative;display:flex;flex-direction:column;font-family:'Onest',sans-serif;color:#1c1b18">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#111"></div>
+          <div style="height:54px;padding:0 34px;display:flex;align-items:center;font-size:16px;font-weight:600">9:41</div>
+          <div style="flex:1;display:flex;flex-direction:column;padding:8px 24px 24px;gap:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:16px">
+              <a href="#1a" style="color:#6b6a65;text-decoration:none">‹ Назад</a>
+              <span style="font-weight:600">Как считается лимит</span>
+              <span style="width:52px"></span>
+            </div>
+            <div style="font-size:14px;color:#6b6a65">На начало дня 26 сентября</div>
+            <div style="display:flex;flex-direction:column;font-variant-numeric:tabular-nums">
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:17px;font-weight:600"><span>Деньги сейчас</span><span>586,00</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:16px">
+                <div style="display:flex;flex-direction:column;gap:3px"><span>− Обязательные платежи</span><span style="font-size:13px;color:#6b6a65">общежитие, телефон, интернет</span></div><span>95,00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:16px">
+                <div style="display:flex;flex-direction:column;gap:3px"><span>− Резерв на продукты</span><span style="font-size:13px;color:#6b6a65">траты «Продукты» идут отсюда</span></div><span>150,00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:16px"><span>− Резерв на транспорт</span><span>30,00</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:16px">
+                <div style="display:flex;flex-direction:column;gap:3px"><span>− Копим на наушники</span><span style="font-size:13px;color:#6b6a65">часть этого периода · 38 из 150</span></div><span>38,00</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid #e2dfd6;font-size:16px"><span>− Подушка</span><span>30,00</span></div>
+              <div style="display:flex;justify-content:space-between;padding:14px 0;font-size:17px;font-weight:600"><span>Свободно на период</span><span>243,00</span></div>
+              <div style="display:flex;justify-content:space-between;padding:0 0 14px;font-size:16px;color:#6b6a65"><span>÷ дней до стипендии (5 окт)</span><span>9</span></div>
+            </div>
+            <div style="flex:1"></div>
+            <div style="background:#1c1b18;color:#f6f4ef;border-radius:20px;padding:20px 22px;display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:17px">В день</span>
+              <span style="font-size:36px;font-weight:600;letter-spacing:-0.03em">27,00 BYN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;forceOverspend&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Состояние&quot;},&quot;hideBalance&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Состояние&quot;}}">
+class Component extends DCLogic {
+  state = {
+    entries: [
+      { id: 1, title: 'Кафе', time: '09:12', amount: 350, reserve: null },
+      { id: 2, title: 'Доставка', time: '13:40', amount: 500, reserve: null },
+    ],
+    amountStr: '',
+    cat: 'Кафе',
+  };
+
+  static FREE = 24300;
+  static DAYS = 9;
+  static LIMIT = 2700;
+  static BALANCE = 58600;
+  static CATS = [
+    { name: 'Кафе' }, { name: 'Доставка' }, { name: 'Покупки' }, { name: 'Развлечения' },
+    { name: 'Продукты', reserve: 'продуктов' }, { name: 'Транспорт', reserve: 'транспорта' },
+  ];
+
+  num(k) {
+    const a = Math.abs(k);
+    const i = Math.floor(a / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+    return (k < 0 ? '−' : '') + i + ',' + String(a % 100).padStart(2, '0');
+  }
+  fmt(k) { return this.num(k) + ' BYN'; }
+  parse(s) {
+    if (!s) return 0;
+    const [i, f = ''] = s.split(',');
+    return (parseInt(i || '0', 10) * 100) + parseInt((f + '00').slice(0, 2), 10);
+  }
+
+  press(key) {
+    this.setState(s => {
+      let v = s.amountStr;
+      if (key === '⌫') v = v.slice(0, -1);
+      else if (key === ',') { if (!v.includes(',')) v = (v || '0') + ','; }
+      else {
+        const [i, f] = v.split(',');
+        if (f !== undefined) { if (f.length < 2) v += key; }
+        else if (i.length < 5) v = (v === '0' ? '' : v) + key;
+      }
+      return { amountStr: v };
+    });
+  }
+
+  add() {
+    const amount = this.parse(this.state.amountStr);
+    if (!amount) return;
+    const cat = Component.CATS.find(c => c.name === this.state.cat);
+    const d = new Date();
+    const time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    this.setState(s => ({
+      entries: [{ id: Date.now(), title: cat.name, time, amount, reserve: cat.reserve || null }, ...s.entries],
+      amountStr: '',
+    }));
+  }
+
+  renderVals() {
+    const C = Component;
+    const red = 'oklch(0.55 0.17 28)';
+    const force = this.props.forceOverspend ?? false;
+    const showBalance = !(this.props.hideBalance ?? false);
+    const limitSpent = this.state.entries.filter(e => !e.reserve).reduce((a, e) => a + e.amount, 0) + (force ? 3050 : 0);
+    const allSpent = this.state.entries.reduce((a, e) => a + e.amount, 0) + (force ? 3050 : 0);
+    const rem = C.LIMIT - limitSpent;
+    const over = rem < 0;
+    const tomorrow = Math.floor((C.FREE - limitSpent) / (C.DAYS - 1));
+    const remAbs = Math.abs(rem);
+    const remInt = (over ? '−' : '') + Math.floor(remAbs / 100);
+    const remFrac = ',' + String(remAbs % 100).padStart(2, '0');
+    const pct = Math.min(limitSpent / C.LIMIT, 1);
+    const remPct = Math.max(rem, 0) / C.LIMIT;
+
+    const wds = ['Сб', 'Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс', 'Пн'];
+    const nums = [26, 27, 28, 29, 30, 1, 2, 3, 4, 5];
+    const accent = 'oklch(0.52 0.16 260)';
+    const days = nums.map((n, i) => {
+      if (i === 0) return { num: n, wd: wds[i], label: this.num(rem).split(',')[0], bg: over ? red : accent, fg: '#fff', border: '1px solid transparent' };
+      if (i === 9) return { num: n, wd: wds[i], label: '+220', bg: 'transparent', fg: accent, border: '1.5px dashed ' + accent };
+      return { num: n, wd: wds[i], label: this.num(tomorrow).split(',')[0], bg: '#fff', fg: '#14181f', border: '1px solid transparent' };
+    });
+
+    const amount = this.parse(this.state.amountStr);
+    const curCat = C.CATS.find(c => c.name === this.state.cat);
+    let previewNote, previewColor = '#6b6a65';
+    if (curCat.reserve) previewNote = 'Из резерва ' + curCat.reserve + ' · дневной лимит не изменится';
+    else {
+      const after = rem - amount;
+      previewNote = after < 0 ? 'Перерасход сегодня: ' + this.fmt(-after) : 'Останется на сегодня: ' + this.fmt(after);
+      if (after < 0) previewColor = red;
+    }
+
+    const keyLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', '⌫'];
+
+    return {
+      showBalance,
+      headlineA: over ? 'Сегодня перерасход' : 'Сегодня можно потратить',
+      headlineB: over ? 'перерасход' : 'можно потратить',
+      remInt, remFrac,
+      bigColor: over ? red : '#1c1b18',
+      bigColorDark: over ? 'oklch(0.7 0.17 28)' : '#eef0f2',
+      bigColorCool: over ? red : '#14181f',
+      barColor: over ? red : '#1c1b18',
+      spentPct: (pct * 100).toFixed(1) + '%',
+      ringOffset: (753.98 * (1 - remPct)).toFixed(2),
+      ringColor: remPct < 0.25 ? 'oklch(0.7 0.17 28)' : 'oklch(0.8 0.14 85)',
+      spentFmt: this.fmt(limitSpent),
+      limitFmt: this.fmt(C.LIMIT),
+      tomorrowFmt: this.fmt(tomorrow),
+      tomorrowNote: over ? 'Завтра лимит снизится до ' + this.fmt(tomorrow) : 'Завтра: ' + this.fmt(tomorrow) + (rem > 0 ? ' — остаток перейдёт на следующие дни' : ''),
+      tomorrowColor: over ? red : '#4a4944',
+      carryNote: over
+        ? 'Перерасход ' + this.fmt(-rem) + ' распределён на 8 оставшихся дней.'
+        : 'Что не потратишь сегодня, распределится на следующие 8 дней.',
+      balanceFmt: this.fmt(C.BALANCE - allSpent),
+      freeFmt: this.fmt(C.FREE - limitSpent),
+      entriesView: this.state.entries.slice(0, 4).map(e => ({
+        title: e.title,
+        meta: e.time + (e.reserve ? ' · из резерва ' + e.reserve : ''),
+        amountFmt: '−' + this.num(e.amount),
+      })),
+      days,
+      amountDisplay: this.state.amountStr || '0',
+      amountColor: this.state.amountStr ? '#1c1b18' : '#b5b2a9',
+      previewNote, previewColor,
+      cats: C.CATS.map(c => {
+        const sel = c.name === this.state.cat;
+        return { name: c.name, bg: sel ? '#1c1b18' : 'transparent', fg: sel ? '#f6f4ef' : '#1c1b18', border: sel ? '#1c1b18' : '#d6d2c7', onPick: () => this.setState({ cat: c.name }) };
+      }),
+      keys: keyLabels.map(l => ({ label: l, onPress: () => this.press(l) })),
+      addExpense: () => this.add(),
+      addBg: amount ? '#1c1b18' : '#b5b2a9',
+    };
+  }
+}
+</script>
+</body>
+</html>

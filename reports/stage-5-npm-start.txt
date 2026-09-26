@@ -1,0 +1,21 @@
+$ npm start   (чистая копия проекта без node_modules)
+
+> dayly@0.1.0 start
+> node scripts/start.mjs --port 5199 --strictPort
+
+Первый запуск: ставлю зависимости (npm install)…
+
+added 58 packages, and audited 59 packages in 2s
+
+19 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+  VITE v8.3.1  ready in 279 ms
+
+  ➜  Local:   http://localhost:5199/
+  ➜  Network: use --host to expose
+
+$ curl -s localhost:5199 | grep title
+<title>Dayly</title>

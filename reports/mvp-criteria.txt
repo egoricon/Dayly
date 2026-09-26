@@ -1,0 +1,57 @@
+# Критерии готовности MVP — проверка 2026-09-26 12:40
+
+## 1. PROJECT_MAP.md содержит 7 разделов
+$ grep -E "^## [0-9]+\." PROJECT_MAP.md
+## 1. Критика исходной формулы
+## 2. Модель расчёта
+## 3. Улучшения и фичи
+## 4. Модель данных
+## 5. Экраны MVP и основной сценарий
+## 6. Стек
+## 7. План этапов реализации
+
+## 2. Расчёт в отдельном модуле, тесты проходят
+$ grep -h "^import" src/domain/*.ts | grep -v test | sort -u
+import type { AppData, Category, Goal, LocalDate, ReserveCategory, Transaction } from './types';
+import type { AppData, LocalDate, Transaction } from './types';
+import type { LocalDate } from './types';
+import type { Occurrence } from './budget';
+import { addDays, daysInclusive, diffDays, getPeriod, maxDate, monthlyOccurrences, type Period } from './dates';
+import { addDays, diffDays, maxDate, monthlyOccurrences, type Period } from './dates';
+import { splitAllExpenses } from './budget';
+$ npm test
+ Test Files  6 passed (6)
+      Tests  55 passed (55)
+
+## 3–5. Лимит крупно, пересчёт без перезагрузки, данные после перезапуска (e2e)
+$ DAYLY_E2E_OUTPUT=/tmp/dayly-e2e npm run e2e
+> dayly@0.1.0 e2e
+> node node_modules/@playwright/test/cli.js test
+Running 3 tests using 1 worker
+hero 96px, balance 14px
+after «+ Трата» → 3,5 → «Добавить»: Сегодня можно
+51
+,05
+BYN из 54,55
+  ✓  1 e2e/mvp.spec.ts:48:1 › limit is large, balance secondary; an expense recounts the limit without a reload (4.2s)
+after restart: Сегодня можно
+51
+,05
+BYN из 54,55 | Баланс 582,50 BYN
+offline reload: Сегодня можно
+51
+,05
+BYN из 54,55
+  ✓  2 e2e/mvp.spec.ts:71:1 › data survive a browser restart; the app opens offline (4.0s)
+manifest: Dayly — сколько можно потратить сегодня | service worker scope: http://localhost:4173/ | storage.persisted(): false
+  ✓  3 e2e/mvp.spec.ts:103:1 › PWA: manifest and service worker are served (387ms)
+  3 passed (22.5s)
+
+## 6. Запуск одной командой из README
+$ grep -n "npm start" README.md
+10:npm start
+15:С телефона в той же Wi-Fi-сети: `npm start -- --host` и адрес `Network:` из вывода.
+34:| `npm start` | ставит зависимости при первом запуске и запускает dev-сервер Vite |
+50:- `e2e/` — проверка критериев готовности MVP. `scripts/start.mjs` — команда `npm start`.
+
+Вывод npm start на чистой копии без node_modules — reports/stage-5-npm-start.txt

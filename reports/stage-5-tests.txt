@@ -1,0 +1,13 @@
+
+> dayly@0.1.0 test
+> node node_modules/vitest/vitest.mjs run
+
+
+ RUN  v4.1.11 /mnt/attach/project-files/dayly
+
+
+ Test Files  6 passed (6)
+      Tests  55 passed (55)
+   Start at  12:39:56
+   Duration  3.85s (transform 518ms, setup 0ms, import 1.01s, tests 91ms, environment 1ms)
+

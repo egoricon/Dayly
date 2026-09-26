@@ -1,0 +1,26 @@
+
+> dayly@0.1.0 e2e
+> node node_modules/@playwright/test/cli.js test
+
+
+Running 3 tests using 1 worker
+
+hero 96px, balance 14px
+after «+ Трата» → 3,5 → «Добавить»: Сегодня можно
+51
+,05
+BYN из 54,55
+  ✓  1 e2e/mvp.spec.ts:48:1 › limit is large, balance secondary; an expense recounts the limit without a reload (4.2s)
+after restart: Сегодня можно
+51
+,05
+BYN из 54,55 | Баланс 582,50 BYN
+offline reload: Сегодня можно
+51
+,05
+BYN из 54,55
+  ✓  2 e2e/mvp.spec.ts:71:1 › data survive a browser restart; the app opens offline (4.0s)
+manifest: Dayly — сколько можно потратить сегодня | service worker scope: http://localhost:4173/ | storage.persisted(): false
+  ✓  3 e2e/mvp.spec.ts:103:1 › PWA: manifest and service worker are served (196ms)
+
+  3 passed (22.0s)

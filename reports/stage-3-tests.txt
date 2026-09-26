@@ -1,0 +1,58 @@
+
+ RUN  v4.1.11 /mnt/attach/project-files/dayly
+
+ ✓ src/domain/budget.test.ts > standard case (example А) > first limit without reserves: (586,00 − 95,00) ÷ 9 = 54,55 4ms
+ ✓ src/domain/budget.test.ts > standard case (example А) > with reserves, goal and cushion the limit is 28,54 2ms
+ ✓ src/domain/budget.test.ts > standard case (example А) > cafe 3,50 and delivery 5,00: 20,04 left, balance 577,50, tomorrow 31,04 1ms
+ ✓ src/domain/budget.test.ts > reserves > groceries 18,40 come from the reserve and do not change the limit 1ms
+ ✓ src/domain/budget.test.ts > reserves > groceries 160,00 with a 150,00 reserve: 10,00 go to the limit, 18,54 left, tomorrow 30,86 1ms
+ ✓ src/domain/budget.test.ts > reserves > preview shows the reserve overflow before the expense is added 1ms
+ ✓ src/domain/budget.test.ts > last day of the period > 4 October with nothing spent since 26 September: 256,89 1ms
+ ✓ src/domain/budget.test.ts > last day of the period > tomorrow is a new period with the scholarship expected on its first day 1ms
+ ✓ src/domain/budget.test.ts > income in the middle of the period > example Б: the salary checkpoint on 20 October limits to 5,80 1ms
+ ✓ src/domain/budget.test.ts > income in the middle of the period > confirming a planned income on its day does not change the limit 1ms
+ ✓ src/domain/budget.test.ts > income in the middle of the period > an unplanned income raises the limit at once 0ms
+ ✓ src/domain/budget.test.ts > income in the middle of the period > a late planned income is not counted until confirmed 1ms
+ ✓ src/domain/budget.test.ts > expense bigger than the daily limit > cafe, delivery and fun 48,50 in total: overspent 19,96, tomorrow 26,04 0ms
+ ✓ src/domain/budget.test.ts > negative free money > 250,00 on hand: limit 0, short of 79,11 until 5 October 0ms
+ ✓ src/domain/budget.test.ts > zero categories > only a balance: limit = balance ÷ days to the end of the calendar month 0ms
+ ✓ src/domain/budget.test.ts > zero categories > empty data gives a zero limit without errors 0ms
+ ✓ src/domain/budget.test.ts > payments, goals and cushion > a paid payment is not deducted twice 0ms
+ ✓ src/domain/budget.test.ts > payments, goals and cushion > an overdue unpaid payment of the current period is still deducted 0ms
+ ✓ src/domain/budget.test.ts > payments, goals and cushion > the whole saved goal amount is deducted, and a purchase frees it 1ms
+ ✓ src/domain/budget.test.ts > payments, goals and cushion > percent cushion: saved share of incomes plus the share of expected incomes 0ms
+ ✓ src/domain/budget.test.ts > periods and carry-over > day 31 falls back to the last day of a short month 0ms
+ ✓ src/domain/budget.test.ts > periods and carry-over > first partial period gets a proportional reserve 0ms
+ ✓ src/domain/budget.test.ts > periods and carry-over > carry from yesterday = yesterday limit − spent from the limit yesterday 1ms
+ ✓ src/app.test.ts > keypad input > follows the design rules 2ms
+ ✓ src/app.test.ts > first launch and quick entry > starting balance becomes an adjustment; the period is the calendar month 6ms
+ ✓ src/app.test.ts > first launch and quick entry > an added expense recalculates the day at once and becomes the last category 1ms
+ ✓ src/app.test.ts > first launch and quick entry > records the day limit once per value 0ms
+ ✓ src/app.test.ts > storage > survives a save and a reload 1ms
+ ✓ src/app.test.ts > storage > keeps unreadable data aside instead of losing it 0ms
+ ✓ src/settings.test.ts > onboarding > first limit (2e): (586,00 − 95,00) ÷ 9 = 54,55 until 5 October 10ms
+ ✓ src/settings.test.ts > onboarding > the income picked for the same day next month is not expected today 1ms
+ ✓ src/settings.test.ts > settings > reserves, cushion and a goal bring the limit to 28,54 1ms
+ ✓ src/settings.test.ts > settings > a paid payment is not deducted again and does not touch the limit 1ms
+ ✓ src/settings.test.ts > settings > reconcile adds the difference as an adjustment 1ms
+ ✓ src/settings.test.ts > settings > percent cushion keeps what is saved; taking from it frees the money 5ms
+ ✓ src/settings.test.ts > settings > buying a goal frees its saved money without touching the limit 1ms
+ ✓ src/settings.test.ts > settings > removing the main income falls back to the calendar month 0ms
+ ✓ src/settings.test.ts > confirmations > asks «Стипендия пришла?» on its day and later, until confirmed 1ms
+ ✓ src/settings.test.ts > confirmations > confirming on the expected day does not change the limit 1ms
+ ✓ src/settings.test.ts > confirmations > an income that came a day early closes the planned occurrence 0ms
+ ✓ src/settings.test.ts > confirmations > «Ещё нет» hides a banner until tomorrow 0ms
+ ✓ src/domain/dates.test.ts > dates > adds and diffs days across months and years 3ms
+ ✓ src/domain/dates.test.ts > dates > takes the local calendar day of a Date 0ms
+ ✓ src/domain/dates.test.ts > dates > builds the period around the main income day 2ms
+ ✓ src/domain/dates.test.ts > dates > lists monthly occurrences with day 31 clamped 1ms
+ ✓ src/domain/money.test.ts > formatMoney > formats kopecks as «27,50 BYN» 2ms
+ ✓ src/domain/money.test.ts > formatMoney > separates thousands with U+202F and uses U+2212 for minus 0ms
+ ✓ src/domain/money.test.ts > parseAmount > parses comma, dot and spaces into kopecks 0ms
+ ✓ src/domain/money.test.ts > parseAmount > rejects invalid input 0ms
+
+ Test Files  5 passed (5)
+      Tests  49 passed (49)
+   Start at  12:11:17
+   Duration  1.73s (transform 505ms, setup 0ms, import 1.07s, tests 72ms, environment 0ms)
+
