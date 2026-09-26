@@ -11,7 +11,8 @@ import { Onboarding } from './screens/Onboarding';
 import { Finances, type FinanceRoute, type Update } from './screens/Finances';
 import { Settings, type SettingsRoute } from './screens/Settings';
 import { DATA_KEY, loadData, saveData } from './storage';
-import { useInstallInfo } from './components/InstallHint';
+import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
+import { detectInAppBrowser } from './install';
 import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
@@ -49,6 +50,14 @@ export function App() {
     return { ...state, launches: state.launches + 1 };
   });
   const install = useInstallInfo();
+  // Inside Telegram and similar apps a banner asks to open the real browser; hidden until the next launch.
+  const [inApp] = useState(() => detectInAppBrowser(navigator.userAgent, 'TelegramWebviewProxy' in window));
+  const [inAppDismissed, setInAppDismissed] = useState(false);
+  const showInApp = inApp !== null && !inAppDismissed;
+  const shellClass = `app-shell${showInApp ? ' has-top-banner' : ''}`;
+  const inAppBanner = showInApp && (
+    <InAppBrowserBanner app={inApp} ios={install.platform === 'ios'} onDismiss={() => setInAppDismissed(true)} />
+  );
   const [tab, setTab] = useState<Tab>('today');
   const [financeRoute, setFinanceRoute] = useState<FinanceRoute>({ screen: 'main' });
   const [settingsRoute, setSettingsRoute] = useState<SettingsRoute>({ screen: 'main' });
@@ -77,7 +86,8 @@ export function App() {
 
   if (!data || !budget) {
     return (
-      <div className="app-shell">
+      <div className={shellClass}>
+        {inAppBanner}
         <Onboarding
           today={today}
           onComplete={(result) => {
@@ -107,7 +117,8 @@ export function App() {
 
   if (showFirstLimit) {
     return (
-      <div className="app-shell">
+      <div className={shellClass}>
+        {inAppBanner}
         <FirstLimit
           budget={budget}
           onSetupReserves={() => {
@@ -121,7 +132,8 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={shellClass}>
+        {inAppBanner}
       {tab === 'today' && (
         <Home
           data={data}
@@ -130,7 +142,7 @@ export function App() {
           update={update}
           isBannerHidden={(key) => isBannerHidden(ui, key, today)}
           onHideBanner={(key) => setUi((state) => hideBanner(state, key, today))}
-          installHint={shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
+          installHint={inApp === null && shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
           onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
           onOpenFinances={openFinances}
         />
@@ -149,6 +161,10 @@ export function App() {
           onAccentChange={(accent) => setUi((state) => ({ ...state, accent }))}
           install={install}
           onReset={reset}
+          onImport={(restored) => {
+            setData(restored);
+            setTab('today');
+          }}
         />
       )}
       <TabBar

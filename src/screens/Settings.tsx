@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { setTheme } from '../appData';
+import { backupFileName, makeBackup, parseBackup, saveBackupFile, type ParsedBackup } from '../backup';
 import { BottomSheet } from '../components/BottomSheet';
 import { FormScreen, Segmented } from '../components/Form';
 import { InstallSteps, type InstallInfo } from '../components/InstallHint';
+import { toLocalDate } from '../domain/dates';
 import type { AppData } from '../domain/types';
+import { formatDayMonth } from '../ui/labels';
 import { ACCENTS, type Accent } from '../uiState';
 import type { Update } from './Finances';
 
@@ -19,6 +22,8 @@ export interface SettingsProps {
   install: InstallInfo;
   /** Deletes all data on this device and starts over from onboarding. */
   onReset: () => void;
+  /** Replaces the data with a restored backup. */
+  onImport: (data: AppData) => void;
 }
 
 const SHARE_TEXT = 'Dayly считает, сколько можно тратить каждый день, чтобы денег хватило до стипендии или зарплаты.';
@@ -28,6 +33,8 @@ export function Settings(props: SettingsProps) {
   const { data, route, onNavigate, update } = props;
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [restoring, setRestoring] = useState<ParsedBackup | null>(null);
+  const [backupError, setBackupError] = useState(false);
   const previous = useRef(route.screen);
   const cameBack = route.screen === 'main' && previous.current !== 'main';
   useEffect(() => {
@@ -100,9 +107,68 @@ export function Settings(props: SettingsProps) {
       </ul>
 
       <span className="section-label">Данные</span>
+      <ul className="card list">
+        <li>
+          <button
+            type="button"
+            className="list-row"
+            onClick={() => void saveBackupFile(makeBackup(data, new Date()), backupFileName(toLocalDate(new Date())))}
+          >
+            <span className="list-text">
+              <span className="list-name">Сохранить копию</span>
+              <span className="list-sub">файл со всеми данными, чтобы перенести на другой телефон</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <label className="list-row">
+            <span className="list-text">
+              <span className="list-name">Восстановить из копии</span>
+              <span className={`list-sub${backupError ? ' is-danger' : ''}`}>
+                {backupError ? 'это не копия Dayly, выбери другой файл' : 'данные на этом телефоне заменятся'}
+              </span>
+            </span>
+            <input
+              type="file"
+              accept=".json,application/json"
+              className="visually-hidden"
+              data-testid="restore-input"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                const parsed = parseBackup(await file.text());
+                setBackupError(parsed === null);
+                setRestoring(parsed);
+              }}
+            />
+          </label>
+        </li>
+      </ul>
       <button type="button" className="button-action is-danger" onClick={() => setConfirmReset(true)}>
         Сбросить всё
       </button>
+
+      {restoring && (
+        <BottomSheet onClose={() => setRestoring(null)} className="action-sheet">
+          {(close) => (
+            <>
+              <p className="action-title">
+                Восстановить копию{restoring.exportedAt ? ` от ${formatDayMonth(toLocalDate(new Date(restoring.exportedAt)))}` : ''}?
+              </p>
+              <p className="action-text">
+                В копии {restoring.data.transactions.length} операций. Текущие данные на этом телефоне заменятся ею.
+              </p>
+              <button type="button" className="button-action" onClick={() => props.onImport(restoring.data)}>
+                Восстановить
+              </button>
+              <button type="button" className="button-action" onClick={close}>
+                Отмена
+              </button>
+            </>
+          )}
+        </BottomSheet>
+      )}
 
       {confirmReset && (
         <BottomSheet onClose={() => setConfirmReset(false)} className="action-sheet">

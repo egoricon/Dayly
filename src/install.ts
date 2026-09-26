@@ -55,3 +55,13 @@ export function detectPlatform(userAgent: string, maxTouchPoints: number, hasPro
   if (/Android/.test(userAgent)) return 'android';
   return 'other';
 }
+
+/**
+ * Telegram, Instagram and similar apps open links in their own browser: its data is separate
+ * from Safari and Chrome, and it cannot add the app to the home screen.
+ */
+export function detectInAppBrowser(userAgent: string, hasTelegramProxy: boolean): 'telegram' | 'other' | null {
+  if (hasTelegramProxy || /Telegram/i.test(userAgent)) return 'telegram';
+  if (/Instagram|FBAN|FBAV|VKClient|Line\//.test(userAgent)) return 'other';
+  return null;
+}

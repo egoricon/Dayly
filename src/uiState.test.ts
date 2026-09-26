@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectPlatform } from './install';
+import { detectInAppBrowser, detectPlatform } from './install';
 import { hideBanner, loadUiState, shouldShowInstallHint, UI_KEY, type UiState } from './uiState';
 
 function storageWith(value: string | null): Storage {
@@ -53,5 +53,15 @@ describe('install hint', () => {
     expect(detectPlatform(ANDROID, 5, true)).toBe('prompt');
     expect(detectPlatform(DESKTOP, 0, true)).toBe('prompt');
     expect(detectPlatform(DESKTOP, 0, false)).toBe('other');
+  });
+});
+
+describe('in-app browsers', () => {
+  it('recognises Telegram by its webview bridge or user agent, and other apps by theirs', () => {
+    expect(detectInAppBrowser(IPHONE, true)).toBe('telegram');
+    expect(detectInAppBrowser(`${ANDROID} Telegram-Android/11.2.3`, false)).toBe('telegram');
+    expect(detectInAppBrowser(`${IPHONE} Instagram 300.0`, false)).toBe('other');
+    expect(detectInAppBrowser(IPHONE, false)).toBeNull();
+    expect(detectInAppBrowser(ANDROID, false)).toBeNull();
   });
 });

@@ -1887,3 +1887,45 @@ select.input {
   line-height: 1.4;
   color: var(--muted);
 }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+label.list-row {
+  cursor: pointer;
+}
+
+.list-sub.is-danger {
+  color: var(--danger);
+}
+
+/* «Открой в Safari» inside Telegram and other in-app browsers */
+
+.in-app-banner {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: calc(env(safe-area-inset-top) + 8px) 12px 0;
+  padding: 12px 44px 12px 16px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.in-app-banner > strong {
+  font-size: 16px;
+}
+
+.app-shell.has-top-banner .screen {
+  padding-top: 12px;
+}

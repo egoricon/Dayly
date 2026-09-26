@@ -97,3 +97,30 @@ export function InstallHint({ platform, onDismiss }: { platform: InstallPlatform
     </div>
   );
 }
+
+/** On top of every screen inside Telegram and similar apps: open Dayly in the real browser. */
+export function InAppBrowserBanner({ app, ios, onDismiss }: { app: 'telegram' | 'other'; ios: boolean; onDismiss: () => void }) {
+  const where = app === 'telegram' ? 'Внутри Telegram' : 'Во встроенном браузере';
+  return (
+    <div className="in-app-banner" role="note" data-testid="in-app-banner">
+      <strong>Открой Dayly в {ios ? 'Safari' : 'браузере'}</strong>
+      <span>{where} данные хранятся отдельно и могут пропасть, а на главный экран приложение не добавить.</span>
+      <span>
+        {ios ? (
+          <>
+            Нажми <strong>•••</strong> и выбери <strong>«Открыть в Safari»</strong>.
+          </>
+        ) : (
+          <>
+            Нажми <MenuIcon /> и выбери <strong>«Открыть в браузере»</strong>.
+          </>
+        )}
+      </span>
+      <button type="button" className="install-close" aria-label="Скрыть подсказку" onClick={onDismiss}>
+        <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <path d="M2 2l10 10M12 2 2 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}

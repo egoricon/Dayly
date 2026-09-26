@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addExpense, addFavoriteExpense, createInitialData, deleteTransaction, recordDaySummary, removeFavorite, saveFavorite } from './appData';
 import { transactionName } from './components/TransactionRow';
 import { calculateBudget } from './domain/budget';
+import { backupFileName, makeBackup, parseBackup } from './backup';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { applyKey, type KeypadKey } from './ui/amountInput';
 import { formatDayHeader, untilPeriodEnd } from './ui/labels';
@@ -118,5 +119,28 @@ describe('favourite expenses', () => {
     data = saveFavorite(data, { ...coffee, id: 'f2', label: 'Метро', category: 'transport', amountKopecks: 90 });
     expect(data.settings.favorites[2]).toMatchObject({ label: 'Метро', category: 'transport', amountKopecks: 90 });
     expect(removeFavorite(data, 'f0').settings.favorites).toHaveLength(5);
+  });
+});
+
+describe('backup', () => {
+  const data = addExpense(createInitialData('2026-09-26', { balanceKopecks: 58600, income: null, payments: [] }, NOW), 350, 'cafe', '2026-09-26', NOW);
+
+  it('a saved copy restores the same data', () => {
+    const restored = parseBackup(makeBackup(data, NOW));
+    expect(restored).toEqual({ data, exportedAt: NOW.toISOString() });
+    expect(backupFileName('2026-09-26')).toBe('dayly-2026-09-26.json');
+  });
+
+  it('upgrades a copy made by an older version', () => {
+    const { favorites: _f, ...oldSettings } = data.settings;
+    const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: { ...data, schemaVersion: 2, settings: oldSettings } };
+    expect(parseBackup(JSON.stringify(old))?.data).toEqual(data);
+  });
+
+  it('rejects files that are not a Dayly copy', () => {
+    expect(parseBackup('not json')).toBeNull();
+    expect(parseBackup(JSON.stringify({ app: 'other', data }))).toBeNull();
+    expect(parseBackup(JSON.stringify({ app: 'dayly', data: { schemaVersion: 3 } }))).toBeNull();
+    expect(parseBackup(JSON.stringify({ app: 'dayly', data: { ...data, schemaVersion: 99 } }))).toBeNull();
   });
 });

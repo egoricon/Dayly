@@ -302,3 +302,60 @@ test('home: name, «+ Доход», favourites with undo; «Финансы» tab
   await expect(page.getByRole('button', { name: 'Начать' })).toBeVisible();
   expect(await page.evaluate(() => [localStorage.getItem('dayly:data'), JSON.parse(localStorage.getItem('dayly:ui') ?? '{}').accent])).toEqual([null, 'amber']);
 });
+
+// ASCII title on purpose: setInputFiles did nothing with a non-ASCII output folder path here.
+test('backup: save a copy, reset everything, restore the copy', async ({ page }, testInfo) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  await addExpense(page, '3,5');
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
+
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Сохранить копию/ }).click()]);
+  expect(download.suggestedFilename()).toBe('dayly-2026-09-26.json');
+  const file = testInfo.outputPath('backup.json');
+  await download.saveAs(file);
+
+  await page.getByRole('button', { name: 'Сбросить всё' }).click();
+  await page.getByRole('button', { name: 'Удалить всё' }).click();
+  await expect(page.getByRole('button', { name: 'Начать' })).toBeVisible();
+
+  // A fresh start, then the copy replaces its data.
+  await page.getByRole('button', { name: 'Начать' }).click();
+  await typeAmount(page, '10');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Следующий месяц' }).click();
+  await page.locator('.calendar-day', { hasText: /^5$/ }).click();
+  await page.getByPlaceholder('0,00').fill('1');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
+  await page.getByRole('button', { name: 'На главную' }).click();
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByTestId('restore-input').setInputFiles(file);
+  await expect(page.getByText(/Восстановить копию от 26 сентября/)).toBeVisible();
+  await page.getByRole('button', { name: 'Восстановить', exact: true }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
+  await expect(page.getByTestId('today-expenses')).toContainText('−3,50');
+});
+
+test('inside Telegram a banner asks to open Safari, and the install hint stays hidden', async ({ browser }) => {
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    viewport: { width: 393, height: 780 },
+    hasTouch: true,
+  });
+  await context.addInitScript(() => Object.assign(window, { TelegramWebviewProxy: { postEvent() {} } }));
+  const page = await context.newPage();
+  await page.clock.install({ time: TODAY });
+  await page.goto(BASE);
+  await expect(page.getByTestId('in-app-banner')).toContainText('Открыть в Safari');
+  await page.screenshot({ path: '/tmp/dayly-telegram.png' });
+  await onboard(page);
+  await page.reload();
+  await expect(page.getByTestId('in-app-banner')).toBeVisible();
+  await expect(page.getByTestId('install-hint')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Скрыть подсказку' }).click();
+  await expect(page.getByTestId('in-app-banner')).toHaveCount(0);
+  await context.close();
+});
