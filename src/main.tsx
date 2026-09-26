@@ -16,7 +16,7 @@ createRoot(document.getElementById('root')!).render(
 // Offline work and install to the home screen. In dev the service worker would cache stale code.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
       // The app works without it, only not offline.
     });
   });

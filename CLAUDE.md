@@ -123,4 +123,5 @@ interface AppData {
 - HTML-макеты загружают React с unpkg, поэтому в облачном контейнере не открываются. Вся спецификация есть в `design-handoff/README.md`, тексты экранов — в самом HTML.
 - В облачном контейнере Playwright и Chromium уже установлены (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Не запускать `playwright install`. Версия `@playwright/test` должна совпадать с установленной в контейнере (сейчас 1.56.1), иначе браузер не найдётся.
 - E2E (`npm run e2e`) собирает приложение и проверяет критерии MVP на `vite preview` (порт 4173). Профиль Chromium на rclone-монтаже зависает (service worker не регистрируется), поэтому здесь запускать с `DAYLY_E2E_OUTPUT=/tmp/dayly-e2e`.
+- Опубликовано на GitHub Pages: https://egoricon.github.io/Dayly/, деплой — `.github/workflows/pages.yml` на каждый пуш в `main`. Сборка с `base: './'`, пути в `index.html`, манифесте и `public/sw.js` относительные, чтобы работать и в корне, и под `/Dayly/`.
 - Service worker регистрируется только в сборке (`import.meta.env.PROD`). После изменения списка файлов оболочки поднять версию `CACHE` в `public/sw.js`.
