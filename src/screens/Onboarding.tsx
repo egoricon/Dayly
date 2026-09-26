@@ -23,6 +23,7 @@ interface OnboardingProps {
 /** 2a → 2b → 2c → 2d. The first limit (2e) is shown by the app once the data exists. */
 export function Onboarding({ today, onComplete }: OnboardingProps) {
   const [step, setStep] = useState<Step>('welcome');
+  const [balanceInput, setBalanceInput] = useState('');
   const [balance, setBalance] = useState(0);
   const [kind, setKind] = useState<IncomeSource['kind']>('scholarship');
   const [incomeDate, setIncomeDate] = useState<LocalDate | null>(null);
@@ -51,6 +52,9 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
   if (step === 'balance') {
     return (
       <StartBalance
+        input={balanceInput}
+        onInput={setBalanceInput}
+        onBack={() => setStep('welcome')}
         onDone={(value) => {
           setBalance(value);
           setStep('income');
@@ -66,7 +70,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
     const maxDate = addMonths(today, 1);
     return (
       <main className="screen onboarding">
-        <StepProgress step={2} />
+        <StepProgress step={2} onBack={() => setStep('balance')} />
         <div className="step-title">
           <h1>Когда придут следующие деньги?</h1>
           <p>До этого дня и будем растягивать бюджет. Остальные поступления добавишь в настройках.</p>
@@ -105,7 +109,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
 
   return (
     <main className="screen onboarding">
-      <StepProgress step={3} />
+      <StepProgress step={3} onBack={() => setStep('income')} />
       <div className="step-title">
         <h1>Что нужно оплатить до {formatDayMonth(income.date)}?</h1>
         <p>Эти деньги сразу отложим, и в дневной лимит они не попадут.</p>
@@ -178,16 +182,19 @@ function PaymentDraftSheet({
     <BottomSheet onClose={onClose} className="form-sheet">
       {(close) => (
         <>
-          <h2 className="sheet-title">Новый платёж</h2>
-          <Field label="Что оплатить">
-            <input className="input" placeholder="Общежитие" value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <Field label="Сумма">
-            <AmountInput value={amount} onChange={setAmount} />
-          </Field>
-          <Field label="Когда" hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
-            <Calendar min={min} max={max} value={date} onChange={setDate} />
-          </Field>
+          {/* The fields scroll; «Добавить» stays at the bottom of the sheet on any screen height. */}
+          <div className="sheet-body">
+            <h2 className="sheet-title">Новый платёж</h2>
+            <Field label="Что оплатить">
+              <input className="input" placeholder="Общежитие" value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field label="Сумма">
+              <AmountInput value={amount} onChange={setAmount} />
+            </Field>
+            <Field label="Когда" hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
+              <Calendar min={min} max={max} value={date} onChange={setDate} />
+            </Field>
+          </div>
           <button
             type="button"
             className="button-primary button-large"

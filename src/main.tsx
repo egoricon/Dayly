@@ -25,5 +25,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
+// iOS leaves the page shifted up after the keyboard closes (a gap under the tab bar, the top under
+// the status bar). The page itself never scrolls, so put it back once no field has focus.
+function resetPageScroll(): void {
+  const field = document.activeElement?.matches('input, textarea, select');
+  if (!field && (window.scrollY !== 0 || window.scrollX !== 0)) window.scrollTo(0, 0);
+}
+window.addEventListener('focusout', () => window.setTimeout(resetPageScroll, 100));
+window.visualViewport?.addEventListener('resize', resetPageScroll);
+
 // Asks the browser not to clear localStorage under storage pressure (Safari clears unused sites).
 void navigator.storage?.persist?.().catch(() => false);

@@ -199,3 +199,36 @@ test('animations: the limit runs to the new value, a deleted row collapses; redu
   expect(jumped).toEqual(['51,05']);
   await context.close();
 });
+
+test('iPhone fixes: a step back keeps the input, the payment button fits a short screen, the page never scrolls', async ({ browser }) => {
+  // Short viewport, like an in-app browser with its bars.
+  const context = await browser.newContext({ viewport: { width: 393, height: 640 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.clock.install({ time: TODAY });
+  await page.goto(BASE);
+  await page.getByRole('button', { name: 'Начать' }).click();
+  await typeAmount(page, '586');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Назад' }).click();
+  await expect(page.getByTestId('start-amount')).toHaveText('586');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Следующий месяц' }).click();
+  await page.locator('.calendar-day', { hasText: /^5$/ }).click();
+  await page.getByPlaceholder('0,00').fill('220');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Назад' }).click();
+  await expect(page.getByPlaceholder('0,00')).toHaveValue('220');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+
+  await page.getByRole('button', { name: '+ Добавить платёж' }).click();
+  const add = page.locator('.form-sheet').getByRole('button', { name: 'Добавить' });
+  await page.waitForTimeout(400);
+  const box = (await add.boundingBox())!;
+  console.log(`«Добавить» bottom at ${box.y + box.height} of 640`);
+  expect(box.y + box.height).toBeLessThanOrEqual(640);
+
+  await page.mouse.wheel(300, 800);
+  const scroll = await page.evaluate(() => [window.scrollX, window.scrollY, document.documentElement.scrollWidth - window.innerWidth]);
+  expect(scroll).toEqual([0, 0, 0]);
+  await context.close();
+});

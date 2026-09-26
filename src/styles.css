@@ -133,6 +133,18 @@ body {
   overscroll-behavior: none;
 }
 
+/* The page itself never scrolls or bounces (iOS rubber band, sideways drag); screens scroll inside. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+}
+
 button {
   font: inherit;
   color: inherit;
@@ -157,7 +169,9 @@ ul {
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* The fixed body is exactly the screen; 100dvh left a gap on iOS after the keyboard closed. */
+  height: 100%;
+  overflow: hidden;
   max-width: 430px;
   margin: 0 auto;
 }
@@ -169,7 +183,9 @@ ul {
   display: flex;
   flex-direction: column;
   padding: calc(env(safe-area-inset-top) + 12px) 20px calc(env(safe-area-inset-bottom) + 24px);
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 /* Screens above the tab bar: the bar takes the bottom safe area. */
@@ -241,11 +257,30 @@ ul {
   gap: 18px;
 }
 
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -8px;
+}
+
+.step-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  color: var(--ink);
+}
+
 .step-progress {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  padding: 0 8px;
+  padding-right: 8px;
 }
 
 .step-progress div {
@@ -544,7 +579,9 @@ ul {
   flex-direction: column;
   gap: 18px;
   padding: 8px 22px 16px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .home-top {
@@ -841,7 +878,7 @@ ul {
 /* 2g — expense sheet */
 
 .expense-sheet {
-  height: min(640px, calc(100dvh - 40px));
+  height: min(640px, calc(100% - env(safe-area-inset-top) - 24px));
 }
 
 .sheet-amount {
@@ -1109,6 +1146,25 @@ ul {
   outline-offset: -1px;
 }
 
+/* iOS gives a date field its own width and centred text; keep it inside the form. */
+input[type='date'].input {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 50px;
+  text-align: left;
+}
+
+input[type='date'].input::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+.field {
+  min-width: 0;
+}
+
 select.input {
   appearance: none;
 }
@@ -1221,8 +1277,29 @@ select.input {
 }
 
 .form-sheet {
-  max-height: calc(100dvh - 40px);
+  max-height: calc(100% - env(safe-area-inset-top) - 24px);
+}
+
+/* Fields scroll between the grabber and the button, so the button is always on screen. */
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 -20px;
+  padding: 2px 20px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+.sheet-body > * {
+  flex-shrink: 0;
+}
+
+.form-sheet > .button-primary {
+  flex-shrink: 0;
 }
 
 .sheet-title {
