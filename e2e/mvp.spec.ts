@@ -157,3 +157,45 @@ test('home-screen hint: iPhone steps from the second launch, gone once dismissed
   await expect(page.getByText('Android, Chrome')).toBeVisible();
   await context.close();
 });
+
+/** Every text the big number showed while `action` ran. */
+async function heroTexts(page: Page, action: () => Promise<void>): Promise<string[]> {
+  await page.evaluate(() => {
+    const w = window as unknown as { heroTexts: string[] };
+    w.heroTexts = [];
+    const el = document.querySelector('[data-testid="hero-amount"]')!;
+    new MutationObserver(() => w.heroTexts.push(el.textContent ?? '')).observe(el, { subtree: true, characterData: true, childList: true });
+  });
+  await action();
+  await page.waitForTimeout(700);
+  return page.evaluate(() => [...new Set((window as unknown as { heroTexts: string[] }).heroTexts)]);
+}
+
+test('animations: the limit runs to the new value, a deleted row collapses; reduced motion jumps', async ({ page, browser }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+
+  const running = await heroTexts(page, () => addExpense(page, '3,5'));
+  console.log('values shown after the expense:', running.join(' → '));
+  expect(running.length).toBeGreaterThan(2);
+  expect(running.at(-1)).toBe('51,05');
+
+  await page.getByTestId('operation').first().click({ button: 'right' });
+  await page.getByRole('button', { name: 'Удалить трату' }).click();
+  await expect(page.getByTestId('operation').first()).toHaveClass(/is-leaving/);
+  await expect(page.getByTestId('operation')).toHaveCount(0);
+  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+
+  const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
+  const calm = await context.newPage();
+  await calm.clock.install({ time: TODAY });
+  await calm.goto(BASE);
+  await onboard(calm);
+  await expect(calm.getByTestId('hero-amount')).toHaveText('54,55');
+  const jumped = await heroTexts(calm, () => addExpense(calm, '3,5'));
+  console.log('reduced motion:', jumped.join(' → '));
+  expect(jumped).toEqual(['51,05']);
+  await context.close();
+});

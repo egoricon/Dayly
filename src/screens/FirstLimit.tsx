@@ -1,6 +1,7 @@
 import type { BudgetResult } from '../domain/budget';
 import { formatKopecks } from '../domain/money';
 import { formatDayMonth, formatDays } from '../ui/labels';
+import { useAnimatedNumber } from '../ui/motion';
 
 interface FirstLimitProps {
   budget: BudgetResult;
@@ -11,7 +12,9 @@ interface FirstLimitProps {
 /** 2e: the first limit, with a nudge to add reserves. */
 export function FirstLimit({ budget, onSetupReserves, onDone }: FirstLimitProps) {
   const b = budget.breakdown;
-  const [whole, fraction] = formatKopecks(budget.dailyLimitKopecks).split(',');
+  // The first limit counts up from zero.
+  const shown = useAnimatedNumber(budget.dailyLimitKopecks, { from: 0, durationMs: 700 });
+  const [whole, fraction] = formatKopecks(shown).split(',');
   const [shortWhole, shortFraction] = formatKopecks(budget.shortfall?.amountKopecks ?? 0).split(',');
 
   return (

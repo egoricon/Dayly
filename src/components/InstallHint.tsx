@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { afterLeave } from '../ui/motion';
 import { canPromptInstall, detectPlatform, isStandalone, promptInstall, subscribeInstallPrompt } from '../install';
 import type { InstallPlatform } from '../uiState';
 
@@ -77,12 +78,18 @@ export function InstallSteps({ platform }: { platform: InstallPlatform }) {
 
 /** Card on the home screen. */
 export function InstallHint({ platform, onDismiss }: { platform: InstallPlatform; onDismiss: () => void }) {
+  const [leaving, setLeaving] = useState(false);
   return (
-    <div className="install-card" data-testid="install-hint">
+    <div className={`install-card is-entering${leaving ? ' is-leaving' : ''}`} data-testid="install-hint">
       <strong>Добавь Dayly на главный экран</strong>
       <span className="banner-sub">Будет открываться как приложение, без адресной строки, и работать без интернета.</span>
       <InstallSteps platform={platform} />
-      <button type="button" className="install-close" aria-label="Скрыть подсказку" onClick={onDismiss}>
+      <button type="button" className="install-close" aria-label="Скрыть подсказку"
+        onClick={() => {
+          setLeaving(true);
+          afterLeave(onDismiss);
+        }}
+      >
         <svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M2 2l10 10M12 2 2 12" />
         </svg>

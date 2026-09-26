@@ -13,6 +13,10 @@ import type { InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, untilPeriodEnd } from '../ui/labels';
 import { Explain } from './Explain';
 import type { SettingsRoute, Update } from './Settings';
+import { afterLeave } from '../ui/motion';
+
+// The ring fills and the number counts up once per launch, not on every return to the tab.
+let introPlayed = false;
 
 interface HomeProps {
   data: AppData;
@@ -39,6 +43,8 @@ export function Home(props: HomeProps) {
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
+  const [intro] = useState(() => !introPlayed);
+  introPlayed = true;
 
   const overspent = budget.status === 'ok' && budget.remainingTodayKopecks < 0;
   const deficit = budget.status === 'deficit';
@@ -64,6 +70,7 @@ export function Home(props: HomeProps) {
 
         {banner && (
           <Banner
+            key={banner.key}
             banner={banner}
             data={data}
             today={today}
@@ -81,7 +88,7 @@ export function Home(props: HomeProps) {
           />
         )}
 
-        <Ring fraction={fraction} tone={deficit || overspent ? 'danger' : 'accent'} onClick={() => setExplainOpen(true)}>
+        <Ring fraction={fraction} tone={deficit || overspent ? 'danger' : 'accent'} onClick={() => setExplainOpen(true)} fillIn={intro}>
           {deficit && budget.shortfall ? (
             <>
               <span className="ring-label">Не хватает денег</span>
@@ -101,7 +108,7 @@ export function Home(props: HomeProps) {
           ) : (
             <>
               <span className="ring-label">Сегодня можно</span>
-              <HeroAmount kopecks={budget.remainingTodayKopecks} />
+              <HeroAmount kopecks={budget.remainingTodayKopecks} from={intro ? 0 : undefined} />
               <span className="ring-caption" data-testid="ring-caption">
                 BYN из {formatKopecks(budget.dailyLimitKopecks)}
               </span>
@@ -218,6 +225,11 @@ interface BannerProps {
 
 function Banner({ banner, data, today, onYes, onOtherAmount, onNotYet }: BannerProps) {
   const { occurrence } = banner;
+  const [leaving, setLeaving] = useState(false);
+  const leave = (then: () => void) => {
+    setLeaving(true);
+    afterLeave(then);
+  };
   const day = occurrence.date === today ? 'сегодня' : formatDayMonth(occurrence.date);
   const details = `${day} · ${formatMoney(occurrence.amountKopecks)}`;
   const title =
@@ -226,11 +238,11 @@ function Banner({ banner, data, today, onYes, onOtherAmount, onNotYet }: BannerP
       : `Платёж «${data.payments.find((p) => p.id === occurrence.sourceId)!.name}» оплачен?`;
 
   return (
-    <div className="card banner" data-testid="banner">
+    <div className={`card banner${leaving ? ' is-leaving' : ''}`} data-testid="banner">
       <strong>{title}</strong>
       <span className="banner-sub">{banner.kind === 'income' ? `ожидалось ${details}` : `срок ${details}`}</span>
       <div className="banner-actions">
-        <button type="button" className="banner-yes" onClick={onYes}>
+        <button type="button" className="banner-yes" onClick={() => leave(onYes)}>
           Да, {formatKopecks(occurrence.amountKopecks)}
         </button>
         {banner.kind === 'income' && (
@@ -238,7 +250,7 @@ function Banner({ banner, data, today, onYes, onOtherAmount, onNotYet }: BannerP
             Другая сумма
           </button>
         )}
-        <button type="button" className="banner-other" onClick={onNotYet}>
+        <button type="button" className="banner-other" onClick={() => leave(onNotYet)}>
           Ещё нет
         </button>
       </div>

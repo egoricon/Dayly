@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { cushionSavedBy, goalSavedBy, type BudgetResult } from '../domain/budget';
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
@@ -38,6 +39,12 @@ export interface SettingsProps {
 export function Settings(props: SettingsProps) {
   const { data, budget, today, route, onNavigate, update } = props;
   const back = () => onNavigate({ screen: 'main' });
+  // «Назад» brings the list back from the left; everything else enters from the right.
+  const previous = useRef(route.screen);
+  const cameBack = route.screen === 'main' && previous.current !== 'main';
+  useEffect(() => {
+    previous.current = route.screen;
+  }, [route.screen]);
 
   switch (route.screen) {
     case 'income':
@@ -69,7 +76,7 @@ export function Settings(props: SettingsProps) {
   const periodEnd = addDays(budget.period.end, 1);
 
   return (
-    <main className="screen settings with-tabs">
+    <main className={`screen settings with-tabs${cameBack ? ' is-back' : ''}`}>
       <h1 className="screen-title">Настройки</h1>
 
       <span className="section-label">Доходы</span>

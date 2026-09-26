@@ -4,6 +4,10 @@ import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, Transaction } from '../domain/types';
 import { CATEGORY_NAMES, formatTime } from '../ui/labels';
 import { BottomSheet } from './BottomSheet';
+import { afterLeave } from '../ui/motion';
+
+/** Rows created this long ago or less slide in; older ones appear without animation. */
+const NEW_ROW_MS = 2000;
 
 const LONG_PRESS_MS = 500;
 
@@ -54,8 +58,9 @@ export function TransactionRow({ transaction: t, data, fromLimitKopecks, showTim
 
   return (
     <li
-      className={`expense-row${muted ? ' is-reserve' : ''}`}
+      className={`expense-row${muted ? ' is-reserve' : ''}${Date.now() - Date.parse(t.createdAt) < NEW_ROW_MS ? ' is-new' : ''}`}
       data-testid="operation"
+      data-transaction-id={t.id}
       onPointerDown={() => {
         if (!editable) return;
         cancel();
@@ -121,8 +126,10 @@ export function OperationActions({ transaction: t, data, update, onEdit, onClose
             type="button"
             className="button-action is-danger"
             onClick={() => {
-              update((d) => deleteTransaction(d, t.id));
               close();
+              // The row collapses, then the data change removes it.
+              document.querySelectorAll(`[data-transaction-id="${t.id}"]`).forEach((row) => row.classList.add('is-leaving'));
+              afterLeave(() => update((d) => deleteTransaction(d, t.id)));
             }}
           >
             Удалить {kind}
