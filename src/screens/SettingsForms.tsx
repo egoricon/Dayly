@@ -7,8 +7,10 @@ import {
   markPaymentPaid,
   newId,
   reconcileBalance,
+  removeFavorite,
   removeIncomeSource,
   removePayment,
+  saveFavorite,
   saveGoal,
   saveIncomeSource,
   savePayment,
@@ -22,11 +24,11 @@ import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
 import { addDays, monthlyOccurrences, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { IncomeSource, ReserveCategory } from '../domain/types';
-import { formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
-import type { SettingsProps } from './Settings';
+import type { Category, IncomeSource, ReserveCategory } from '../domain/types';
+import { CATEGORY_NAMES, CATEGORY_ORDER, formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
+import type { FinanceProps } from './Finances';
 
-type FormProps = Omit<SettingsProps, 'route'> & { onBack: () => void };
+type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
 
 const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents', 'other'];
 
@@ -484,6 +486,65 @@ export function ReconcileForm({ budget, today, update, onBack }: FormProps) {
       >
         Сверить
       </button>
+    </FormScreen>
+  );
+}
+
+/** A favourite expense: label, amount and category. One tap on the home screen adds it. */
+export function FavoriteForm({ data, update, id, onBack }: FormProps & { id: string | null }) {
+  const existing = data.settings.favorites.find((f) => f.id === id);
+  const [label, setLabel] = useState(existing?.label ?? '');
+  const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
+  const [category, setCategory] = useState<Category>(existing?.category ?? data.settings.lastCategory);
+  const kopecks = parseAmount(amount) ?? 0;
+  const ready = label.trim() !== '' && kopecks > 0;
+
+  return (
+    <FormScreen title={existing ? existing.label : 'Любимая трата'} onBack={onBack}>
+      <Field label="Подпись" hint="Так кнопка будет называться на главной и в истории.">
+        <input className="input" placeholder="Кофе" maxLength={24} value={label} onChange={(e) => setLabel(e.target.value)} />
+      </Field>
+      <Field label="Сумма">
+        <AmountInput value={amount} onChange={setAmount} />
+      </Field>
+      <Field label="Категория" group>
+        <div className="chips chips-left">
+          {CATEGORY_ORDER.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`chip${c === category ? ' is-selected' : ''}`}
+              aria-pressed={c === category}
+              onClick={() => setCategory(c)}
+            >
+              {CATEGORY_NAMES[c]}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <button
+        type="button"
+        className="button-primary button-large"
+        disabled={!ready}
+        onClick={() => {
+          update((d) => saveFavorite(d, { id: existing?.id ?? newId(), label: label.trim(), amountKopecks: kopecks, category }));
+          onBack();
+        }}
+      >
+        Сохранить
+      </button>
+      {existing && (
+        <button
+          type="button"
+          className="link-danger"
+          onClick={() => {
+            update((d) => removeFavorite(d, existing.id));
+            onBack();
+          }}
+        >
+          Убрать из любимых
+        </button>
+      )}
     </FormScreen>
   );
 }

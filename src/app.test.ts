@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addExpense, createInitialData, deleteTransaction, recordDaySummary } from './appData';
+import { addExpense, addFavoriteExpense, createInitialData, deleteTransaction, recordDaySummary, removeFavorite, saveFavorite } from './appData';
+import { transactionName } from './components/TransactionRow';
 import { calculateBudget } from './domain/budget';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { applyKey, type KeypadKey } from './ui/amountInput';
@@ -80,10 +81,11 @@ describe('storage', () => {
     expect(loadData(storage)).toEqual(data);
   });
 
-  it('upgrades version 1 data: incomes get weekday null', () => {
+  it('upgrades version 1 data: incomes get weekday null, favourites start empty', () => {
     const storage = memoryStorage();
     const data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
-    const v1 = { ...data, schemaVersion: 1, incomeSources: data.incomeSources.map(({ weekday: _, ...rest }) => rest) };
+    const { favorites: _f, ...v1Settings } = data.settings;
+    const v1 = { ...data, schemaVersion: 1, settings: v1Settings, incomeSources: data.incomeSources.map(({ weekday: _, ...rest }) => rest) };
     storage.setItem(DATA_KEY, JSON.stringify(v1));
     expect(loadData(storage)).toEqual(data);
   });
@@ -93,5 +95,28 @@ describe('storage', () => {
     storage.setItem(DATA_KEY, '{broken');
     expect(loadData(storage)).toBeNull();
     expect(storage.getItem('dayly:data:corrupt')).toBe('{broken');
+  });
+});
+
+describe('favourite expenses', () => {
+  const coffee = { id: 'coffee', label: 'Кофе', amountKopecks: 350, category: 'cafe' as const };
+
+  it('one tap adds an ordinary expense named by the label, and undo removes it', () => {
+    const data = saveFavorite(createInitialData('2026-09-26', { balanceKopecks: 58600, income: null, payments: [] }, NOW), coffee);
+    const { data: next, transactionId } = addFavoriteExpense(data, coffee, '2026-09-26', NOW);
+    const t = next.transactions.find((x) => x.id === transactionId)!;
+    expect(t).toMatchObject({ type: 'expense', amountKopecks: 350, category: 'cafe', note: 'Кофе' });
+    expect(transactionName(t, next)).toBe('Кофе');
+    expect(calculateBudget(next, '2026-09-26').remainingTodayKopecks).toBe(calculateBudget(data, '2026-09-26').remainingTodayKopecks - 350);
+    expect(deleteTransaction(next, transactionId).transactions).toEqual(data.transactions);
+  });
+
+  it('keeps at most six favourites, edits in place and removes', () => {
+    let data = createInitialData('2026-09-26', { balanceKopecks: 0, income: null, payments: [] }, NOW);
+    for (let i = 0; i < 7; i++) data = saveFavorite(data, { ...coffee, id: `f${i}`, label: `F${i}` });
+    expect(data.settings.favorites.map((f) => f.id)).toEqual(['f0', 'f1', 'f2', 'f3', 'f4', 'f5']);
+    data = saveFavorite(data, { ...coffee, id: 'f2', label: 'Метро', category: 'transport', amountKopecks: 90 });
+    expect(data.settings.favorites[2]).toMatchObject({ label: 'Метро', category: 'transport', amountKopecks: 90 });
+    expect(removeFavorite(data, 'f0').settings.favorites).toHaveLength(5);
   });
 });

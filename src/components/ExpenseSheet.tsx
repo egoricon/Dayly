@@ -24,6 +24,8 @@ interface ExpenseSheetProps {
   reserves: ReserveState[];
   dailyLimitKopecks: number;
   incomePreset?: IncomePreset;
+  /** «+ Доход» on the home screen opens the sheet in income mode. */
+  initialMode?: EntryMode;
   /** An expense to change instead of adding a new one (long press → «Изменить»). */
   editing?: Transaction;
   onSave: (next: AppData) => void;
@@ -40,8 +42,8 @@ const OTHER_INCOME = 'other';
  * 2g: amount, live preview, categories, keypad. «+ Трата» → amount → «Добавить». Also records
  * incomes and changes an existing expense.
  */
-export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomePreset, editing, onSave, onClose }: ExpenseSheetProps) {
-  const [mode, setMode] = useState<EntryMode>(incomePreset ? 'income' : 'expense');
+export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomePreset, initialMode, editing, onSave, onClose }: ExpenseSheetProps) {
+  const [mode, setMode] = useState<EntryMode>(incomePreset ? 'income' : (initialMode ?? 'expense'));
   const [input, setInput] = useState(() => (editing ? amountText(editing.amountKopecks) : ''));
   const [category, setCategory] = useState<Category>(editing?.category ?? data.settings.lastCategory);
   const [incomeSource, setIncomeSource] = useState(incomePreset?.sourceId ?? OTHER_INCOME);

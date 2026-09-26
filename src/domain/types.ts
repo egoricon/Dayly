@@ -11,6 +11,14 @@ export type Cushion =
   | { mode: 'fixed'; amountKopecks: number }
   | { mode: 'percent'; percent: number; baseKopecks: number; sinceDate: LocalDate };
 
+/** A favourite expense on the home screen: one tap adds it. */
+export interface Favorite {
+  id: string;
+  label: string; // shown on the button and as the expense's name in the history
+  amountKopecks: number;
+  category: Category;
+}
+
 export interface Settings {
   onboardingCompleted: boolean;
   trackingStartDate: LocalDate;
@@ -19,6 +27,7 @@ export interface Settings {
   cushion: Cushion;
   theme: 'light' | 'dark' | 'auto';
   lastCategory: Category;
+  favorites: Favorite[]; // at most MAX_FAVORITES, in display order
 }
 
 export interface IncomeSource {
@@ -71,7 +80,7 @@ export interface DaySummary {
 }
 
 export interface AppData {
-  schemaVersion: 2; // 2 added IncomeSource.weekday
+  schemaVersion: 3; // 2 added IncomeSource.weekday, 3 added settings.favorites
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];

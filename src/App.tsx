@@ -8,10 +8,11 @@ import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
 import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
-import { Settings, type SettingsRoute, type Update } from './screens/Settings';
-import { loadData, saveData } from './storage';
+import { Finances, type FinanceRoute, type Update } from './screens/Finances';
+import { Settings, type SettingsRoute } from './screens/Settings';
+import { DATA_KEY, loadData, saveData } from './storage';
 import { useInstallInfo } from './components/InstallHint';
-import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, type Accent } from './uiState';
+import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -49,6 +50,7 @@ export function App() {
   });
   const install = useInstallInfo();
   const [tab, setTab] = useState<Tab>('today');
+  const [financeRoute, setFinanceRoute] = useState<FinanceRoute>({ screen: 'main' });
   const [settingsRoute, setSettingsRoute] = useState<SettingsRoute>({ screen: 'main' });
   const [showFirstLimit, setShowFirstLimit] = useState(false);
   const today = useToday();
@@ -88,9 +90,19 @@ export function App() {
   }
 
   const update: Update = (change) => setData((d) => (d ? change(d) : d));
-  const openSettings = (route: SettingsRoute) => {
-    setSettingsRoute(route);
-    setTab('settings');
+  const openFinances = (route: FinanceRoute) => {
+    setFinanceRoute(route);
+    setTab('finances');
+  };
+  // «Сбросить всё»: this device forgets everything and the app starts from onboarding.
+  const reset = () => {
+    localStorage.removeItem(DATA_KEY);
+    localStorage.removeItem(UI_KEY);
+    setUi(loadUiState(localStorage));
+    setTab('today');
+    setFinanceRoute({ screen: 'main' });
+    setSettingsRoute({ screen: 'main' });
+    setData(null);
   };
 
   if (showFirstLimit) {
@@ -100,7 +112,7 @@ export function App() {
           budget={budget}
           onSetupReserves={() => {
             setShowFirstLimit(false);
-            openSettings({ screen: 'reserve', category: 'groceries' });
+            openFinances({ screen: 'reserve', category: 'groceries' });
           }}
           onDone={() => setShowFirstLimit(false)}
         />
@@ -120,26 +132,29 @@ export function App() {
           onHideBanner={(key) => setUi((state) => hideBanner(state, key, today))}
           installHint={shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
           onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
-          onOpenSettings={openSettings}
+          onOpenFinances={openFinances}
         />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
+      {tab === 'finances' && (
+        <Finances data={data} budget={budget} today={today} route={financeRoute} onNavigate={setFinanceRoute} update={update} />
+      )}
       {tab === 'settings' && (
         <Settings
           data={data}
-          budget={budget}
-          today={today}
           route={settingsRoute}
           onNavigate={setSettingsRoute}
           update={update}
           accent={ui.accent}
           onAccentChange={(accent) => setUi((state) => ({ ...state, accent }))}
           install={install}
+          onReset={reset}
         />
       )}
       <TabBar
         active={tab}
         onChange={(next) => {
+          if (next === 'finances') setFinanceRoute({ screen: 'main' });
           if (next === 'settings') setSettingsRoute({ screen: 'main' });
           setTab(next);
         }}

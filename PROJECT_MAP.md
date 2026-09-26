@@ -247,7 +247,7 @@ calculateBudget(data: AppData, today: LocalDate): BudgetResult
 type LocalDate = string; // 'YYYY-MM-DD', локальная дата устройства
 
 interface AppData {
-  schemaVersion: 2;                      // 2: добавлен weekday у доходов (26.09.2026)
+  schemaVersion: 3;                      // 2: weekday у доходов; 3: settings.favorites (26.09.2026)
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];
@@ -269,6 +269,7 @@ interface Settings {
     | { mode: 'percent'; percent: number; baseKopecks: number; sinceDate: LocalDate };
   theme: 'light' | 'dark' | 'auto';
   lastCategory: Category;
+  favorites: { id: string; label: string; amountKopecks: number; category: Category }[]; // любимые траты, до 6
 }
 
 interface IncomeSource {

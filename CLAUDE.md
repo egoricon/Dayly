@@ -63,7 +63,7 @@ type LocalDate = string; // 'YYYY-MM-DD'
 type Category = 'cafe' | 'delivery' | 'shopping' | 'fun' | 'groceries' | 'transport';
 
 interface AppData {
-  schemaVersion: 2; // 1 → 2 (26.09.2026): weekday у доходов, старые данные переносятся с weekday: null
+  schemaVersion: 3; // 2 (26.09.2026): weekday у доходов; 3 (26.09.2026): settings.favorites. Миграции — src/storage.ts
   settings: {
     onboardingCompleted: boolean;
     trackingStartDate: LocalDate;
@@ -74,6 +74,7 @@ interface AppData {
       | { mode: 'percent'; percent: number; baseKopecks: number; sinceDate: LocalDate };
     theme: 'light' | 'dark' | 'auto';
     lastCategory: Category;
+    favorites: { id: string; label: string; amountKopecks: number; category: Category }[]; // до 6; трата из любимой — expense с note = label
   };
   incomeSources: { id: string; kind: 'scholarship' | 'salary' | 'parents' | 'other'; name: string;
     amountKopecks: number; dayOfMonth: number | null; weekday: number | null; // weekday 1 = пн … 7 = вс; оба null — нерегулярный

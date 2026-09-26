@@ -40,7 +40,7 @@ function payment(id: string, amountKopecks: number, dayOfMonth: number, startDat
 
 function emptyData(trackingStartDate: string): AppData {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     settings: {
       onboardingCompleted: true,
       trackingStartDate,
@@ -49,6 +49,7 @@ function emptyData(trackingStartDate: string): AppData {
       cushion: { mode: 'fixed', amountKopecks: 0 },
       theme: 'auto',
       lastCategory: 'cafe',
+      favorites: [],
     },
     incomeSources: [],
     payments: [],

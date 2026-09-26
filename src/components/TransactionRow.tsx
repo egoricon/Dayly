@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { deleteTransaction } from '../appData';
+import { deleteTransaction, MAX_FAVORITES, newId, saveFavorite } from '../appData';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, Transaction } from '../domain/types';
 import { CATEGORY_NAMES, formatTime } from '../ui/labels';
@@ -12,7 +12,8 @@ const NEW_ROW_MS = 2000;
 const LONG_PRESS_MS = 500;
 
 export function transactionName(t: Transaction, data: AppData): string {
-  if (t.type === 'expense') return t.category ? CATEGORY_NAMES[t.category] : (t.note ?? 'Трата');
+  // A favourite's label (and a payment's or goal's name) is kept in the note.
+  if (t.type === 'expense') return t.note ?? (t.category ? CATEGORY_NAMES[t.category] : 'Трата');
   if (t.type === 'income') return data.incomeSources.find((s) => s.id === t.incomeSourceId)?.name ?? t.note ?? 'Доход';
   return t.note ?? 'Сверка баланса';
 }
@@ -122,6 +123,9 @@ export function OperationActions({ transaction: t, data, update, onEdit, onClose
               Изменить
             </button>
           )}
+          {canEdit && t.category !== null && (
+            <FavoriteAction transaction={t} data={data} update={update} close={close} />
+          )}
           <button
             type="button"
             className="button-action is-danger"
@@ -140,5 +144,26 @@ export function OperationActions({ transaction: t, data, update, onEdit, onClose
         </>
       )}
     </BottomSheet>
+  );
+}
+
+/** «В любимые»: the expense becomes a one-tap button on the home screen, named as it is in the list. */
+function FavoriteAction({ transaction: t, data, update, close }: { transaction: Transaction; data: AppData; update: OperationActionsProps['update']; close: () => void }) {
+  const label = transactionName(t, data);
+  const favorites = data.settings.favorites;
+  const already = favorites.some((f) => f.label === label && f.amountKopecks === t.amountKopecks && f.category === t.category);
+  const full = favorites.length >= MAX_FAVORITES;
+  return (
+    <button
+      type="button"
+      className="button-action"
+      disabled={already || full}
+      onClick={() => {
+        update((d) => saveFavorite(d, { id: newId(), label, amountKopecks: t.amountKopecks, category: t.category! }));
+        close();
+      }}
+    >
+      {already ? 'Уже в любимых' : full ? `Любимых уже ${MAX_FAVORITES}` : 'В любимые'}
+    </button>
   );
 }

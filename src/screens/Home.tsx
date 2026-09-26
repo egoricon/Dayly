@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { addIncome, markPaymentPaid } from '../appData';
-import { ExpenseSheet, type IncomePreset } from '../components/ExpenseSheet';
+import { useEffect, useState } from 'react';
+import { addFavoriteExpense, addIncome, deleteTransaction, markPaymentPaid, MAX_FAVORITES } from '../appData';
+import { ExpenseSheet, type EntryMode, type IncomePreset } from '../components/ExpenseSheet';
 import { HeroAmount } from '../components/HeroAmount';
 import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
@@ -8,11 +8,11 @@ import { OperationActions, TransactionRow } from '../components/TransactionRow';
 import { cushionSavedBy, splitExpenses, type BudgetResult, type Occurrence } from '../domain/budget';
 import { formatKopecks, formatMoney } from '../domain/money';
 import { incomesToConfirm } from '../domain/planned';
-import type { AppData, IncomeSource, LocalDate, Transaction } from '../domain/types';
+import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
 import type { InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, untilPeriodEnd } from '../ui/labels';
 import { Explain } from './Explain';
-import type { SettingsRoute, Update } from './Settings';
+import type { FinanceRoute, Update } from './Finances';
 import { afterLeave } from '../ui/motion';
 
 // The ring fills and the number counts up once per launch, not on every return to the tab.
@@ -28,23 +28,43 @@ interface HomeProps {
   /** The platform whose instructions the home-screen hint shows, or null when it is hidden. */
   installHint: InstallPlatform | null;
   onDismissInstallHint: () => void;
-  onOpenSettings: (route: SettingsRoute) => void;
+  onOpenFinances: (route: FinanceRoute) => void;
 }
 
 function signed(kopecks: number): string {
   return kopecks > 0 ? `+${formatKopecks(kopecks)}` : formatKopecks(kopecks);
 }
 
-type SheetState = { open: false } | { open: true; incomePreset?: IncomePreset; editing?: Transaction };
+type SheetState = { open: false } | { open: true; mode?: EntryMode; incomePreset?: IncomePreset; editing?: Transaction };
+
+/** How long «Отменить» stays after a tap on a favourite. */
+const UNDO_MS = 5000;
+
+interface Undo {
+  transactionId: string;
+  text: string;
+}
 
 /** 2f: the daily limit in a ring, today's expenses, balance and «+ Трата». */
 export function Home(props: HomeProps) {
-  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenSettings } = props;
+  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances } = props;
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
   const [intro] = useState(() => !introPlayed);
   introPlayed = true;
+  const [undo, setUndo] = useState<Undo | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const timer = window.setTimeout(() => setUndo(null), UNDO_MS);
+    return () => window.clearTimeout(timer);
+  }, [undo]);
+
+  const addFavorite = (favorite: Favorite) => {
+    const result = addFavoriteExpense(data, favorite, today, new Date());
+    update(() => result.data);
+    setUndo({ transactionId: result.transactionId, text: `${favorite.label} −${formatKopecks(favorite.amountKopecks)}` });
+  };
 
   const overspent = budget.status === 'ok' && budget.remainingTodayKopecks < 0;
   const deficit = budget.status === 'deficit';
@@ -63,10 +83,18 @@ export function Home(props: HomeProps) {
   return (
     <main className="screen home">
       <div className="home-scroll">
-        <div className="home-top">
-          <span>{formatDayHeader(today)}</span>
-          <span>{untilPeriodEnd(data, budget)}</span>
-        </div>
+        <header className="home-top">
+          <span className="brand">
+            <svg className="brand-mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+              <circle cx="13" cy="13" r="9.5" fill="none" strokeWidth="5" />
+            </svg>
+            Dayly
+          </span>
+          <span className="home-dates">
+            <span>{formatDayHeader(today)}</span>
+            <span>{untilPeriodEnd(data, budget)}</span>
+          </span>
+        </header>
 
         {banner && (
           <Banner
@@ -118,7 +146,7 @@ export function Home(props: HomeProps) {
 
         {carry !== null && carry !== 0 && <div className={`carry-pill${carry < 0 ? ' is-negative' : ''}`}>{signed(carry)} с вчера</div>}
 
-        {deficit && <DeficitHints data={data} today={today} onOpenSettings={onOpenSettings} />}
+        {deficit && <DeficitHints data={data} today={today} onOpenFinances={onOpenFinances} />}
 
         {overspent && (
           <div className="note-card">
@@ -128,6 +156,8 @@ export function Home(props: HomeProps) {
         )}
 
         {installHint && <InstallHint platform={installHint} onDismiss={onDismissInstallHint} />}
+
+        <Favorites favorites={data.settings.favorites} onAdd={addFavorite} onOpenFinances={onOpenFinances} />
 
         {todayExpenses.length > 0 ? (
           <ul className="card expense-list" data-testid="today-expenses">
@@ -147,15 +177,36 @@ export function Home(props: HomeProps) {
         )}
       </div>
 
+      {undo && (
+        <div className="toast" role="status" key={undo.transactionId}>
+          <span>{undo.text}</span>
+          <button
+            type="button"
+            className="toast-action"
+            onClick={() => {
+              update((d) => deleteTransaction(d, undo.transactionId));
+              setUndo(null);
+            }}
+          >
+            Отменить
+          </button>
+        </div>
+      )}
+
       <div className="home-bottom">
         <span className="home-summary">
           <span data-testid="balance">Баланс {formatMoney(budget.balanceKopecks)}</span>
-          <br />
+          {' · '}
           <span data-testid="tomorrow">завтра можно {formatKopecks(budget.tomorrowLimitKopecks)}</span>
         </span>
-        <button type="button" className="button-primary button-expense" onClick={() => setSheet({ open: true })}>
-          + Трата
-        </button>
+        <div className="home-actions">
+          <button type="button" className="button-income" onClick={() => setSheet({ open: true, mode: 'income' })}>
+            + Доход
+          </button>
+          <button type="button" className="button-primary button-expense" onClick={() => setSheet({ open: true })}>
+            + Трата
+          </button>
+        </div>
       </div>
 
       {sheet.open && (
@@ -164,6 +215,7 @@ export function Home(props: HomeProps) {
           today={today}
           reserves={budget.reserves}
           dailyLimitKopecks={budget.dailyLimitKopecks}
+          initialMode={sheet.mode}
           incomePreset={sheet.incomePreset}
           editing={sheet.editing}
           onSave={(next) => update(() => next)}
@@ -181,6 +233,44 @@ export function Home(props: HomeProps) {
         />
       )}
     </main>
+  );
+}
+
+/** Favourite expenses: one tap adds the expense, «Отменить» takes it back. */
+function Favorites({
+  favorites,
+  onAdd,
+  onOpenFinances,
+}: {
+  favorites: Favorite[];
+  onAdd: (favorite: Favorite) => void;
+  onOpenFinances: (route: FinanceRoute) => void;
+}) {
+  return (
+    <div className="favorites" data-testid="favorites">
+      {favorites.map((f) => (
+        <button key={f.id} type="button" className="favorite" onClick={() => onAdd(f)}>
+          <span className="favorite-label">{f.label}</span>
+          <span className="favorite-amount">{formatKopecks(f.amountKopecks)}</span>
+        </button>
+      ))}
+      {favorites.length === 0 ? (
+        <button type="button" className="favorite is-empty" onClick={() => onOpenFinances({ screen: 'favorite', id: null })}>
+          + Любимая трата в одно касание
+        </button>
+      ) : (
+        favorites.length < MAX_FAVORITES && (
+          <button
+            type="button"
+            className="favorite is-add"
+            aria-label="Добавить любимую трату"
+            onClick={() => onOpenFinances({ screen: 'favorite', id: null })}
+          >
+            +
+          </button>
+        )
+      )}
+    </div>
   );
 }
 
@@ -261,26 +351,26 @@ function Banner({ banner, data, today, onYes, onOtherAmount, onNotYet }: BannerP
 interface DeficitHintsProps {
   data: AppData;
   today: LocalDate;
-  onOpenSettings: (route: SettingsRoute) => void;
+  onOpenFinances: (route: FinanceRoute) => void;
 }
 
 /** What the student can do when money runs short. The app never touches the cushion by itself. */
-function DeficitHints({ data, today, onOpenSettings }: DeficitHintsProps) {
+function DeficitHints({ data, today, onOpenFinances }: DeficitHintsProps) {
   const goal = data.goals.find((g) => g.status === 'active');
   const cushion = cushionSavedBy(data, today);
   return (
     <div className="card hint-list" data-testid="deficit-hints">
       {goal && (
-        <button type="button" className="link-accent" onClick={() => onOpenSettings({ screen: 'goal', id: goal.id })}>
+        <button type="button" className="link-accent" onClick={() => onOpenFinances({ screen: 'goal', id: goal.id })}>
           Сдвинуть срок цели «{goal.name}» →
         </button>
       )}
       {cushion > 0 && (
-        <button type="button" className="link-accent" onClick={() => onOpenSettings({ screen: 'cushion' })}>
+        <button type="button" className="link-accent" onClick={() => onOpenFinances({ screen: 'cushion' })}>
           Взять из подушки (там {formatMoney(cushion)}) →
         </button>
       )}
-      <button type="button" className="link-accent" onClick={() => onOpenSettings({ screen: 'reconcile' })}>
+      <button type="button" className="link-accent" onClick={() => onOpenFinances({ screen: 'reconcile' })}>
         Сверить баланс →
       </button>
     </div>

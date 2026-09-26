@@ -3,14 +3,21 @@ import type { AppData, IncomeSource } from './domain/types';
 export const DATA_KEY = 'dayly:data';
 const CORRUPT_KEY = 'dayly:data:corrupt';
 
-/** Version 1 had monthly and irregular incomes only; version 2 adds a weekday for weekly ones. */
+/**
+ * Upgrades saved data step by step: version 2 added a weekday for weekly incomes,
+ * version 3 added favourite expenses.
+ */
 function migrate(data: { schemaVersion: number }): AppData | null {
-  if (data.schemaVersion === 2) return data as AppData;
-  if (data.schemaVersion === 1) {
-    const v1 = data as unknown as Omit<AppData, 'schemaVersion' | 'incomeSources'> & { incomeSources: Omit<IncomeSource, 'weekday'>[] };
-    return { ...v1, schemaVersion: 2, incomeSources: v1.incomeSources.map((s) => ({ ...s, weekday: null })) };
+  let current = data as unknown as Record<string, unknown> & { schemaVersion: number };
+  if (current.schemaVersion === 1) {
+    const sources = current.incomeSources as Omit<IncomeSource, 'weekday'>[];
+    current = { ...current, schemaVersion: 2, incomeSources: sources.map((s) => ({ ...s, weekday: null })) };
   }
-  return null;
+  if (current.schemaVersion === 2) {
+    const settings = current.settings as Omit<AppData['settings'], 'favorites'>;
+    current = { ...current, schemaVersion: 3, settings: { ...settings, favorites: [] } };
+  }
+  return current.schemaVersion === 3 ? (current as unknown as AppData) : null;
 }
 
 /** Reads saved data, upgrading older versions. Unreadable data is kept aside under a separate key, never silently lost. */

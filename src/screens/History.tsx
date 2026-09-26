@@ -6,7 +6,7 @@ import { historyDays, type HistoryDay } from '../domain/history';
 import { formatKopecks } from '../domain/money';
 import type { AppData, LocalDate, Transaction } from '../domain/types';
 import { formatHistoryDay } from '../ui/labels';
-import type { Update } from './Settings';
+import type { Update } from './Finances';
 
 interface HistoryProps {
   data: AppData;

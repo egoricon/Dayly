@@ -42,7 +42,7 @@ async function onboard(page: Page) {
 async function addExpense(page: Page, amount: string) {
   await page.getByRole('button', { name: '+ Трата' }).click();
   await typeAmount(page, amount);
-  await page.getByRole('button', { name: 'Добавить' }).click();
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
 }
 
 test('limit is large, balance secondary; an expense recounts the limit without a reload', async ({ page }) => {
@@ -237,7 +237,7 @@ test('weekly income: «Раз в неделю» with a weekday shows in settings
   await page.clock.install({ time: TODAY });
   await page.goto('/');
   await onboard(page);
-  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: 'Финансы' }).click();
   await page.getByRole('button', { name: /Добавить доход/ }).click();
   await page.getByRole('radio', { name: 'Раз в неделю' }).click();
   await page.getByRole('radio', { name: 'Пт' }).click();
@@ -248,4 +248,57 @@ test('weekly income: «Раз в неделю» with a weekday shows in settings
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByTestId('settings-incomes')).toContainText('по пятницам');
   console.log('incomes:', (await page.getByTestId('settings-incomes').innerText()).replace(/\n/g, ' | '));
+});
+
+test('home: name, «+ Доход», favourites with undo; «Финансы» tab; full reset after a warning', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  await expect(page.locator('.brand')).toHaveText('Dayly');
+
+  // «+ Доход» opens the sheet already in income mode.
+  await page.getByRole('button', { name: '+ Доход' }).click();
+  await expect(page.getByRole('radio', { name: 'Доход' })).toHaveAttribute('aria-checked', 'true');
+  await page.locator('.sheet-dim').click();
+  await expect(page.locator('.sheet')).toHaveCount(0);
+
+  // A favourite from «Финансы», then one tap on the home screen and «Отменить».
+  await page.getByRole('button', { name: 'Финансы' }).click();
+  await expect(page.getByRole('heading', { name: 'Финансы' })).toBeVisible();
+  await page.getByRole('button', { name: '+ Добавить любимую трату' }).click();
+  await page.getByPlaceholder('Кофе').fill('Кофе');
+  await page.locator('.form-screen').getByPlaceholder('0,00').fill('3,5');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(page.getByTestId('finance-favorites')).toContainText('Кофе');
+  await page.getByRole('button', { name: 'Сегодня' }).click();
+
+  await page.getByTestId('favorites').getByRole('button', { name: /Кофе/ }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
+  await expect(page.getByTestId('today-expenses')).toContainText('Кофе');
+  await expect(page.getByRole('status')).toContainText('Кофе −3,50');
+  await page.getByRole('button', { name: 'Отменить' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+  await expect(page.getByTestId('today-expenses')).toHaveCount(0);
+
+  // Long press → «В любимые» on an ordinary expense.
+  await addExpense(page, '2');
+  await page.getByTestId('operation').first().click({ button: 'right' });
+  await page.getByRole('button', { name: 'В любимые' }).click();
+  await expect(page.getByTestId('favorites')).toContainText('Кафе');
+  await page.screenshot({ path: test.info().outputPath('home.png') });
+
+  // Settings keep only the app: the warning comes first, cancel keeps the data.
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await expect(page.getByText('Доходы')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Сбросить всё' }).click();
+  await expect(page.getByText('Удалить все данные?')).toBeVisible();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await page.reload();
+  await expect(page.getByTestId('hero-amount')).toHaveText('52,55');
+
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: 'Сбросить всё' }).click();
+  await page.getByRole('button', { name: 'Удалить всё' }).click();
+  await expect(page.getByRole('button', { name: 'Начать' })).toBeVisible();
+  expect(await page.evaluate(() => [localStorage.getItem('dayly:data'), JSON.parse(localStorage.getItem('dayly:ui') ?? '{}').accent])).toEqual([null, 'amber']);
 });

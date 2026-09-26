@@ -3,6 +3,7 @@ import { addDays, isRegular } from './domain/dates';
 import type {
   AppData,
   Category,
+  Favorite,
   Goal,
   IncomeSource,
   LocalDate,
@@ -82,7 +83,7 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     isActive: true,
   };
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
@@ -91,6 +92,7 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
       cushion: { mode: 'fixed', amountKopecks: 0 },
       theme: 'auto',
       lastCategory: 'cafe',
+      favorites: [],
     },
     incomeSources: income ? [income] : [],
     payments: result.payments.map((p) => ({
@@ -107,10 +109,11 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
   };
 }
 
-export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date): AppData {
+export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date, note: string | null = null): AppData {
   const expense = {
     ...blankTransaction({ type: 'expense', amountKopecks, date: today, createdAt: now.toISOString() }),
     category,
+    note,
   };
   return { ...withTransaction(data, expense), settings: { ...data.settings, lastCategory: category } };
 }
@@ -261,6 +264,27 @@ export function cancelGoal(data: AppData, goalId: string): AppData {
 }
 
 // Theme
+
+// Favourite expenses
+
+export const MAX_FAVORITES = 6;
+
+/** One tap on a favourite: an ordinary expense of its category, named by its label. */
+export function addFavoriteExpense(data: AppData, favorite: Favorite, today: LocalDate, now: Date): { data: AppData; transactionId: string } {
+  const next = addExpense(data, favorite.amountKopecks, favorite.category, today, now, favorite.label);
+  return { data: next, transactionId: next.transactions[next.transactions.length - 1]!.id };
+}
+
+/** Adds or changes a favourite; a new one beyond the limit is ignored. */
+export function saveFavorite(data: AppData, favorite: Favorite): AppData {
+  const list = data.settings.favorites;
+  if (!list.some((f) => f.id === favorite.id) && list.length >= MAX_FAVORITES) return data;
+  return { ...data, settings: { ...data.settings, favorites: upsert(list, favorite) } };
+}
+
+export function removeFavorite(data: AppData, id: string): AppData {
+  return { ...data, settings: { ...data.settings, favorites: data.settings.favorites.filter((f) => f.id !== id) } };
+}
 
 export function setTheme(data: AppData, theme: AppData['settings']['theme']): AppData {
   return { ...data, settings: { ...data.settings, theme } };

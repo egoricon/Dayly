@@ -3,7 +3,7 @@
 // hashed names, so they are served from the cache and stored on first use.
 
 // All paths are relative to this file, so the app works at the site root and under a subpath.
-const CACHE = 'dayly-v6';
+const CACHE = 'dayly-v7';
 const INDEX = new URL('./', self.location).href;
 const SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 

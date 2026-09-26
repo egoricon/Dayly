@@ -587,9 +587,34 @@ ul {
 .home-top {
   display: flex;
   justify-content: space-between;
-  font-size: 15px;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
+}
+
+/* The app name on the home screen, so a screenshot says what the app is. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.brand-mark circle {
+  stroke: var(--accent);
+}
+
+.home-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.35;
+  text-align: right;
 }
 
 .ring {
@@ -762,10 +787,31 @@ ul {
 
 .home-bottom {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 8px 22px 0;
+}
+
+.home-bottom .home-summary {
+  text-align: center;
+}
+
+.home-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.home-actions .button-expense {
+  flex: 2;
+}
+
+.button-income {
+  flex: 1;
+  height: 56px;
+  border-radius: 28px;
+  border: 1.5px solid var(--chip-border);
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .home-summary {
@@ -1365,7 +1411,7 @@ select.input {
 .tab-bar {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   padding: 10px 0 calc(env(safe-area-inset-bottom) + 12px);
   border-top: 1px solid var(--line);
   background: var(--bg);
@@ -1752,4 +1798,92 @@ select.input {
   .segmented button {
     font-size: 14px;
   }
+}
+
+/* Favourite expenses on the home screen */
+
+.favorites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.favorite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 700;
+  transition: transform 120ms ease-out;
+}
+
+.favorite:active {
+  transform: scale(0.95);
+}
+
+.favorite-amount {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.favorite.is-empty,
+.favorite.is-add {
+  align-items: center;
+  background: none;
+  border: 1.5px dashed var(--dashed);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.favorite.is-add {
+  width: 40px;
+  justify-content: center;
+  padding: 0;
+  font-size: 20px;
+}
+
+/* «Кофе −3,50 · Отменить» after a tap on a favourite */
+
+.toast {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 150px;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 8px 0 18px;
+  border-radius: 24px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 15px;
+  font-weight: 700;
+  animation: card-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast-action {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.button-action:disabled {
+  color: var(--disabled);
+}
+
+.action-text {
+  padding: 0 8px 8px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
 }
