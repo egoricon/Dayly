@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { addIncome, markPaymentPaid } from '../appData';
 import { ExpenseSheet, type IncomePreset } from '../components/ExpenseSheet';
 import { HeroAmount } from '../components/HeroAmount';
+import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
 import { cushionSavedBy, splitExpenses, type BudgetResult, type Occurrence } from '../domain/budget';
 import { formatKopecks, formatMoney } from '../domain/money';
 import { incomesToConfirm } from '../domain/planned';
 import type { AppData, IncomeSource, LocalDate, Transaction } from '../domain/types';
+import type { InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, untilPeriodEnd } from '../ui/labels';
 import { Explain } from './Explain';
 import type { SettingsRoute, Update } from './Settings';
@@ -19,6 +21,9 @@ interface HomeProps {
   update: Update;
   isBannerHidden: (key: string) => boolean;
   onHideBanner: (key: string) => void;
+  /** The platform whose instructions the home-screen hint shows, or null when it is hidden. */
+  installHint: InstallPlatform | null;
+  onDismissInstallHint: () => void;
   onOpenSettings: (route: SettingsRoute) => void;
 }
 
@@ -29,7 +34,8 @@ function signed(kopecks: number): string {
 type SheetState = { open: false } | { open: true; incomePreset?: IncomePreset; editing?: Transaction };
 
 /** 2f: the daily limit in a ring, today's expenses, balance and «+ Трата». */
-export function Home({ data, budget, today, update, isBannerHidden, onHideBanner, onOpenSettings }: HomeProps) {
+export function Home(props: HomeProps) {
+  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenSettings } = props;
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
@@ -113,6 +119,8 @@ export function Home({ data, budget, today, update, isBannerHidden, onHideBanner
             <span>С завтра можно тратить {formatMoney(budget.tomorrowLimitKopecks)} в день.</span>
           </div>
         )}
+
+        {installHint && <InstallHint platform={installHint} onDismiss={onDismissInstallHint} />}
 
         {todayExpenses.length > 0 ? (
           <ul className="card expense-list" data-testid="today-expenses">

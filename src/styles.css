@@ -14,10 +14,14 @@
   --tab-inactive: #9b9a95;
   --grabber: #d0cdc4;
   --dim: rgba(20, 20, 22, 0.38);
-  --accent: oklch(0.82 0.14 85);
-  --accent-soft: oklch(0.93 0.06 85);
-  --accent-ink: oklch(0.52 0.12 70);
-  --accent-ink-strong: oklch(0.42 0.1 70);
+  /* Accent palette: hue and chroma per data-accent (below), lightness per theme. */
+  --accent-h: 85;
+  --accent-c: 0.14;
+  --accent-ink-h: 70;
+  --accent: oklch(0.82 var(--accent-c) var(--accent-h));
+  --accent-soft: oklch(0.93 calc(var(--accent-c) * 0.43) var(--accent-h));
+  --accent-ink: oklch(0.52 calc(var(--accent-c) * 0.86) var(--accent-ink-h));
+  --accent-ink-strong: oklch(0.42 calc(var(--accent-c) * 0.72) var(--accent-ink-h));
   --danger: oklch(0.55 0.17 28);
   --danger-soft: oklch(0.93 0.04 28);
   --step-inactive: #e0ddd5;
@@ -42,9 +46,9 @@
   --tab-inactive: #6f7780;
   --grabber: #3a4048;
   --dim: rgba(0, 0, 0, 0.55);
-  --accent-soft: #2a2619;
-  --accent-ink: oklch(0.85 0.12 85);
-  --accent-ink-strong: oklch(0.85 0.12 85);
+  --accent-soft: oklch(0.27 calc(var(--accent-c) * 0.25) var(--accent-h));
+  --accent-ink: oklch(0.85 calc(var(--accent-c) * 0.86) var(--accent-h));
+  --accent-ink-strong: oklch(0.85 calc(var(--accent-c) * 0.86) var(--accent-h));
   --danger: oklch(0.7 0.17 28);
   --danger-soft: oklch(0.3 0.06 28);
   --step-inactive: #2a2f35;
@@ -69,9 +73,9 @@
     --tab-inactive: #6f7780;
     --grabber: #3a4048;
     --dim: rgba(0, 0, 0, 0.55);
-    --accent-soft: #2a2619;
-    --accent-ink: oklch(0.85 0.12 85);
-    --accent-ink-strong: oklch(0.85 0.12 85);
+    --accent-soft: oklch(0.27 calc(var(--accent-c) * 0.25) var(--accent-h));
+    --accent-ink: oklch(0.85 calc(var(--accent-c) * 0.86) var(--accent-h));
+    --accent-ink-strong: oklch(0.85 calc(var(--accent-c) * 0.86) var(--accent-h));
     --danger: oklch(0.7 0.17 28);
     --danger-soft: oklch(0.3 0.06 28);
     --step-inactive: #2a2f35;
@@ -79,6 +83,31 @@
     --expense-button-bg: var(--accent);
     --expense-button-ink: #121417;
   }
+}
+
+/* Accent colours chosen in Settings; amber (85) is the default from the design. */
+:root[data-accent='mint'] {
+  --accent-h: 170;
+  --accent-c: 0.12;
+  --accent-ink-h: 175;
+}
+
+:root[data-accent='sky'] {
+  --accent-h: 235;
+  --accent-c: 0.11;
+  --accent-ink-h: 245;
+}
+
+:root[data-accent='lavender'] {
+  --accent-h: 300;
+  --accent-c: 0.11;
+  --accent-ink-h: 295;
+}
+
+:root[data-accent='coral'] {
+  --accent-h: 45;
+  --accent-c: 0.13;
+  --accent-ink-h: 40;
 }
 
 *,
@@ -1397,4 +1426,98 @@ select.input {
 .explain-row.is-strong .list-sub {
   font-size: 13px;
   font-weight: 600;
+}
+
+/* Accent swatches in Settings */
+
+.accent-picker {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.accent-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.accent-swatch-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 2px transparent;
+}
+
+.accent-swatch.is-selected {
+  color: var(--ink);
+}
+
+.accent-swatch.is-selected .accent-swatch-dot {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* «Добавить на главный экран» */
+
+.install-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 44px 16px 18px;
+  border-radius: 20px;
+  background: var(--surface);
+  font-size: 15px;
+}
+
+.install-card strong {
+  font-size: 17px;
+}
+
+.install-card .banner-yes {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.install-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  color: var(--muted);
+}
+
+.install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.install-steps strong {
+  font-size: inherit;
+  color: var(--ink);
+}
+
+.install-icon {
+  display: inline-block;
+  vertical-align: -3px;
+  margin: 0 2px;
+}
+
+.form-body .install-card {
+  padding-right: 18px;
 }

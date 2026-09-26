@@ -3,7 +3,9 @@ import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate, ReserveCategory } from '../domain/types';
 import { setTheme } from '../appData';
-import { Segmented } from '../components/Form';
+import { FormScreen, Segmented } from '../components/Form';
+import { InstallSteps, type InstallInfo } from '../components/InstallHint';
+import { ACCENTS, type Accent } from '../uiState';
 import { formatDayMonth } from '../ui/labels';
 import { CushionForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm, ReserveForm } from './SettingsForms';
 
@@ -15,7 +17,8 @@ export type SettingsRoute =
   | { screen: 'reserve'; category: ReserveCategory }
   | { screen: 'cushion' }
   | { screen: 'goal'; id: string | null }
-  | { screen: 'reconcile' };
+  | { screen: 'reconcile' }
+  | { screen: 'install' };
 
 export type Update = (change: (data: AppData) => AppData) => void;
 
@@ -26,6 +29,9 @@ export interface SettingsProps {
   route: SettingsRoute;
   onNavigate: (route: SettingsRoute) => void;
   update: Update;
+  accent: Accent;
+  onAccentChange: (accent: Accent) => void;
+  install: InstallInfo;
 }
 
 /** 2i: incomes, what is set aside until the next income, goals, balance. Each row opens a form. */
@@ -48,6 +54,8 @@ export function Settings(props: SettingsProps) {
       return <GoalForm {...props} id={route.id} onBack={back} />;
     case 'reconcile':
       return <ReconcileForm {...props} onBack={back} />;
+    case 'install':
+      return <InstallGuide install={props.install} onBack={back} />;
     case 'main':
       break;
   }
@@ -164,6 +172,61 @@ export function Settings(props: SettingsProps) {
         value={data.settings.theme}
         onChange={(theme) => update((d) => setTheme(d, theme))}
       />
+
+      <span className="section-label">Цвет акцента</span>
+      <div className="card accent-picker" role="radiogroup" aria-label="Цвет акцента">
+        {ACCENTS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            role="radio"
+            aria-checked={props.accent === a.id}
+            className={`accent-swatch${props.accent === a.id ? ' is-selected' : ''}`}
+            onClick={() => props.onAccentChange(a.id)}
+          >
+            <span className="accent-swatch-dot" style={{ background: `oklch(0.82 ${a.chroma} ${a.hue})` }} />
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      <span className="section-label">Приложение</span>
+      <ul className="card list">
+        <li>
+          <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'install' })}>
+            <span className="list-text">
+              <span className="list-name">Как добавить на главный экран</span>
+              <span className="list-sub">{props.install.standalone ? 'уже добавлено' : 'чтобы открывать как приложение'}</span>
+            </span>
+          </button>
+        </li>
+      </ul>
     </main>
+  );
+}
+
+/** Instructions for both platforms; the current device's one comes first. */
+function InstallGuide({ install, onBack }: { install: InstallInfo; onBack: () => void }) {
+  const ios = (
+    <div className="card install-card" key="ios">
+      <strong>iPhone, Safari</strong>
+      <InstallSteps platform="ios" />
+    </div>
+  );
+  const android = (
+    <div className="card install-card" key="android">
+      <strong>Android, Chrome</strong>
+      <InstallSteps platform={install.platform === 'prompt' ? 'prompt' : 'android'} />
+    </div>
+  );
+  return (
+    <FormScreen title="На главный экран" onBack={onBack}>
+      {install.standalone && (
+        <div className="card status-card">
+          <span>Dayly уже открыт с главного экрана.</span>
+        </div>
+      )}
+      {install.platform === 'ios' ? [ios, android] : [android, ios]}
+    </FormScreen>
   );
 }

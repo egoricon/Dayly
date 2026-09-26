@@ -109,3 +109,51 @@ test('PWA: manifest and service worker are served', async ({ page }) => {
   const persisted = await page.evaluate(() => navigator.storage.persisted());
   console.log('manifest:', manifest.name, '| service worker scope:', scope, '| storage.persisted():', persisted);
 });
+
+test('accent colour applies at once and survives a reload', async ({ page }) => {
+  await page.clock.install({ time: TODAY });
+  await page.goto('/');
+  await onboard(page);
+  const hue = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent-h').trim());
+  expect(await hue()).toBe('85');
+
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('radio', { name: 'Мята' }).click();
+  expect(await hue()).toBe('170');
+  const ring = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+  console.log('accent after «Мята»:', ring);
+
+  await page.reload();
+  expect(await hue()).toBe('170');
+  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+});
+
+test('home-screen hint: iPhone steps from the second launch, gone once dismissed', async ({ browser }) => {
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  await page.clock.install({ time: TODAY });
+  await page.goto(BASE);
+  await onboard(page);
+  await expect(page.getByTestId('install-hint')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId('install-hint')).toBeVisible();
+  await expect(page.getByTestId('install-steps-ios')).toContainText('На экран „Домой“');
+  console.log('hint:', (await page.getByTestId('install-hint').innerText()).replace(/\n/g, ' | '));
+
+  await page.getByRole('button', { name: 'Скрыть подсказку' }).click();
+  await expect(page.getByTestId('install-hint')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+  await expect(page.getByTestId('install-hint')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: /Как добавить на главный экран/ }).click();
+  await expect(page.getByText('iPhone, Safari')).toBeVisible();
+  await expect(page.getByText('Android, Chrome')).toBeVisible();
+  await context.close();
+});

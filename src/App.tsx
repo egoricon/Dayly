@@ -10,7 +10,8 @@ import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
 import { Settings, type SettingsRoute, type Update } from './screens/Settings';
 import { loadData, saveData } from './storage';
-import { hideBanner, isBannerHidden, loadUiState, saveUiState } from './uiState';
+import { useInstallInfo } from './components/InstallHint';
+import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, type Accent } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -34,9 +35,19 @@ function applyTheme(theme: AppData['settings']['theme']): void {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#121417' : '#F4F3EF');
 }
 
+/** Sets the accent palette on <html>; index.html does the same before the first paint. */
+function applyAccent(accent: Accent): void {
+  document.documentElement.dataset.accent = accent;
+}
+
 export function App() {
   const [data, setData] = useState<AppData | null>(() => loadData(localStorage));
-  const [ui, setUi] = useState(() => loadUiState(localStorage));
+  // Each page load counts as a launch; the install hint waits for the second one.
+  const [ui, setUi] = useState(() => {
+    const state = loadUiState(localStorage);
+    return { ...state, launches: state.launches + 1 };
+  });
+  const install = useInstallInfo();
   const [tab, setTab] = useState<Tab>('today');
   const [settingsRoute, setSettingsRoute] = useState<SettingsRoute>({ screen: 'main' });
   const [showFirstLimit, setShowFirstLimit] = useState(false);
@@ -53,6 +64,7 @@ export function App() {
 
   const theme = data?.settings.theme ?? 'auto';
   useEffect(() => applyTheme(theme), [theme]);
+  useEffect(() => applyAccent(ui.accent), [ui.accent]);
 
   // The app layer, not the calculation, records the day's limit for tomorrow's carry-over.
   useEffect(() => {
@@ -106,12 +118,24 @@ export function App() {
           update={update}
           isBannerHidden={(key) => isBannerHidden(ui, key, today)}
           onHideBanner={(key) => setUi((state) => hideBanner(state, key, today))}
+          installHint={shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
+          onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
           onOpenSettings={openSettings}
         />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'settings' && (
-        <Settings data={data} budget={budget} today={today} route={settingsRoute} onNavigate={setSettingsRoute} update={update} />
+        <Settings
+          data={data}
+          budget={budget}
+          today={today}
+          route={settingsRoute}
+          onNavigate={setSettingsRoute}
+          update={update}
+          accent={ui.accent}
+          onAccentChange={(accent) => setUi((state) => ({ ...state, accent }))}
+          install={install}
+        />
       )}
       <TabBar
         active={tab}

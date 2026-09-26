@@ -11,10 +11,11 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <title>Dayly</title>
     <script>
-      // Theme before the first paint, so a dark phone does not flash light.
+      // Theme and accent before the first paint, so a dark phone does not flash light.
       try {
         var theme = JSON.parse(localStorage.getItem('dayly:data') || 'null')?.settings?.theme || 'auto';
         document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.accent = JSON.parse(localStorage.getItem('dayly:ui') || 'null')?.accent || 'amber';
       } catch (e) {
         document.documentElement.dataset.theme = 'auto';
       }
