@@ -22,6 +22,16 @@ import {
 /** How long «Отложено 8,00 BYN в «Наушники»» stays. */
 const TOAST_MS = 3000;
 
+/**
+ * Screens this low (an iPhone SE, or any iPhone in Safari or Telegram with their bars) would lose
+ * the bottom of the ring under the whole card, so the card starts folded: the title and two buttons.
+ */
+const FOLDED_QUERY = '(max-height: 769px)';
+
+function startsFolded(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.(FOLDED_QUERY).matches === true;
+}
+
 interface SavingsCardsProps {
   data: AppData;
   budget: BudgetResult;
@@ -127,11 +137,15 @@ interface SavingsCardProps {
   onDone: () => void;
 }
 
-/** A banner-like card with a choice of goal or cushion and what the limit becomes. */
+/**
+ * A banner-like card with a choice of goal or cushion and what the limit becomes. Folded on a low
+ * screen: «Отложить…» unfolds the choice first, and only the unfolded «Отложить» sets money aside.
+ */
 function SavingsCard(props: SavingsCardProps) {
   const { data, budget, today, offeredKopecks } = props;
   const options = targetOptions(data, today).filter((o) => setAsideAmount(budget, o, offeredKopecks) > 0);
   const [selectedKey, setSelectedKey] = useState(options[0]?.key ?? null);
+  const [folded, setFolded] = useState(startsFolded);
   const [leaving, setLeaving] = useState(false);
   const option = options.find((o) => o.key === selectedKey) ?? options[0];
   const amount = option ? setAsideAmount(budget, option, offeredKopecks) : 0;
@@ -143,10 +157,10 @@ function SavingsCard(props: SavingsCardProps) {
   };
 
   return (
-    <div className={`card banner savings-card${leaving ? ' is-leaving' : ''}`} data-testid={props.testId}>
+    <div className={`card banner savings-card${folded ? ' is-folded' : ''}${leaving ? ' is-leaving' : ''}`} data-testid={props.testId}>
       <strong>{props.title}</strong>
       {props.text && <span className="banner-sub">{props.text}</span>}
-      {option && (
+      {option && !folded && (
         <>
           <span className="banner-sub">
             {props.question} {intoTarget(option)}?
@@ -173,20 +187,25 @@ function SavingsCard(props: SavingsCardProps) {
         </>
       )}
       <div className="banner-actions">
-        {option && (
-          <button
-            type="button"
-            className="banner-yes"
-            onClick={() =>
-              leave(() => {
-                props.onSetAside(option, amount);
-                props.onDone();
-              })
-            }
-          >
-            {props.setAsideLabel}
-          </button>
-        )}
+        {option &&
+          (folded ? (
+            <button type="button" className="banner-yes" onClick={() => setFolded(false)}>
+              {props.setAsideLabel}…
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="banner-yes"
+              onClick={() =>
+                leave(() => {
+                  props.onSetAside(option, amount);
+                  props.onDone();
+                })
+              }
+            >
+              {props.setAsideLabel}
+            </button>
+          ))}
         <button type="button" className="banner-other" onClick={() => leave(props.onDone)}>
           {props.laterLabel}
         </button>

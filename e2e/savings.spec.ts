@@ -226,6 +226,45 @@ test('«Итоги периода» on the first day: 245,00 go to the goal, and
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dayly:ui')!).dismissedCards)).toEqual(['summary|2026-08-26']);
 });
 
+test('a low screen folds the savings cards, so the ring stays whole; «Отложить…» opens the choice', async ({ browser }) => {
+  const viewport = { width: 375, height: 667 };
+  let context = await browser.newContext({ viewport, locale: 'ru-RU' });
+  let page = await context.newPage();
+  await open(page, leftoverFromYesterday());
+  const card = page.getByTestId('leftover-card');
+  await expect(card).toContainText('Вчера осталось 8,00 BYN');
+  await expect(card.locator('.chip')).toHaveCount(0);
+  await expect(card.getByTestId('savings-card-note')).toHaveCount(0);
+  await settle(page);
+  const ring = (await page.getByTestId('ring').boundingBox())!;
+  const bottom = (await page.locator('.home-bottom').boundingBox())!;
+  expect(ring.y + ring.height).toBeLessThanOrEqual(bottom.y);
+  await page.screenshot({ path: test.info().outputPath('leftover-folded.png') });
+
+  // Nothing is set aside until the choice is seen.
+  await card.getByRole('button', { name: 'Отложить…' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('37,55');
+  await expect(card.getByTestId('savings-card-note')).toHaveText('Лимит станет 36,66 BYN в день');
+  await card.getByRole('button', { name: 'Подушка' }).click();
+  await expect(card).toContainText('Отложить в подушку?');
+  await card.getByRole('button', { name: 'Отложить', exact: true }).click();
+  await expect(page.getByTestId('savings-toast')).toHaveText('Отложено 8,00 BYN в подушку');
+  await expect(card).toHaveCount(0);
+  await context.close();
+
+  // «Итоги периода» keeps its numbers folded; the choice waits for «Отправить в копилку…».
+  context = await browser.newContext({ viewport, locale: 'ru-RU' });
+  page = await context.newPage();
+  await open(page, newPeriod());
+  const summary = page.getByTestId('period-summary');
+  await expect(summary).toContainText('В лимите 24 из 25 дней, отложено 15,00 BYN, осталось 245,00 BYN');
+  await expect(summary).not.toContainText('Отправить остаток');
+  await summary.getByRole('button', { name: 'Отправить в копилку…' }).click();
+  await expect(summary).toContainText('Отправить остаток в «Наушники»?');
+  await expect(page.getByTestId('hero-amount')).toHaveText('14,40');
+  await context.close();
+});
+
 test('«Функции»: with the savings ring, the leftover and the summary off, none of them shows', async ({ page }) => {
   const features = { savingsRing: false, leftover: false, periodSummary: false };
   await open(page, newPeriod(), { ...UI, features });

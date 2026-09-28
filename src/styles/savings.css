@@ -241,3 +241,20 @@
 .savings-card .banner-actions {
   margin-top: 12px;
 }
+
+/* Folded on a low screen: the title and two buttons, closer to the ring, so the ring stays whole. */
+.savings-card.is-folded {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  margin-bottom: -6px;
+}
+
+.savings-card.is-folded .banner-actions {
+  margin-top: 8px;
+}
+
+.savings-card.is-folded .banner-yes,
+.savings-card.is-folded .banner-other {
+  height: 34px;
+  border-radius: 17px;
+}
