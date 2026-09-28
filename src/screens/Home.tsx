@@ -10,7 +10,7 @@ import { recentOperations } from '../domain/history';
 import { formatKopecks, formatMoney } from '../domain/money';
 import { incomesToConfirm } from '../domain/planned';
 import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
-import type { InstallPlatform } from '../uiState';
+import type { FeatureKey, InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
 import { Explain } from './Explain';
 import type { FinanceRoute, Update } from './Finances';
@@ -30,6 +30,10 @@ interface HomeProps {
   installHint: InstallPlatform | null;
   onDismissInstallHint: () => void;
   onOpenFinances: (route: FinanceRoute) => void;
+  /** Opens the «Календарь» tab, on a day's sheet when `date` is given. */
+  onOpenCalendar: (date: LocalDate | null) => void;
+  /** Whether a feature is on in «Настройки → Функции». */
+  feature: (key: FeatureKey) => boolean;
 }
 
 function signed(kopecks: number): string {

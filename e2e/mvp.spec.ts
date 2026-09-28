@@ -4,7 +4,8 @@ import { chromium, expect, test, type Page } from '@playwright/test';
 // The clock is fixed to 26 September 2026, the day of example А, so the numbers are known.
 
 const TODAY = new Date('2026-09-26T10:00:00');
-const BASE = 'http://localhost:4173/';
+declare const process: { env: Record<string, string | undefined> };
+const BASE = `http://localhost:${process.env.DAYLY_E2E_PORT ?? '4173'}/`;
 
 async function typeAmount(page: Page, amount: string) {
   for (const ch of amount) await page.keyboard.press(ch === ',' ? 'Comma' : ch);

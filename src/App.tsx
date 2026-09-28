@@ -14,7 +14,7 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { hideBanner, isBannerHidden, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent } from './uiState';
+import { hideBanner, isBannerHidden, isFeatureOn, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent, type FeatureKey } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -85,6 +85,8 @@ export function App() {
   const [financeRoute, setFinanceRoute] = useState<FinanceRoute>({ screen: 'main' });
   const [settingsRoute, setSettingsRoute] = useState<SettingsRoute>({ screen: 'main' });
   const [showFirstLimit, setShowFirstLimit] = useState(false);
+  // The day the «Календарь» tab opens on (null: today's month, no day sheet).
+  const [calendarDate, setCalendarDate] = useState<LocalDate | null>(null);
   const today = useToday();
   const budget = useMemo(() => (data ? calculateBudget(data, today) : null), [data, today]);
 
@@ -127,6 +129,12 @@ export function App() {
     setFinanceRoute(route);
     setTab('finances');
   };
+  const openCalendar = (date: LocalDate | null) => {
+    setCalendarDate(date);
+    setTab('calendar');
+  };
+  // «Настройки → Функции»: a feature turned off is not shown; its data stays.
+  const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   // «Сбросить всё»: this device forgets everything and the app starts from onboarding.
   const reset = () => {
     localStorage.removeItem(DATA_KEY);
@@ -168,11 +176,17 @@ export function App() {
           installHint={inApp === null && shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
           onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
           onOpenFinances={openFinances}
+          onOpenCalendar={openCalendar}
+          feature={feature}
         />
+      )}
+      {tab === 'calendar' && (
+        // Placeholder until the «Календарь» screen of update 1 (task A) replaces it, opened on calendarDate.
+        <main className="screen with-tabs" data-testid="calendar-placeholder" data-date={calendarDate ?? ''} />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (
-        <Finances data={data} budget={budget} today={today} route={financeRoute} onNavigate={setFinanceRoute} update={update} />
+        <Finances data={data} budget={budget} today={today} route={financeRoute} onNavigate={setFinanceRoute} update={update} feature={feature} />
       )}
       {tab === 'settings' && (
         <Settings

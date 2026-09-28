@@ -5,6 +5,7 @@ import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/catego
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
+import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
 
@@ -28,6 +29,8 @@ export interface FinanceProps {
   route: FinanceRoute;
   onNavigate: (route: FinanceRoute) => void;
   update: Update;
+  /** Whether a feature is on in «Настройки → Функции». */
+  feature: (key: FeatureKey) => boolean;
 }
 
 /** «Финансы» (2i without the app settings): incomes, what is set aside, goals, categories, favourites, balance. Each row opens a form. */

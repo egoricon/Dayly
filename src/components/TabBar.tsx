@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-export type Tab = 'today' | 'history' | 'finances' | 'settings';
+// 'calendar' is the «Календарь» tab of update 1 (its entry in TABS comes with the calendar screen).
+export type Tab = 'today' | 'calendar' | 'history' | 'finances' | 'settings';
 
 const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
   {
