@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { repeatLabel } from './components/EventSheet';
 import { calculateBudget } from './domain/budget';
-import { emptyData, exampleA } from './domain/fixtures';
+import { emptyData, exampleA, tx } from './domain/fixtures';
 import { plannedEvents } from './domain/planned';
 import type { AppData } from './domain/types';
-import { eventDraftOf, removeEvent, saveEvent, type EventDraft } from './events';
+import { eventDraftOf, isCurrentPlan, removeEvent, saveEvent, startDateAfterSave, type EventDraft } from './events';
 
 // Calendar events: an income or a «расход» (payment) with «Повтор», saved as planned incomes and payments.
 
@@ -76,6 +76,43 @@ describe('saveEvent', () => {
     expect(changed.incomeSources[0]).toMatchObject({ id, amountKopecks: 25000, dayOfMonth: 5, startDate: '2026-10-05' });
     expect(changed.settings.mainIncomeSourceId).toBe(id);
     expect(plannedEvents(changed, '2026-10-01', '2026-11-30').map((e) => e.amountKopecks)).toEqual([25000, 25000]);
+  });
+
+  it('new days start at the edited occurrence, so none of them appear in the past; a new amount keeps the start', () => {
+    // Monthly on the 13th from 13 October, that one paid; opened on 13 November (a Friday) and made weekly.
+    let data = saveEvent(emptyData(TODAY), draft({ repeat: 'monthly' }), null);
+    const id = data.payments[0]!.id;
+    const paid = tx({ type: 'expense', amountKopecks: 2000, date: '2026-10-13', paymentId: id, plannedDate: '2026-10-13' });
+    data = { ...data, transactions: [paid] };
+    const opened = eventDraftOf(data, { kind: 'payment', id }, '2026-11-13')!;
+
+    const weekly = saveEvent(data, { ...opened, repeat: 'weekly' }, id);
+    expect(weekly.payments[0]).toMatchObject({ id, dayOfMonth: null, weekday: 5, startDate: '2026-11-13' });
+    expect(plannedEvents(weekly, '2026-10-01', '2026-11-30').map((e) => e.date)).toEqual(['2026-11-13', '2026-11-20', '2026-11-27']);
+    expect(weekly.transactions).toEqual([paid]);
+
+    const cheaper = saveEvent(data, { ...opened, amountKopecks: 1500 }, id);
+    expect(cheaper.payments[0]).toMatchObject({ amountKopecks: 1500, dayOfMonth: 13, startDate: '2026-10-13' });
+    expect(plannedEvents(cheaper, '2026-10-01', '2026-11-30').map((e) => [e.date, e.amountKopecks, e.done])).toEqual([
+      ['2026-10-13', 2000, true],
+      ['2026-11-13', 1500, false],
+    ]);
+  });
+
+  it('the start after a save: new ones and new days from the given day, otherwise as it was', () => {
+    const monthly = { dayOfMonth: 5, weekday: null, date: null, startDate: '2026-09-26' };
+    expect(startDateAfterSave(undefined, monthly, '2026-10-01')).toBe('2026-10-01');
+    expect(startDateAfterSave(monthly, { ...monthly }, '2026-10-01')).toBe('2026-09-26');
+    expect(startDateAfterSave(monthly, { dayOfMonth: 7, weekday: null, date: null }, '2026-10-01')).toBe('2026-10-01');
+    expect(startDateAfterSave(monthly, { dayOfMonth: null, weekday: null, date: '2026-10-20' }, '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('«Финансы» leaves out one-off plans of earlier periods', () => {
+    const period = { start: '2026-09-05', end: '2026-10-04' };
+    expect(isCurrentPlan({ dayOfMonth: 1, weekday: null, date: null }, period)).toBe(true);
+    expect(isCurrentPlan({ dayOfMonth: null, weekday: null, date: '2026-09-05' }, period)).toBe(true);
+    expect(isCurrentPlan({ dayOfMonth: null, weekday: null, date: '2026-11-05' }, period)).toBe(true);
+    expect(isCurrentPlan({ dayOfMonth: null, weekday: null, date: '2026-09-04' }, period)).toBe(false);
   });
 
   it('removing stops every repeat but keeps the payment for old operations', () => {

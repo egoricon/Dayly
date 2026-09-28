@@ -30,6 +30,42 @@ export function repeatLabel(repeat: Repeat, date: LocalDate | null): string {
   }
 }
 
+/**
+ * Rows with a check mark on the chosen one, as «Повтор» in a phone calendar. Also «Когда приходит»
+ * and «Когда платить» in «Финансы».
+ */
+export function ChoiceRows<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="card list repeat-options" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === value}
+          className={`list-row repeat-option${o.value === value ? ' is-selected' : ''}`}
+          onClick={() => onChange(o.value)}
+        >
+          <span className="list-name">{o.label}</span>
+          <svg className="repeat-check" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** The tapped day, or null to pick the day in a calendar within [minDate, maxDate]. */
 type EventDateProps = { date: LocalDate; minDate?: undefined; maxDate?: undefined } | { date: null; minDate: LocalDate; maxDate: LocalDate };
 
@@ -126,23 +162,12 @@ export function EventSheet({ kind, date: fixedDate, minDate, maxDate, initial, e
                     : 'Будем ждать эти деньги в каждый повтор.'
               }
             >
-              <div className="card list repeat-options" role="radiogroup" aria-label="Повтор">
-                {REPEATS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    role="radio"
-                    aria-checked={r === repeat}
-                    className={`list-row repeat-option${r === repeat ? ' is-selected' : ''}`}
-                    onClick={() => setRepeat(r)}
-                  >
-                    <span className="list-name">{repeatLabel(r, date)}</span>
-                    <svg className="repeat-check" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                      <path d="M3.5 9.5l3.5 3.5 7.5-8" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
+              <ChoiceRows
+                label="Повтор"
+                options={REPEATS.map((r) => ({ value: r, label: repeatLabel(r, date) }))}
+                value={repeat}
+                onChange={setRepeat}
+              />
             </Field>
             {onDelete && (
               <button
@@ -153,7 +178,8 @@ export function EventSheet({ kind, date: fixedDate, minDate, maxDate, initial, e
                   close();
                 }}
               >
-                {repeat === 'once' ? 'Удалить' : 'Удалить со всеми повторами'}
+                {/* Deleting removes what is saved, whatever «Повтор» shows now. */}
+                {(initial?.repeat ?? repeat) === 'once' ? 'Удалить' : 'Удалить со всеми повторами'}
               </button>
             )}
           </div>

@@ -292,11 +292,16 @@ test('week strip, «Завтра будет…» and «Ближайшее»; eac
   await expect(page.getByTestId('tomorrow-hint')).toHaveText('Остановишься сейчас — завтра 31,04 (+2,50)');
 
   await expect(page.getByTestId('upcoming')).toHaveText('Ближайшее: Чт: Общежитие −45 · 3 окт: Интернет −30');
+  // «Ближайшее» opens the calendar on that day's sheet; the week strip opens this month.
   await page.getByTestId('upcoming-item').nth(1).click();
-  await expect(page.getByTestId('calendar-placeholder')).toHaveAttribute('data-date', '2026-10-03');
-  await page.getByRole('button', { name: 'Сегодня' }).click();
+  await expect(page.getByTestId('calendar-month')).toHaveText('Октябрь');
+  await expect(page.locator('.day-sheet')).toContainText('3 октября');
+  await page.locator('.sheet-dim').click({ position: { x: 20, y: 20 } });
+  await expect(page.locator('.day-sheet')).toHaveCount(0);
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня', exact: true }).click();
   await strip.click();
-  await expect(page.getByTestId('calendar-placeholder')).toHaveAttribute('data-date', '');
+  await expect(page.getByTestId('calendar-month')).toHaveText('Сентябрь');
+  await expect(page.locator('.day-sheet')).toHaveCount(0);
 });
 
 test('features turned off in «Настройки → Функции» are not shown', async ({ page }) => {
