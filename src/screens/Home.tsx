@@ -5,6 +5,10 @@ import { HeroAmount } from '../components/HeroAmount';
 import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
+import { TargetLine } from '../components/TargetLine';
+import { TomorrowHint } from '../components/TomorrowHint';
+import { Upcoming } from '../components/Upcoming';
+import { WeekStrip } from '../components/WeekStrip';
 import { cushionSavedBy, type BudgetResult, type Occurrence } from '../domain/budget';
 import { recentOperations } from '../domain/history';
 import { formatKopecks, formatMoney } from '../domain/money';
@@ -12,7 +16,9 @@ import { incomesToConfirm } from '../domain/planned';
 import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
 import type { FeatureKey, InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
+import { addedTransaction, ringTone, runningLowLabel, targetLine, tomorrowIfStopped, undoText } from '../ui/homeHints';
 import { Explain } from './Explain';
+import { Levers } from './Levers';
 import type { FinanceRoute, Update } from './Finances';
 import { afterLeave } from '../ui/motion';
 
@@ -42,7 +48,7 @@ function signed(kopecks: number): string {
 
 type SheetState = { open: false } | { open: true; mode?: EntryMode; incomePreset?: IncomePreset; editing?: Transaction };
 
-/** How long «Отменить» stays after a tap on a favourite. */
+/** How long «Отменить» stays after a tap on a favourite or «Добавить» in the sheet. */
 const UNDO_MS = 5000;
 
 /** The home list shows the last two operations; «Развернуть» shows the last week. */
@@ -51,15 +57,15 @@ const RECENT_DAYS = 7;
 
 interface Undo {
   transactionId: string;
-  text: string;
 }
 
 /** 2f: the daily limit in a ring, today's expenses, balance and «+ Трата». */
 export function Home(props: HomeProps) {
-  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances } = props;
+  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances, onOpenCalendar, feature } = props;
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
+  const [leversOpen, setLeversOpen] = useState(false);
   const [intro] = useState(() => !introPlayed);
   introPlayed = true;
   const [undo, setUndo] = useState<Undo | null>(null);
@@ -73,20 +79,41 @@ export function Home(props: HomeProps) {
   const addFavorite = (favorite: Favorite) => {
     const result = addFavoriteExpense(data, favorite, today, new Date());
     update(() => result.data);
-    setUndo({ transactionId: result.transactionId, text: `${favorite.label} −${formatKopecks(favorite.amountKopecks)}` });
+    setUndo({ transactionId: result.transactionId });
   };
 
   const overspent = budget.status === 'ok' && budget.remainingTodayKopecks < 0;
   const deficit = budget.status === 'deficit';
   const fraction = deficit || overspent ? 1 : budget.dailyLimitKopecks === 0 ? 0 : budget.remainingTodayKopecks / budget.dailyLimitKopecks;
 
+  // «Отменить» follows its operation: an edit changes the text, a delete takes the toast away.
+  const undone = undo && data.transactions.find((t) => t.id === undo.transactionId);
+
   const recent = recentOperations(data, today, RECENT_DAYS);
   const shown = expanded ? recent : recent.slice(0, COLLAPSED_OPERATIONS);
 
   const carry = budget.carryFromYesterdayKopecks;
   const banner = pickBanner(data, budget, today, isBannerHidden);
+  // Update 1: yellow ring, «Завтра будет…» (it takes over «завтра можно» below), the target daily limit.
+  const tone = ringTone(budget, feature('earlyWarning'));
+  const tomorrow = feature('tomorrowHint') ? tomorrowIfStopped(budget) : null;
+  const target = targetLine(data, budget);
+  // The week strip and «Ближайшее» open the calendar only while its tab is on.
+  const openCalendar = feature('calendar') ? onOpenCalendar : undefined;
 
   if (explainOpen) return <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />;
+  if (leversOpen) {
+    return (
+      <Levers
+        data={data}
+        budget={budget}
+        today={today}
+        update={update}
+        onBack={() => setLeversOpen(false)}
+        onEditTarget={() => onOpenFinances({ screen: 'target' })}
+      />
+    );
+  }
 
   return (
     <main className="screen home">
@@ -124,7 +151,7 @@ export function Home(props: HomeProps) {
           />
         )}
 
-        <Ring fraction={fraction} tone={deficit || overspent ? 'danger' : 'accent'} onClick={() => setExplainOpen(true)} fillIn={intro}>
+        <Ring fraction={fraction} tone={tone} onClick={() => setExplainOpen(true)} fillIn={intro}>
           {deficit && budget.shortfall ? (
             <>
               <span className="ring-label">Не хватает денег</span>
@@ -143,7 +170,11 @@ export function Home(props: HomeProps) {
             </>
           ) : (
             <>
-              <span className="ring-label">Сегодня можно</span>
+              {tone === 'warning' ? (
+                <span className="ring-label is-warning">{runningLowLabel(budget)}</span>
+              ) : (
+                <span className="ring-label">Сегодня можно</span>
+              )}
               <HeroAmount kopecks={budget.remainingTodayKopecks} from={intro ? 0 : undefined} />
               <span className="ring-caption" data-testid="ring-caption">
                 BYN из {formatKopecks(budget.dailyLimitKopecks)}
@@ -151,6 +182,8 @@ export function Home(props: HomeProps) {
             </>
           )}
         </Ring>
+
+        {feature('weekStrip') && <WeekStrip data={data} today={today} onOpen={openCalendar && (() => openCalendar(null))} />}
 
         {carry !== null && carry !== 0 && <div className={`carry-pill${carry < 0 ? ' is-negative' : ''}`}>{signed(carry)} с вчера</div>}
 
@@ -162,6 +195,15 @@ export function Home(props: HomeProps) {
             <span>С завтра можно тратить {formatMoney(budget.tomorrowLimitKopecks)} в день.</span>
           </div>
         )}
+
+        {(tomorrow || target) && (
+          <div className="home-lines">
+            {tomorrow && <TomorrowHint tomorrow={tomorrow} />}
+            {target && <TargetLine line={target} onOpen={() => setLeversOpen(true)} />}
+          </div>
+        )}
+
+        {feature('upcoming') && <Upcoming data={data} today={today} onOpenDate={openCalendar} />}
 
         {installHint && <InstallHint platform={installHint} onDismiss={onDismissInstallHint} />}
 
@@ -192,9 +234,9 @@ export function Home(props: HomeProps) {
         )}
       </div>
 
-      {undo && (
+      {undo && undone && (
         <div className="toast" role="status" key={undo.transactionId}>
-          <span>{undo.text}</span>
+          <span>{undoText(undone, data)}</span>
           <button
             type="button"
             className="toast-action"
@@ -211,8 +253,12 @@ export function Home(props: HomeProps) {
       <div className="home-bottom">
         <span className="home-summary">
           <span data-testid="balance">Баланс {formatMoney(budget.balanceKopecks)}</span>
-          {' · '}
-          <span data-testid="tomorrow">завтра можно {formatKopecks(budget.tomorrowLimitKopecks)}</span>
+          {tomorrow === null && (
+            <>
+              {' · '}
+              <span data-testid="tomorrow">завтра можно {formatKopecks(budget.tomorrowLimitKopecks)}</span>
+            </>
+          )}
         </span>
         <div className="home-actions">
           <button type="button" className="button-income" onClick={() => setSheet({ open: true, mode: 'income' })}>
@@ -233,7 +279,12 @@ export function Home(props: HomeProps) {
           initialMode={sheet.mode}
           incomePreset={sheet.incomePreset}
           editing={sheet.editing}
-          onSave={(next) => update(() => next)}
+          onSave={(next) => {
+            update(() => next);
+            // «Отмена траты»: a new expense or income can be taken back for 5 s, as a favourite can.
+            const added = feature('undo') ? addedTransaction(data, next) : null;
+            if (added) setUndo({ transactionId: added.id });
+          }}
           onClose={() => setSheet({ open: false })}
         />
       )}

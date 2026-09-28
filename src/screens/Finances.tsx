@@ -8,6 +8,7 @@ import type { AppData, LocalDate } from '../domain/types';
 import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
+import { TargetForm, TargetSection } from './TargetForm';
 
 export type FinanceRoute =
   | { screen: 'main' }
@@ -17,6 +18,7 @@ export type FinanceRoute =
   | { screen: 'category'; id: string | null }
   | { screen: 'cushion' }
   | { screen: 'goal'; id: string | null }
+  | { screen: 'target' } // «Хочу тратить в день»
   | { screen: 'reconcile' }
   | { screen: 'favorite'; id: string | null };
 
@@ -57,6 +59,8 @@ export function Finances(props: FinanceProps) {
       return <CushionForm {...props} onBack={back} />;
     case 'goal':
       return <GoalForm {...props} id={route.id} onBack={back} />;
+    case 'target':
+      return <TargetForm {...props} onBack={back} />;
     case 'reconcile':
       return <ReconcileForm {...props} onBack={back} />;
     case 'favorite':
@@ -209,6 +213,8 @@ export function Finances(props: FinanceProps) {
           + Добавить любимую трату
         </button>
       )}
+
+      <TargetSection data={data} budget={budget} onOpen={() => onNavigate({ screen: 'target' })} />
 
       <span className="section-label">Баланс</span>
       <ul className="card list">

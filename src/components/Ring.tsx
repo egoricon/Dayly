@@ -6,7 +6,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 interface RingProps {
   fraction: number; // 0..1 of the arc drawn from the top
-  tone: 'accent' | 'danger';
+  tone: 'accent' | 'warning' | 'danger'; // warning: more than 80 % of today's limit spent (home-extras.css)
   children: ReactNode;
   onClick?: () => void;
   /** Fills from empty on mount, used once per app launch. */
