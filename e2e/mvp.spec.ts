@@ -11,32 +11,44 @@ async function typeAmount(page: Page, amount: string) {
   for (const ch of amount) await page.keyboard.press(ch === ',' ? 'Comma' : ch);
 }
 
-/** Onboarding 2a–2e with example А: 586 on hand, scholarship 220 on 5 October, three payments. */
+/** The first-launch tips over the home screen: «Пропустить» closes them all. */
+async function skipTips(page: Page) {
+  await page.getByTestId('tips').getByRole('button', { name: 'Пропустить' }).click();
+  await expect(page.getByTestId('tips')).toHaveCount(0);
+}
+
+/**
+ * The first setup with example А: 586 on hand, «Стипендия» 220 every month from 5 October, three
+ * payments from the chips; products and transport skipped, then the first-launch tips skipped.
+ */
 async function onboard(page: Page) {
   await page.getByRole('button', { name: 'Начать' }).click();
   await typeAmount(page, '586');
   await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Стипендия', exact: true }).click();
   await page.getByRole('button', { name: 'Следующий месяц' }).click();
   await page.locator('.calendar-day', { hasText: /^5$/ }).click();
-  await page.getByPlaceholder('0,00').fill('220');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await typeAmount(page, '220');
   await page.getByRole('button', { name: 'Дальше' }).click();
   for (const [name, amount, day] of [
     ['Общежитие', '45', '1'],
     ['Интернет', '30', '3'],
     ['Телефон', '20', '4'],
   ] as const) {
-    await page.getByRole('button', { name: '+ Добавить платёж' }).click();
+    await page.getByRole('button', { name, exact: true }).click();
     const sheet = page.locator('.form-sheet');
-    await sheet.getByPlaceholder('Например, общежитие').fill(name);
     await sheet.getByPlaceholder('0,00').fill(amount);
     await sheet.getByRole('button', { name: 'Следующий месяц' }).click();
     await sheet.locator('.calendar-day', { hasText: new RegExp(`^${day}$`) }).click();
     await sheet.getByRole('button', { name: 'Добавить' }).click();
     await expect(sheet).toHaveCount(0);
   }
-  await page.getByRole('button', { name: 'Посчитать лимит' }).click();
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
   await expect(page.getByTestId('first-limit')).toHaveText('54,55BYN');
   await page.getByRole('button', { name: 'На главную' }).click();
+  await skipTips(page);
 }
 
 /** «+ Трата» → amount → «Добавить»: the three actions of the main scenario. */
@@ -213,15 +225,17 @@ test('iPhone fixes: a step back keeps the input, the payment button fits a short
   await page.getByRole('button', { name: 'Назад' }).click();
   await expect(page.getByTestId('start-amount')).toHaveText('586');
   await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Стипендия', exact: true }).click();
   await page.getByRole('button', { name: 'Следующий месяц' }).click();
   await page.locator('.calendar-day', { hasText: /^5$/ }).click();
-  await page.getByPlaceholder('0,00').fill('220');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await typeAmount(page, '220');
   await page.getByRole('button', { name: 'Дальше' }).click();
   await page.getByRole('button', { name: 'Назад' }).click();
-  await expect(page.getByPlaceholder('0,00')).toHaveValue('220');
+  await expect(page.getByTestId('income-amount')).toHaveText('220');
   await page.getByRole('button', { name: 'Дальше' }).click();
 
-  await page.getByRole('button', { name: '+ Добавить платёж' }).click();
+  await page.getByRole('button', { name: 'Общежитие', exact: true }).click();
   const add = page.locator('.form-sheet').getByRole('button', { name: 'Добавить' });
   await page.waitForTimeout(400);
   const box = (await add.boundingBox())!;
@@ -326,12 +340,16 @@ test('backup: save a copy, reset everything, restore the copy', async ({ page },
   await page.getByRole('button', { name: 'Начать' }).click();
   await typeAmount(page, '10');
   await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Стипендия', exact: true }).click();
   await page.getByRole('button', { name: 'Следующий месяц' }).click();
   await page.locator('.calendar-day', { hasText: /^5$/ }).click();
-  await page.getByPlaceholder('0,00').fill('1');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await typeAmount(page, '1');
   await page.getByRole('button', { name: 'Дальше' }).click();
   await page.getByRole('button', { name: 'Пропустить' }).click();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
   await page.getByRole('button', { name: 'На главную' }).click();
+  await skipTips(page);
   await page.getByRole('button', { name: 'Настройки' }).click();
   await page.getByTestId('restore-input').setInputFiles(file);
   await expect(page.getByText(/Восстановить копию от 26 сентября/)).toBeVisible();
@@ -467,14 +485,16 @@ test('a payment without a name: «Добавить» says what is missing and sh
   await page.getByRole('button', { name: 'Начать' }).click();
   await typeAmount(page, '100');
   await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Стипендия', exact: true }).click();
   // The inactive button is aria-disabled, so Playwright needs force to tap it as a person can.
   await page.getByRole('button', { name: 'Дальше' }).click({ force: true });
   await expect(page.getByTestId('form-missing')).toHaveText('Выбери в календаре, когда придут деньги');
   await page.locator('.calendar-day', { hasText: /^27$/ }).click();
-  await page.getByPlaceholder('0,00').fill('80');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await typeAmount(page, '80');
   await page.getByRole('button', { name: 'Дальше' }).click();
 
-  await page.getByRole('button', { name: '+ Добавить платёж' }).click();
+  await page.getByRole('button', { name: '+ Своё' }).click();
   const sheet = page.locator('.form-sheet');
   await sheet.getByPlaceholder('0,00').fill('80');
   await sheet.locator('.calendar-day', { hasText: /^26$/ }).click();
@@ -497,36 +517,45 @@ test('onboarding with a weekly income: next Friday, then every Friday', async ({
   await page.getByRole('button', { name: 'Начать' }).click();
   await typeAmount(page, '100');
   await page.getByRole('button', { name: 'Дальше' }).click();
-  await page.getByRole('button', { name: 'Зарплата' }).click();
-  await page.getByRole('radio', { name: 'Раз в неделю' }).click();
+  await page.getByRole('button', { name: 'Зарплата', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Когда придёт зарплата?' })).toBeVisible();
+  await page.getByRole('radio', { name: 'Каждую неделю' }).click();
   // Only the next seven days can be picked.
   await expect(page.locator('.calendar-day', { hasText: /^30$/ })).toBeEnabled();
   await page.getByRole('button', { name: 'Следующий месяц' }).click();
   await expect(page.locator('.calendar-day', { hasText: /^4$/ })).toBeDisabled();
   await page.locator('.calendar-day', { hasText: /^2$/ }).click();
-  await page.getByPlaceholder('0,00').fill('50');
   await expect(page.locator('.step-caption')).toHaveText('2 октября, через 6 дней, дальше по пятницам');
   await page.screenshot({ path: test.info().outputPath('weekly-income.png') });
   await page.getByRole('button', { name: 'Дальше' }).click();
-  await page.getByRole('button', { name: 'Посчитать лимит' }).click();
+  await typeAmount(page, '50');
+  await page.getByRole('button', { name: 'Дальше' }).click();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
+  // Products and transport are asked per week now.
+  await expect(page.getByText('Примерно за неделю.')).toBeVisible();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
   await expect(page.getByTestId('first-limit')).toHaveText('16,66BYN');
   await page.getByRole('button', { name: 'На главную' }).click();
+  await skipTips(page);
   await page.getByRole('button', { name: 'Финансы' }).click();
   await expect(page.getByTestId('settings-incomes')).toContainText('Зарплата · по пятницам');
 });
 
-test('onboarding without a planned income: «Настрою позже» stretches the money over a month', async ({ page }) => {
+test('onboarding without a planned income: «Пока нет постоянных» stretches the money over a month', async ({ page }) => {
   await page.clock.install({ time: TODAY });
   await page.goto('/');
   await page.getByRole('button', { name: 'Начать' }).click();
   await typeAmount(page, '100');
   await page.getByRole('button', { name: 'Дальше' }).click();
-  await page.getByRole('button', { name: 'Настрою позже' }).click();
-  await expect(page.getByRole('heading', { name: 'Что нужно оплатить до 26 октября?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Посчитать лимит' }).click();
+  await page.getByRole('button', { name: /Пока нет постоянных/ }).click();
+  // No questions about the income: straight to the payments.
+  await expect(page.getByRole('heading', { name: 'Что оплачиваешь регулярно?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
+  await page.getByRole('button', { name: 'Пропустить' }).click();
   await expect(page.locator('.first-limit-title')).toHaveText('Каждый день до 26 октября можно тратить');
   await expect(page.getByTestId('first-limit')).toHaveText('3,33BYN'); // 100,00 ÷ 30 days
   await page.getByRole('button', { name: 'На главную' }).click();
+  await skipTips(page);
   await expect(page.locator('.home-dates')).toContainText('до конца периода 30 дн.');
   // A planned income added later becomes the main one and sets the period.
   await page.getByRole('button', { name: 'Финансы' }).click();

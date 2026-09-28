@@ -1,7 +1,5 @@
-import { Keypad } from '../components/Keypad';
-import { StepProgress } from '../components/StepProgress';
 import { parseAmount } from '../domain/money';
-import { applyKey } from '../ui/amountInput';
+import { AmountStep } from './AmountStep';
 
 interface StartBalanceProps {
   /** Typed text, kept by the onboarding so a step back does not lose it. */
@@ -9,30 +7,24 @@ interface StartBalanceProps {
   onInput: (input: string) => void;
   onDone: (balanceKopecks: number) => void;
   onBack: () => void;
+  /** Steps of the whole setup; this is the first. */
+  total: number;
 }
 
-/** 2b: step 1 of 3, money on hand. */
-export function StartBalance({ input, onInput, onDone, onBack }: StartBalanceProps) {
-  const submit = () => {
-    if (input !== '') onDone(parseAmount(input) ?? 0);
-  };
-
+/** 2b: money on hand, the first step of the setup. */
+export function StartBalance({ input, onInput, onDone, onBack, total }: StartBalanceProps) {
   return (
-    <main className="screen onboarding">
-      <StepProgress step={1} onBack={onBack} />
-      <div className="step-title">
-        <h1>Сколько у тебя сейчас денег?</h1>
-        <p>Сложи карту и наличные. Точность до рубля не нужна.</p>
-      </div>
-      <div className="start-amount">
-        <span className="start-amount-number" data-testid="start-amount">{input === '' ? '0' : input}</span>
-        <span className="start-amount-currency">BYN</span>
-      </div>
-      <div className="spacer" />
-      <Keypad keyHeight={54} onKey={(key) => onInput(applyKey(input, key))} onEnter={submit} />
-      <button type="button" className="button-primary button-large" disabled={input === ''} onClick={submit}>
-        Дальше
-      </button>
-    </main>
+    <AmountStep
+      step={1}
+      total={total}
+      title="Сколько у тебя сейчас денег?"
+      subtitle="Сложи карту и наличные. Точность до рубля не нужна."
+      input={input}
+      onInput={onInput}
+      ready={input !== ''}
+      onDone={() => onDone(parseAmount(input) ?? 0)}
+      onBack={onBack}
+      testId="start-amount"
+    />
   );
 }

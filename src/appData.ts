@@ -1,6 +1,8 @@
 import { activeCategories, defaultCategories, MAX_CATEGORIES } from './domain/categories';
 import { isRecurring, weekdayIndex } from './domain/dates';
 import { rebasedCushion, rebasedGoal } from './domain/savings';
+// events.ts builds on this module too; each only calls the other inside functions.
+import { saveEvent, type EventDraft, type Repeat } from './events';
 import type {
   AppData,
   Category,
@@ -54,17 +56,22 @@ function dayOf(date: LocalDate): number {
   return Number(date.slice(8, 10));
 }
 
+/** A regular payment of the first setup: its next day and «Повтор», monthly unless given. */
+export type OnboardingPayment = Pick<EventDraft, 'name' | 'amountKopecks' | 'date'> & { repeat?: Repeat };
+
 export interface OnboardingResult {
   balanceKopecks: number;
-  /** `weekly`: comes every week on the weekday of `date`; otherwise every month on its day. */
-  income: { kind: IncomeSource['kind']; amountKopecks: number; date: LocalDate; weekly?: boolean } | null;
-  payments: { name: string; amountKopecks: number; date: LocalDate }[];
+  /** `weekly`: comes every week on the weekday of `date`; otherwise every month on its day. The name follows the kind unless given. */
+  income: { kind: IncomeSource['kind']; name?: string; amountKopecks: number; date: LocalDate; weekly?: boolean } | null;
+  payments: OnboardingPayment[];
+  /** Reserves of «Продукты» and «Транспорт» per full period; without them (skipped) both stay 0. */
+  reserves?: { groceriesKopecks: number; transportKopecks: number };
 }
 
 /**
  * Data after onboarding. The balance becomes a starting adjustment. The next income becomes
  * the main one: its day of month (or weekday) defines the period, and it is not expected before `date`.
- * Payments are monthly on the day of their date.
+ * Payments are saved as calendar events from their day on; reserves go to «Продукты» and «Транспорт».
  */
 export function createInitialData(today: LocalDate, result: OnboardingResult, now: Date): AppData {
   const transactions: Transaction[] = [];
@@ -77,7 +84,7 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
   const income: IncomeSource | null = result.income && {
     id: newId(),
     kind: result.income.kind,
-    name: INCOME_KIND_NAMES[result.income.kind],
+    name: result.income.name ?? INCOME_KIND_NAMES[result.income.kind],
     amountKopecks: result.income.amountKopecks,
     dayOfMonth: result.income.weekly ? null : dayOf(result.income.date),
     weekday: result.income.weekly ? weekdayIndex(result.income.date) + 1 : null,
@@ -85,13 +92,13 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     startDate: result.income.date,
     isActive: true,
   };
-  return {
+  const data: AppData = {
     schemaVersion: 5,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
       mainIncomeSourceId: income?.id ?? null,
-      categories: defaultCategories(),
+      categories: defaultCategories(result.reserves?.groceriesKopecks ?? 0, result.reserves?.transportKopecks ?? 0),
       cushion: { mode: 'fixed', amountKopecks: 0 },
       theme: 'auto',
       lastCategory: 'cafe',
@@ -99,20 +106,16 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
       targetDailyLimitKopecks: null,
     },
     incomeSources: income ? [income] : [],
-    payments: result.payments.map((p) => ({
-      id: newId(),
-      name: p.name,
-      amountKopecks: p.amountKopecks,
-      dayOfMonth: dayOf(p.date),
-      weekday: null,
-      date: null,
-      startDate: today,
-      isActive: true,
-    })),
+    payments: [],
     goals: [],
     transactions,
     daySummaries: [],
   };
+  // The same payments as «+ Расход» in the calendar makes.
+  return result.payments.reduce(
+    (next, p) => saveEvent(next, { kind: 'payment', incomeKind: 'other', name: p.name, amountKopecks: p.amountKopecks, date: p.date, repeat: p.repeat ?? 'monthly' }, null),
+    data,
+  );
 }
 
 export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date, note: string | null = null): AppData {

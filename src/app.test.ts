@@ -121,6 +121,67 @@ describe('first launch and quick entry', () => {
   });
 });
 
+describe('first setup (update 1)', () => {
+  const exampleA = {
+    balanceKopecks: 58600,
+    income: { kind: 'scholarship' as const, amountKopecks: 22000, date: '2026-10-05' },
+    payments: [
+      { name: 'Общежитие', amountKopecks: 4500, date: '2026-10-01' },
+      { name: 'Интернет', amountKopecks: 3000, date: '2026-10-03' },
+      { name: 'Телефон', amountKopecks: 2000, date: '2026-10-04' },
+    ],
+  };
+  const reserveOf = (data: AppData) => data.settings.categories.map((c) => [c.id, c.reserveKopecks]);
+
+  it('example А: payments become monthly events from their day, «Продукты» and «Транспорт» stay without a reserve', () => {
+    const data = createInitialData('2026-09-26', exampleA, NOW);
+    expect(data.payments.map((p) => [p.name, p.amountKopecks, p.dayOfMonth, p.weekday, p.date, p.startDate, p.isActive])).toEqual([
+      ['Общежитие', 4500, 1, null, null, '2026-10-01', true],
+      ['Интернет', 3000, 3, null, null, '2026-10-03', true],
+      ['Телефон', 2000, 4, null, null, '2026-10-04', true],
+    ]);
+    expect(data.incomeSources[0]).toMatchObject({ name: 'Стипендия', dayOfMonth: 5, startDate: '2026-10-05' });
+    expect(reserveOf(data)).toEqual([['cafe', null], ['delivery', null], ['shopping', null], ['fun', null], ['groceries', 0], ['transport', 0]]);
+    expect(calculateBudget(data, '2026-09-26').dailyLimitKopecks).toBe(5455); // (586 − 95) ÷ 9
+  });
+
+  it('the reserves of «Продукты» and «Транспорт» are per full period and take the first period’s share', () => {
+    const data = createInitialData('2026-09-26', { ...exampleA, reserves: { groceriesKopecks: 50000, transportKopecks: 10000 } }, NOW);
+    expect(reserveOf(data).slice(4)).toEqual([['groceries', 50000], ['transport', 10000]]);
+    const budget = calculateBudget(data, '2026-09-26');
+    expect(budget.reserves.map((r) => [r.category, r.budgetKopecks])).toEqual([['groceries', 15000], ['transport', 3000]]);
+    expect(budget.dailyLimitKopecks).toBe(3455); // (586 − 95 − 150 − 30) ÷ 9
+  });
+
+  it('a payment repeats as chosen in its form: every week or once', () => {
+    const data = createInitialData(
+      '2026-09-26',
+      {
+        ...exampleA,
+        payments: [
+          { name: 'Спортзал', amountKopecks: 1500, date: '2026-09-30', repeat: 'weekly' },
+          { name: 'Подписки', amountKopecks: 999, date: '2026-10-10', repeat: 'once' },
+        ],
+      },
+      NOW,
+    );
+    expect(data.payments.map((p) => [p.name, p.dayOfMonth, p.weekday, p.date, p.startDate])).toEqual([
+      ['Спортзал', null, 3, null, '2026-09-30'],
+      ['Подписки', null, null, '2026-10-10', '2026-10-10'],
+    ]);
+    // Before 5 October: the gym on 30 September; the subscription on 10 October is in the next period.
+    expect(calculateBudget(data, '2026-09-26').breakdown.paymentsKopecks).toBe(1500);
+  });
+
+  it('«Другое» comes as «Доход»; «Пока нет постоянных» keeps the whole month from today', () => {
+    const other = createInitialData('2026-09-26', { ...exampleA, income: { kind: 'other', name: 'Доход', amountKopecks: 22000, date: '2026-10-05' } }, NOW);
+    expect(other.incomeSources[0]!.name).toBe('Доход');
+    const none = createInitialData('2026-09-26', { ...exampleA, income: null }, NOW);
+    expect(none.settings.mainIncomeSourceId).toBeNull();
+    expect(calculateBudget(none, '2026-09-26').period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
+  });
+});
+
 describe('storage', () => {
   it('survives a save and a reload', () => {
     const storage = memoryStorage();

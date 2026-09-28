@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { setTheme } from '../appData';
 import { backupFileName, makeBackup, parseBackup, saveBackupFile, type ParsedBackup } from '../backup';
 import { BottomSheet } from '../components/BottomSheet';
+import { FeatureSettings } from '../components/FeatureSettings';
 import { FormScreen, Segmented } from '../components/Form';
 import { InstallSteps, type InstallInfo } from '../components/InstallHint';
 import { toLocalDate } from '../domain/dates';
 import type { AppData } from '../domain/types';
 import { formatDayMonth } from '../ui/labels';
-import { ACCENTS, type Accent } from '../uiState';
+import { ACCENTS, type Accent, type FeatureKey } from '../uiState';
 import type { Update } from './Finances';
 
 export type SettingsRoute = { screen: 'main' } | { screen: 'install' };
@@ -27,6 +28,13 @@ export interface SettingsProps {
   onReset: () => void;
   /** Replaces the data with a restored backup. */
   onImport: (data: AppData) => void;
+  /** «Функции»: a feature turned off is only hidden, its data stays. */
+  features: Record<FeatureKey, boolean>;
+  onFeatureChange: (key: FeatureKey, on: boolean) => void;
+  /** «Показать подсказки снова»: the first-launch tips show on the home screen again. */
+  onShowTips: () => void;
+  /** «Открыть календарь» in «Что нового». */
+  onOpenCalendar: () => void;
 }
 
 const SHARE_TEXT = 'Dayly считает, сколько можно тратить каждый день, чтобы денег хватило до стипендии или зарплаты.';
@@ -88,6 +96,8 @@ export function Settings(props: SettingsProps) {
           </button>
         ))}
       </div>
+
+      <FeatureSettings features={props.features} onChange={props.onFeatureChange} onShowTips={props.onShowTips} onOpenCalendar={props.onOpenCalendar} />
 
       <span className="section-label">Приложение</span>
       <ul className="card list">

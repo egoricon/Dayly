@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { addFavoriteExpense, addIncome, deleteTransaction, markPaymentPaid, MAX_FAVORITES } from '../appData';
 import { ExpenseSheet, type EntryMode, type IncomePreset } from '../components/ExpenseSheet';
+import { FirstLaunchTips } from '../components/FirstLaunchTips';
 import { HeroAmount } from '../components/HeroAmount';
 import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
+import { WhatsNewCard } from '../components/WhatsNew';
 import { cushionSavedBy, type BudgetResult, type Occurrence } from '../domain/budget';
 import { recentOperations } from '../domain/history';
 import { formatKopecks, formatMoney } from '../domain/money';
@@ -34,6 +36,12 @@ interface HomeProps {
   onOpenCalendar: (date: LocalDate | null) => void;
   /** Whether a feature is on in «Настройки → Функции». */
   feature: (key: FeatureKey) => boolean;
+  /** First-launch tips over the screen; «Показать подсказки снова» in Settings brings them back. */
+  showTips: boolean;
+  onTipsDone: () => void;
+  /** «Что нового» for people who used the app before update 1, until closed. */
+  showWhatsNew: boolean;
+  onWhatsNewSeen: () => void;
 }
 
 function signed(kopecks: number): string {
@@ -163,6 +171,17 @@ export function Home(props: HomeProps) {
           </div>
         )}
 
+        {props.showWhatsNew && (
+          <WhatsNewCard
+            canOpenCalendar={props.feature('calendar')}
+            onOpenCalendar={() => {
+              props.onWhatsNewSeen();
+              props.onOpenCalendar(null);
+            }}
+            onClose={props.onWhatsNewSeen}
+          />
+        )}
+
         {installHint && <InstallHint platform={installHint} onDismiss={onDismissInstallHint} />}
 
         <Favorites favorites={data.settings.favorites} onAdd={addFavorite} onOpenFinances={onOpenFinances} />
@@ -247,6 +266,8 @@ export function Home(props: HomeProps) {
           onClose={() => setActionsFor(null)}
         />
       )}
+
+      {props.showTips && <FirstLaunchTips calendar={props.feature('calendar')} onDone={props.onTipsDone} />}
     </main>
   );
 }

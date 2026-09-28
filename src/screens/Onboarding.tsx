@@ -1,267 +1,428 @@
 import { useRef, useState } from 'react';
-import { INCOME_KIND_NAMES, type OnboardingResult } from '../appData';
-import { BottomSheet } from '../components/BottomSheet';
+import type { OnboardingPayment, OnboardingResult } from '../appData';
 import { Calendar } from '../components/Calendar';
-import { AmountInput, Field, firstMissing, Segmented, SubmitButton } from '../components/Form';
+import { EventSheet } from '../components/EventSheet';
+import { AmountInput, firstMissing, Segmented, SubmitButton } from '../components/Form';
 import { StepProgress } from '../components/StepProgress';
-import { addDays, addMonths, diffDays, weekdayIndex } from '../domain/dates';
+import { addDays, addMonths } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import type { IncomeSource, LocalDate } from '../domain/types';
-import { formatDayMonth, formatDays, scheduleText } from '../ui/labels';
+import type { EventDraft } from '../events';
+import { nextIncomeCaption, reservesPreview } from '../intro';
+import { formatDayMonth, formatDays } from '../ui/labels';
+import { AmountStep } from './AmountStep';
 import { StartBalance } from './StartBalance';
+import '../styles/intro.css';
 
-type Step = 'welcome' | 'balance' | 'income' | 'payments';
-type PaymentDraft = OnboardingResult['payments'][number];
+type Step = 'welcome' | 'balance' | 'source' | 'when' | 'amount' | 'payments' | 'reserves';
 
-const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents'];
+/** Screens with a progress bar: money, source, day, amount, payments, products and transport. */
+const TOTAL = 6;
+
+/** The main income's kind, or «Пока нет постоянных»: the money stretches over a month from today. */
+type Source = IncomeSource['kind'] | 'none';
+
+const SOURCES: { value: IncomeSource['kind']; label: string }[] = [
+  { value: 'scholarship', label: 'Стипендия' },
+  { value: 'salary', label: 'Зарплата' },
+  { value: 'parents', label: 'Родители' },
+  { value: 'other', label: 'Другое' },
+];
+
+const WHEN_TITLES: Record<IncomeSource['kind'], string> = {
+  scholarship: 'Когда придёт стипендия?',
+  salary: 'Когда придёт зарплата?',
+  parents: 'Когда придут деньги от родителей?',
+  other: 'Когда придёт доход?',
+};
+
+/** Chips of the payments step; «Своё» opens the same form empty. */
+const PAYMENT_PRESETS = ['Общежитие', 'Телефон', 'Интернет', 'Подписки', 'Спортзал'];
+
+const REPEAT_TEXTS: Record<NonNullable<OnboardingPayment['repeat']>, string> = {
+  once: 'один раз',
+  monthly: 'каждый месяц',
+  weekly: 'каждую неделю',
+};
+
+function byDate(a: OnboardingPayment, b: OnboardingPayment): number {
+  return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+}
 
 interface OnboardingProps {
   today: LocalDate;
   onComplete: (result: OnboardingResult) => void;
 }
 
-/** 2a → 2b → 2c → 2d. The first limit (2e) is shown by the app once the data exists. */
+/**
+ * The first setup, one question per screen: welcome, money on hand, where the money comes from, when
+ * and how much, regular payments, products and transport. The first limit is shown by the app once
+ * the data exists. Everything typed stays when going back.
+ */
 export function Onboarding({ today, onComplete }: OnboardingProps) {
   const [step, setStep] = useState<Step>('welcome');
   const [balanceInput, setBalanceInput] = useState('');
-  const [balance, setBalance] = useState(0);
-  const [kind, setKind] = useState<IncomeSource['kind']>('scholarship');
-  const [incomeDate, setIncomeDate] = useState<LocalDate | null>(null);
+  const [source, setSource] = useState<Source | null>(null);
   const [weekly, setWeekly] = useState(false);
-  // «Настрою позже»: no planned income yet, the money stretches over a month from today.
-  const [incomeLater, setIncomeLater] = useState(false);
-  const [incomeAmount, setIncomeAmount] = useState('');
-  const [payments, setPayments] = useState<PaymentDraft[]>([]);
-  const [addingPayment, setAddingPayment] = useState(false);
-  const incomeCalendar = useRef<HTMLDivElement>(null);
-  const incomeAmountInput = useRef<HTMLInputElement>(null);
+  const [incomeDate, setIncomeDate] = useState<LocalDate | null>(null);
+  const [incomeInput, setIncomeInput] = useState('');
+  const [payments, setPayments] = useState<OnboardingPayment[]>([]);
+  const [groceries, setGroceries] = useState('');
+  const [transport, setTransport] = useState('');
 
-  if (step === 'welcome') {
-    return (
-      <main className="screen welcome">
-        <div className="spacer" />
-        <div className="welcome-logo" />
-        <h1>Сколько можно потратить сегодня?</h1>
-        <p>
-          Приложение считает, сколько можно тратить каждый день, чтобы денег хватило до следующей стипендии или зарплаты.
-          Настройка займёт минуту.
-        </p>
-        <div className="spacer" />
-        <button type="button" className="button-primary button-large" onClick={() => setStep('balance')}>
-          Начать
-        </button>
-      </main>
-    );
-  }
+  const kind = source === null || source === 'none' ? null : source;
+  const income: OnboardingResult['income'] =
+    kind && incomeDate
+      ? { kind, name: kind === 'other' ? 'Доход' : undefined, amountKopecks: parseAmount(incomeInput) ?? 0, date: incomeDate, weekly }
+      : null;
+  const finish = (reserves: OnboardingResult['reserves']) =>
+    onComplete({ balanceKopecks: parseAmount(balanceInput) ?? 0, income, payments, reserves });
 
-  if (step === 'balance') {
-    return (
-      <StartBalance
-        input={balanceInput}
-        onInput={setBalanceInput}
-        onBack={() => setStep('welcome')}
-        onDone={(value) => {
-          setBalance(value);
-          setStep('income');
-        }}
-      />
-    );
-  }
-
-  const incomeKopecks = parseAmount(incomeAmount) ?? 0;
-
-  if (step === 'income') {
-    // Up to the same day next month (next week for a weekly income): an earlier occurrence of
-    // that day would cut the period short.
-    const maxDate = weekly ? addDays(today, 7) : addMonths(today, 1);
-    const repeats = incomeDate && weekly ? `, дальше ${scheduleText({ dayOfMonth: null, weekday: weekdayIndex(incomeDate) + 1, date: null })}` : '';
-    return (
-      <main className="screen onboarding">
-        <StepProgress step={2} onBack={() => setStep('balance')} />
-        <div className="step-title">
-          <h1>Когда придут следующие деньги?</h1>
+  switch (step) {
+    case 'welcome':
+      return (
+        <main className="screen welcome">
+          <div className="spacer" />
+          <div className="welcome-logo" />
+          <h1>Сколько можно потратить сегодня?</h1>
           <p>
-            До этого дня и будем растягивать бюджет. Если даты пока нет, жми «Настрою позже»: растянем деньги на месяц, а доход
-            добавишь во вкладке «Финансы».
+            Приложение считает, сколько можно тратить каждый день, чтобы денег хватило до следующей стипендии или зарплаты.
+            Настройка займёт минуту.
           </p>
-        </div>
-        <div className="chips chips-left">
-          {INCOME_KINDS.map((k) => (
-            <button key={k} type="button" className={`chip chip-large${k === kind ? ' is-selected' : ''}`} onClick={() => setKind(k)}>
-              {INCOME_KIND_NAMES[k]}
-            </button>
-          ))}
-        </div>
-        <Segmented
-          options={[
-            { value: 'monthly', label: 'Раз в месяц' },
-            { value: 'weekly', label: 'Раз в неделю' },
-          ]}
-          value={weekly ? 'weekly' : 'monthly'}
-          onChange={(value) => {
-            const nextWeekly = value === 'weekly';
-            setWeekly(nextWeekly);
-            // A date more than a week away is not the next weekly income.
-            if (nextWeekly && incomeDate && incomeDate > addDays(today, 7)) setIncomeDate(null);
+          <div className="spacer" />
+          <button type="button" className="button-primary button-large" onClick={() => setStep('balance')}>
+            Начать
+          </button>
+        </main>
+      );
+
+    case 'balance':
+      return (
+        <StartBalance
+          total={TOTAL}
+          input={balanceInput}
+          onInput={setBalanceInput}
+          onBack={() => setStep('welcome')}
+          onDone={() => setStep('source')}
+        />
+      );
+
+    case 'source':
+      return (
+        <SourceStep
+          value={source}
+          onBack={() => setStep('balance')}
+          onPick={(picked) => {
+            setSource(picked);
+            setStep(picked === 'none' ? 'payments' : 'when');
           }}
         />
-        <div ref={incomeCalendar}>
-          <Calendar min={addDays(today, 1)} max={maxDate} value={incomeDate} onChange={setIncomeDate} />
-        </div>
-        <label className="card amount-row">
-          <span className="amount-row-label">Сумма</span>
-          <AmountInput value={incomeAmount} onChange={setIncomeAmount} inputRef={incomeAmountInput} />
-        </label>
-        <div className="spacer" />
-        <p className="step-caption">
-          {incomeDate ? `${formatDayMonth(incomeDate)}, через ${formatDays(diffDays(today, incomeDate))}${repeats}` : 'Выбери дату в календаре'}
-        </p>
-        <SubmitButton
-          missing={firstMissing([
-            [!incomeDate, { text: 'Выбери в календаре, когда придут деньги', field: incomeCalendar }],
-            [incomeKopecks === 0, { text: 'Напиши, сколько придёт', field: incomeAmountInput }],
-          ])}
-          onClick={() => {
-            setIncomeLater(false);
-            setStep('payments');
-          }}
-        >
-          Дальше
-        </SubmitButton>
-        <button
-          type="button"
-          className="link-muted"
-          onClick={() => {
-            setIncomeLater(true);
-            setStep('payments');
-          }}
-        >
-          Настрою позже
-        </button>
-      </main>
-    );
-  }
+      );
 
-  const income = incomeLater ? null : { kind, amountKopecks: incomeKopecks, date: incomeDate!, weekly };
-  // Payments count up to the next income, or without one up to a month from today.
-  const until = income?.date ?? addMonths(today, 1);
-  const total = payments.reduce((sum, p) => sum + p.amountKopecks, 0);
-  const finish = (list: PaymentDraft[]) => onComplete({ balanceKopecks: balance, income, payments: list });
+    case 'when':
+      return (
+        <WhenStep
+          kind={kind!}
+          today={today}
+          weekly={weekly}
+          onWeekly={(next) => {
+            setWeekly(next);
+            // A day more than a week away is not the next weekly income.
+            if (next && incomeDate && incomeDate > addDays(today, 7)) setIncomeDate(null);
+          }}
+          date={incomeDate}
+          onDate={setIncomeDate}
+          onBack={() => setStep('source')}
+          onNext={() => setStep('amount')}
+        />
+      );
+
+    case 'amount':
+      return (
+        <AmountStep
+          step={4}
+          total={TOTAL}
+          title="Сколько придёт?"
+          subtitle="Сколько обычно приходит. Если придёт другая сумма, поправишь в тот день."
+          input={incomeInput}
+          onInput={setIncomeInput}
+          ready={(parseAmount(incomeInput) ?? 0) > 0}
+          onDone={() => setStep('payments')}
+          onBack={() => setStep('when')}
+          testId="income-amount"
+        />
+      );
+
+    case 'payments':
+      return (
+        <PaymentsStep
+          today={today}
+          payments={payments}
+          onChange={setPayments}
+          onBack={() => setStep(source === 'none' ? 'source' : 'amount')}
+          onNext={() => setStep('reserves')}
+        />
+      );
+
+    case 'reserves':
+      return (
+        <ReservesStep
+          today={today}
+          income={income}
+          groceries={groceries}
+          transport={transport}
+          onGroceries={setGroceries}
+          onTransport={setTransport}
+          onBack={() => setStep('payments')}
+          onDone={finish}
+        />
+      );
+  }
+}
+
+function Chevron() {
+  return (
+    <svg className="source-card-chevron" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1.5 1.5 6.5 7l-5 5.5" />
+    </svg>
+  );
+}
+
+/** «Откуда приходят деньги?»: a tap on a card answers and goes on. */
+function SourceStep({ value, onPick, onBack }: { value: Source | null; onPick: (source: Source) => void; onBack: () => void }) {
+  return (
+    <main className="screen onboarding">
+      <StepProgress step={2} total={TOTAL} onBack={onBack} />
+      <div className="onboarding-body">
+        <div className="step-title">
+          <h1>Откуда приходят деньги?</h1>
+          <p>Выбери главное поступление: до него и будем растягивать бюджет. Остальные добавишь потом.</p>
+        </div>
+        <div className="source-cards">
+          {SOURCES.map((s) => (
+            <button key={s.value} type="button" className={`source-card${value === s.value ? ' is-selected' : ''}`} onClick={() => onPick(s.value)}>
+              <span className="source-card-name">{s.label}</span>
+              <Chevron />
+            </button>
+          ))}
+          <button type="button" className={`source-card is-none${value === 'none' ? ' is-selected' : ''}`} onClick={() => onPick('none')}>
+            <span className="source-card-text">
+              <span className="source-card-name">Пока нет постоянных</span>
+              <span className="source-card-sub">растянем деньги на месяц</span>
+            </span>
+            <Chevron />
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+interface WhenStepProps {
+  kind: IncomeSource['kind'];
+  today: LocalDate;
+  weekly: boolean;
+  onWeekly: (weekly: boolean) => void;
+  date: LocalDate | null;
+  onDate: (date: LocalDate) => void;
+  onBack: () => void;
+  onNext: () => void;
+}
+
+/** «Когда придёт стипендия?»: every month or every week, and the next day in the calendar. */
+function WhenStep({ kind, today, weekly, onWeekly, date, onDate, onBack, onNext }: WhenStepProps) {
+  const calendar = useRef<HTMLDivElement>(null);
+  // Up to the same day next month (next week for a weekly income): an earlier occurrence of that
+  // day would cut the period short.
+  const max = weekly ? addDays(today, 7) : addMonths(today, 1);
 
   return (
     <main className="screen onboarding">
-      <StepProgress step={3} onBack={() => setStep('income')} />
-      <div className="step-title">
-        <h1>Что нужно оплатить до {formatDayMonth(until)}?</h1>
-        <p>Эти деньги сразу отложим, и в дневной лимит они не попадут.</p>
+      <StepProgress step={3} total={TOTAL} onBack={onBack} />
+      <div className="onboarding-body">
+        <div className="step-title">
+          <h1>{WHEN_TITLES[kind]}</h1>
+          <p>До этого дня и будем растягивать бюджет.</p>
+        </div>
+        <Segmented
+          options={[
+            { value: 'monthly', label: 'Каждый месяц' },
+            { value: 'weekly', label: 'Каждую неделю' },
+          ]}
+          value={weekly ? 'weekly' : 'monthly'}
+          onChange={(value) => onWeekly(value === 'weekly')}
+        />
+        <div ref={calendar}>
+          <Calendar min={addDays(today, 1)} max={max} value={date} onChange={onDate} />
+        </div>
       </div>
-      {payments.length > 0 && (
-        <ul className="card list" data-testid="onboarding-payments">
-          {payments.map((p, index) => (
-            <li key={index} className="list-row">
-              <div className="list-text">
-                <span className="list-name">{p.name}</span>
-                <span className="list-sub">{formatDayMonth(p.date)}</span>
-              </div>
-              <span className="list-value">{formatKopecks(p.amountKopecks)}</span>
+      <div className="onboarding-actions">
+        <p className="step-caption">{date ? nextIncomeCaption(today, date, weekly) : 'Выбери день в календаре'}</p>
+        <SubmitButton missing={firstMissing([[date === null, { text: 'Выбери в календаре, когда придут деньги', field: calendar }]])} onClick={onNext}>
+          Дальше
+        </SubmitButton>
+      </div>
+    </main>
+  );
+}
+
+interface PaymentsStepProps {
+  today: LocalDate;
+  payments: OnboardingPayment[];
+  onChange: (payments: OnboardingPayment[]) => void;
+  onBack: () => void;
+  onNext: () => void;
+}
+
+/** «Что оплачиваешь регулярно?»: a chip opens the form of «+ Расход» in the calendar, preset with its name. */
+function PaymentsStep({ today, payments, onChange, onBack, onNext }: PaymentsStepProps) {
+  // The payment being added (index null) or changed, and the name the form starts with.
+  const [sheet, setSheet] = useState<{ index: number | null; name: string } | null>(null);
+  const editing = sheet?.index != null ? payments[sheet.index] : undefined;
+  const save = (draft: EventDraft) => {
+    const payment: OnboardingPayment = { name: draft.name, amountKopecks: draft.amountKopecks, date: draft.date, repeat: draft.repeat };
+    const index = sheet?.index ?? null;
+    onChange((index === null ? [...payments, payment] : payments.map((p, i) => (i === index ? payment : p))).sort(byDate));
+  };
+  const remove = (index: number) => onChange(payments.filter((_, i) => i !== index));
+
+  return (
+    <main className="screen onboarding">
+      <StepProgress step={5} total={TOTAL} onBack={onBack} />
+      <div className="onboarding-body">
+        <div className="step-title">
+          <h1>Что оплачиваешь регулярно?</h1>
+          <p>Эти деньги отложим заранее, в дневной лимит они не попадут.</p>
+        </div>
+        <div className="chips chips-left payment-chips">
+          {PAYMENT_PRESETS.map((name) => {
+            const index = payments.findIndex((p) => p.name === name);
+            return (
               <button
+                key={name}
                 type="button"
-                className="row-remove"
-                aria-label={`Убрать ${p.name}`}
-                onClick={() => setPayments(payments.filter((_, i) => i !== index))}
+                className={`chip chip-large${index === -1 ? '' : ' is-selected'}`}
+                onClick={() => setSheet({ index: index === -1 ? null : index, name })}
               >
-                ×
+                {name}
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <button type="button" className="button-dashed" onClick={() => setAddingPayment(true)}>
-        + Добавить платёж
-      </button>
-      <div className="spacer" />
-      <div className="total-row">
-        <span>Итого отложим</span>
-        <strong>{formatMoney(total)}</strong>
+            );
+          })}
+          <button type="button" className="chip chip-large" onClick={() => setSheet({ index: null, name: '' })}>
+            + Своё
+          </button>
+        </div>
+        {payments.length > 0 && (
+          <ul className="card list" data-testid="onboarding-payments">
+            {payments.map((p, index) => (
+              <li key={`${p.name}|${p.date}|${index}`} className="list-row">
+                <button type="button" className="list-text payment-open" onClick={() => setSheet({ index, name: p.name })}>
+                  <span className="list-name">{p.name}</span>
+                  <span className="list-sub">
+                    {formatDayMonth(p.date)} · {REPEAT_TEXTS[p.repeat ?? 'monthly']}
+                  </span>
+                </button>
+                <span className="list-value">{formatKopecks(p.amountKopecks)}</span>
+                <button type="button" className="row-remove" aria-label={`Убрать ${p.name}`} onClick={() => remove(index)}>
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <button type="button" className="button-primary button-large" onClick={() => finish(payments)}>
-        Посчитать лимит
-      </button>
-      <button type="button" className="link-muted" onClick={() => finish([])}>
-        Пропустить
-      </button>
-      {addingPayment && (
-        <PaymentDraftSheet
-          min={today}
-          max={addDays(until, -1)}
-          onAdd={(p) => setPayments([...payments, p].sort((a, b) => (a.date < b.date ? -1 : 1)))}
-          onClose={() => setAddingPayment(false)}
+      <div className="onboarding-actions">
+        <button type="button" className="button-primary button-large" onClick={onNext}>
+          Дальше
+        </button>
+        {payments.length === 0 && (
+          <button type="button" className="link-muted" onClick={onNext}>
+            Пропустить
+          </button>
+        )}
+      </div>
+      {sheet && (
+        <EventSheet
+          kind="payment"
+          date={null}
+          minDate={today}
+          maxDate={addDays(addMonths(today, 1), -1)}
+          initial={editing ? { ...editing, repeat: editing.repeat ?? 'monthly' } : { name: sheet.name, repeat: 'monthly' }}
+          editing={editing !== undefined}
+          onSave={save}
+          onDelete={sheet.index === null ? undefined : () => remove(sheet.index!)}
+          onClose={() => setSheet(null)}
         />
       )}
     </main>
   );
 }
 
-function PaymentDraftSheet({
-  min,
-  max,
-  onAdd,
-  onClose,
-}: {
-  min: LocalDate;
-  max: LocalDate;
-  onAdd: (payment: PaymentDraft) => void;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState<LocalDate | null>(null);
-  const kopecks = parseAmount(amount) ?? 0;
-  const nameInput = useRef<HTMLInputElement>(null);
-  const amountInput = useRef<HTMLInputElement>(null);
-  const calendar = useRef<HTMLDivElement>(null);
-  const missing = firstMissing([
-    [name.trim() === '', { text: 'Напиши, что оплатить', field: nameInput }],
-    [kopecks === 0, { text: 'Напиши сумму платежа', field: amountInput }],
-    [date === null, { text: 'Выбери в календаре день платежа', field: calendar }],
-  ]);
+interface ReservesStepProps {
+  today: LocalDate;
+  income: OnboardingResult['income'];
+  groceries: string;
+  transport: string;
+  onGroceries: (value: string) => void;
+  onTransport: (value: string) => void;
+  onBack: () => void;
+  onDone: (reserves: OnboardingResult['reserves']) => void;
+}
+
+/** «Сколько уходит на продукты и проезд?»: reserves per period of «Продукты» and «Транспорт», or skipped. */
+function ReservesStep({ today, income, groceries, transport, onGroceries, onTransport, onBack, onDone }: ReservesStepProps) {
+  const groceriesInput = useRef<HTMLInputElement>(null);
+  const transportInput = useRef<HTMLInputElement>(null);
+  const empty = groceries.trim() === '' && transport.trim() === '';
+  const groceriesKopecks = groceries.trim() === '' ? 0 : parseAmount(groceries);
+  const transportKopecks = transport.trim() === '' ? 0 : parseAmount(transport);
+  const reserves =
+    groceriesKopecks !== null && transportKopecks !== null && groceriesKopecks + transportKopecks > 0
+      ? { groceriesKopecks, transportKopecks }
+      : undefined;
+  const preview = reserves && reservesPreview(today, { balanceKopecks: 0, income, payments: [], reserves });
 
   return (
-    <BottomSheet onClose={onClose} className="form-sheet">
-      {(close) => (
-        <>
-          {/* The fields scroll; «Добавить» stays at the bottom of the sheet on any screen height. */}
-          <div className="sheet-body">
-            <h2 className="sheet-title">Новый платёж</h2>
-            <Field label="Что оплатить">
-              <input
-                ref={nameInput}
-                className="input"
-                placeholder="Например, общежитие"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <Field label="Сумма">
-              <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
-            </Field>
-            <Field label="Когда" group hint="Платёж ежемесячный: повторится в этот же день каждого месяца.">
-              <div ref={calendar}>
-                <Calendar min={min} max={max} value={date} onChange={setDate} />
-              </div>
-            </Field>
-          </div>
-          <SubmitButton
-            missing={missing}
-            onClick={() => {
-              onAdd({ name: name.trim(), amountKopecks: kopecks, date: date! });
-              close();
-            }}
-          >
-            Добавить
-          </SubmitButton>
-        </>
-      )}
-    </BottomSheet>
+    <main className="screen onboarding">
+      <StepProgress step={6} total={TOTAL} onBack={onBack} />
+      <div className="onboarding-body">
+        <div className="step-title">
+          <h1>Сколько уходит на продукты и проезд?</h1>
+          <p>Примерно за {income?.weekly ? 'неделю' : 'месяц'}. Эти деньги отложим, и лимит станет честным.</p>
+        </div>
+        <div className="reserve-fields">
+          <label className="card amount-row">
+            <span className="amount-row-label">Продукты</span>
+            <AmountInput value={groceries} onChange={onGroceries} inputRef={groceriesInput} />
+          </label>
+          <label className="card amount-row">
+            <span className="amount-row-label">Транспорт</span>
+            <AmountInput value={transport} onChange={onTransport} inputRef={transportInput} />
+          </label>
+        </div>
+      </div>
+      <div className="onboarding-actions">
+        {preview && (
+          <p className="step-caption" data-testid="reserves-preview">
+            До {formatDayMonth(preview.until)} отложим {formatMoney(preview.kopecks)}
+            {preview.days < preview.periodDays ? ` — это ${formatDays(preview.days)} из ${preview.periodDays}` : ''}
+          </p>
+        )}
+        <SubmitButton
+          missing={firstMissing([
+            [groceriesKopecks === null, { text: 'Проверь сумму на продукты', field: groceriesInput }],
+            [transportKopecks === null, { text: 'Проверь сумму на транспорт', field: transportInput }],
+          ])}
+          onClick={() => onDone(reserves)}
+        >
+          Посчитать лимит
+        </SubmitButton>
+        {empty && (
+          <button type="button" className="link-muted" onClick={() => onDone(undefined)}>
+            Пропустить
+          </button>
+        )}
+      </div>
+    </main>
   );
 }

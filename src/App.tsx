@@ -14,7 +14,8 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { hideBanner, isBannerHidden, isFeatureOn, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent, type FeatureKey } from './uiState';
+import { hideBanner, isBannerHidden, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
+import { afterFirstSetup, atLaunch, shouldShowWhatsNew } from './intro';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -68,7 +69,8 @@ export function App() {
   const [data, setData] = useState<AppData | null>(() => loadData(localStorage));
   // Each page load counts as a launch; the install hint waits for the second one.
   const [ui, setUi] = useState(() => {
-    const state = loadUiState(localStorage);
+    // Someone who set the app up before update 1 gets «Что нового» instead of the first-launch tips.
+    const state = atLaunch(loadUiState(localStorage), data !== null);
     return { ...state, launches: state.launches + 1 };
   });
   const install = useInstallInfo();
@@ -117,6 +119,8 @@ export function App() {
           today={today}
           onComplete={(result) => {
             setData(createInitialData(today, result, new Date()));
+            // «Что нового» is for people who used the app before; a new one gets the tips after the first limit.
+            setUi((state) => afterFirstSetup(state));
             setShowFirstLimit(true);
           }}
         />
@@ -151,7 +155,9 @@ export function App() {
       <div className={shellClass}>
         {inAppBanner}
         <FirstLimit
+          data={data}
           budget={budget}
+          today={today}
           onSetupReserves={() => {
             setShowFirstLimit(false);
             openFinances({ screen: 'category', id: 'groceries' });
@@ -178,6 +184,10 @@ export function App() {
           onOpenFinances={openFinances}
           onOpenCalendar={openCalendar}
           feature={feature}
+          showTips={!ui.tipsShown}
+          onTipsDone={() => setUi((state) => ({ ...state, tipsShown: true }))}
+          showWhatsNew={shouldShowWhatsNew(ui, true)}
+          onWhatsNewSeen={() => setUi((state) => ({ ...state, whatsNewSeen: WHATS_NEW_ID }))}
         />
       )}
       {tab === 'calendar' && (
@@ -204,6 +214,13 @@ export function App() {
             setData(restored);
             setTab('today');
           }}
+          features={ui.features}
+          onFeatureChange={(key, on) => setUi((state) => setFeature(state, key, on))}
+          onShowTips={() => {
+            setUi((state) => ({ ...state, tipsShown: false }));
+            setTab('today');
+          }}
+          onOpenCalendar={() => openCalendar(null)}
         />
       )}
       <TabBar

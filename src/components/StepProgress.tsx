@@ -1,5 +1,5 @@
-/** Onboarding progress: 3 segments, the first `step` of them active, with a way back to the previous step. */
-export function StepProgress({ step, onBack }: { step: 1 | 2 | 3; onBack: () => void }) {
+/** Onboarding progress: `total` segments, the first `step` of them active, with a way back to the previous step. */
+export function StepProgress({ step, total, onBack }: { step: number; total: number; onBack: () => void }) {
   return (
     <div className="step-head">
       <button type="button" className="step-back" aria-label="Назад" onClick={onBack}>
@@ -7,9 +7,9 @@ export function StepProgress({ step, onBack }: { step: 1 | 2 | 3; onBack: () => 
           <path d="M8.5 1.5 1.5 9l7 7.5" />
         </svg>
       </button>
-      <div className="step-progress" aria-label={`Шаг ${step} из 3`}>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className={i <= step ? 'is-active' : ''} />
+      <div className="step-progress" style={{ gridTemplateColumns: `repeat(${total}, 1fr)` }} aria-label={`Шаг ${step} из ${total}`}>
+        {Array.from({ length: total }, (_, i) => (
+          <div key={i} className={i < step ? 'is-active' : ''} />
         ))}
       </div>
     </div>
