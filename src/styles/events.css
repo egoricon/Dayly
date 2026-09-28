@@ -1,0 +1,45 @@
+/* «Доход» and «Расход» sheet of update 1, shared by «Календарь» and the first setup. */
+
+.event-sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-sheet-date {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.event-kinds.chips-left {
+  padding: 0;
+}
+
+/* «Повтор»: rows with a check mark, as in a phone calendar. */
+.repeat-options {
+  display: flex;
+  flex-direction: column;
+}
+
+.repeat-option + .repeat-option {
+  border-top: 1px solid var(--line-soft);
+}
+
+.repeat-option {
+  min-height: 48px;
+}
+
+.repeat-option .list-name {
+  font-weight: 600;
+}
+
+.repeat-check {
+  flex-shrink: 0;
+  stroke: var(--accent-ink);
+  opacity: 0;
+}
+
+.repeat-option.is-selected .repeat-check {
+  opacity: 1;
+}
