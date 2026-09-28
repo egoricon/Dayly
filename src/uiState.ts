@@ -58,7 +58,12 @@ export interface UiState {
   whatsNewSeen: string | null;
   /** The first-launch tips have been shown; «Показать подсказки снова» clears it. */
   tipsShown: boolean;
+  /** Cards closed for good, like «Итоги периода» of one period; the newest MAX_DISMISSED_CARDS. */
+  dismissedCards: string[];
 }
+
+/** How many closed cards are remembered: older ones belong to periods long gone. */
+export const MAX_DISMISSED_CARDS = 20;
 
 function isAccent(value: unknown): value is Accent {
   return ACCENTS.some((a) => a.id === value);
@@ -79,6 +84,7 @@ export function defaultUiState(): UiState {
     features: allFeaturesOn(),
     whatsNewSeen: null,
     tipsShown: false,
+    dismissedCards: [],
   };
 }
 
@@ -96,6 +102,9 @@ export function loadUiState(storage: Storage): UiState {
       features: Object.fromEntries(FEATURES.map((f) => [f.key, savedFeatures[f.key] !== false])) as Record<FeatureKey, boolean>,
       whatsNewSeen: typeof parsed.whatsNewSeen === 'string' ? parsed.whatsNewSeen : null,
       tipsShown: parsed.tipsShown === true,
+      dismissedCards: Array.isArray(parsed.dismissedCards)
+        ? parsed.dismissedCards.filter((key): key is string => typeof key === 'string').slice(-MAX_DISMISSED_CARDS)
+        : [],
     };
   } catch {
     return defaultUiState();
@@ -114,6 +123,16 @@ export function hideBanner(state: UiState, key: string, today: LocalDate): UiSta
 
 export function isBannerHidden(state: UiState, key: string, today: LocalDate): boolean {
   return state.hiddenBanners[key] === today;
+}
+
+/** Closes a card for good; only the newest MAX_DISMISSED_CARDS are kept. */
+export function dismissCard(state: UiState, key: string): UiState {
+  if (state.dismissedCards.includes(key)) return state;
+  return { ...state, dismissedCards: [...state.dismissedCards, key].slice(-MAX_DISMISSED_CARDS) };
+}
+
+export function isCardDismissed(state: UiState, key: string): boolean {
+  return state.dismissedCards.includes(key);
 }
 
 export function isFeatureOn(state: UiState, key: FeatureKey): boolean {

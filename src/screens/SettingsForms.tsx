@@ -26,8 +26,10 @@ import { activeCategories, findCategory, startCategory } from '../domain/categor
 import { addDays, maxDate, nextOccurrence, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { Category, ExpenseCategory, IncomeSource, MandatoryPayment } from '../domain/types';
+import { incomeSplit, rebasedGoal } from '../domain/savings';
+import type { Category, ExpenseCategory, Goal, IncomeSource, MandatoryPayment } from '../domain/types';
 import { formatDayMonth, scheduleText, WEEKDAY_SHORT } from '../ui/labels';
+import { fromIncomeText, maxPercent, moneyInText, percentLimitText, percentRules, referenceIncome } from '../ui/savings';
 import type { FinanceProps } from './Finances';
 
 type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
@@ -390,6 +392,16 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   const amountKopecks = parseAmount(amount === '' ? '0' : amount);
   const percentValue = /^\d{1,2}$/.test(percent) ? Number(percent) : null;
   const takeKopecks = parseAmount(take) ?? 0;
+  // With percent goals the cushion's percent must leave something to live on too.
+  const goalRules = percentRules(data).filter((r) => r.goalId !== null);
+  const percentTooBig = (percentValue ?? 0) > maxPercent(goalRules);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const percentInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [mode === 'fixed' && amountKopecks === null, { text: 'Проверь сумму', field: amountInput }],
+    [mode === 'percent' && !percentValue, { text: 'Напиши процент от 1 до 99', field: percentInput }],
+    [mode === 'percent' && percentTooBig, { text: percentLimitText(goalRules), field: percentInput }],
+  ]);
 
   const save = () => {
     if (mode === 'fixed') update((d) => setCushionFixed(d, amountKopecks!));
@@ -413,24 +425,22 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
       />
       {mode === 'fixed' ? (
         <Field label="Держать в подушке">
-          <AmountInput value={amount} onChange={setAmount} />
+          <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
         </Field>
       ) : (
-        <Field label="Откладывать с каждого поступления" hint="Уже отложенное остаётся в подушке.">
+        <Field
+          label="Откладывать с каждого поступления"
+          hint={percentTooBig ? percentLimitText(goalRules) : 'Уже отложенное остаётся в подушке.'}
+        >
           <span className="amount-input">
-            <input className="input" inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value)} />
+            <input ref={percentInput} className="input" inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value)} />
             <span className="amount-input-currency">%</span>
           </span>
         </Field>
       )}
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={mode === 'fixed' ? amountKopecks === null : percentValue === null || percentValue === 0}
-        onClick={save}
-      >
+      <SubmitButton missing={missing} onClick={save}>
         Сохранить
-      </button>
+      </SubmitButton>
 
       <span className="section-label">Взять из подушки</span>
       <Field label="Сколько взять" hint="Эти деньги станут свободными и попадут в дневной лимит.">
@@ -451,37 +461,64 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   );
 }
 
+/** A goal saved evenly by a date, or as a percent of every income (update 1). */
 export function GoalForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.goals.find((g) => g.id === id);
+  const [newGoalId] = useState(newId);
   const [name, setName] = useState(existing?.name ?? '');
   const [target, setTarget] = useState(amountText(existing?.targetKopecks ?? 0));
   const [initial, setInitial] = useState(amountText(existing?.initialSavedKopecks ?? 0));
+  const [mode, setMode] = useState<'deadline' | 'percent'>(existing?.percent != null ? 'percent' : 'deadline');
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
+  const [percent, setPercent] = useState(existing?.percent != null ? String(existing.percent) : '');
   const targetKopecks = parseAmount(target) ?? 0;
   const initialKopecks = parseAmount(initial === '' ? '0' : initial);
+  const percentValue = Number(percent); // digits only, at most two; 0 while empty
+  // Every percent rule but this goal's: together they must leave something to live on.
+  const others = percentRules(data).filter((r) => existing === undefined || r.goalId !== existing.id);
+  const percentTooBig = percentValue > maxPercent(others);
   const nameInput = useRef<HTMLInputElement>(null);
   const targetInput = useRef<HTMLInputElement>(null);
   const initialInput = useRef<HTMLInputElement>(null);
   const deadlineInput = useRef<HTMLInputElement>(null);
+  const percentInput = useRef<HTMLInputElement>(null);
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши, на что копим', field: nameInput }],
     [targetKopecks === 0, { text: 'Напиши, сколько нужно', field: targetInput }],
     [initialKopecks === null || initialKopecks > targetKopecks, { text: 'Отложено не может быть больше цели', field: initialInput }],
-    [!(deadline > today), { text: 'Выбери дату позже сегодняшней', field: deadlineInput }],
+    [mode === 'deadline' && !(deadline > today), { text: 'Выбери дату позже сегодняшней', field: deadlineInput }],
+    [mode === 'percent' && percentValue === 0, { text: 'Напиши процент от 1 до 99', field: percentInput }],
+    [mode === 'percent' && percentTooBig, { text: percentLimitText(others), field: percentInput }],
   ]);
   const ready = missing === null;
 
-  const draft = {
-    id: existing?.id ?? newId(),
+  const fields = {
     name: name.trim(),
     targetKopecks,
-    initialSavedKopecks: initialKopecks ?? 0,
-    startDate: existing?.startDate ?? today,
-    deadline,
-    percent: null,
-    status: 'active' as const,
+    deadline: mode === 'deadline' ? deadline : null,
+    percent: mode === 'percent' ? percentValue : null,
   };
+  // A new rule starts today; so does a changed percent or way of saving, keeping what is saved by yesterday.
+  const rescheduled = existing !== undefined && existing.percent !== fields.percent;
+  const draft: Goal =
+    existing === undefined
+      ? { id: newGoalId, ...fields, initialSavedKopecks: initialKopecks ?? 0, startDate: today, status: 'active' }
+      : rescheduled
+        ? { ...rebasedGoal(data, existing, today), ...fields }
+        : { ...existing, ...fields };
   const perPeriod = ready ? goalSavedBy(data, draft, budget.period.end) - goalSavedBy(data, draft, addDays(budget.period.start, -1)) : 0;
+  // «Со стипендии 220,00 BYN отложится 33,00 BYN»: the share of the main (or next) income, up to what the goal still needs.
+  const income = referenceIncome(data, today);
+  const share =
+    mode === 'percent' && income && percentValue > 0 && !percentTooBig && targetKopecks > 0
+      ? (incomeSplit(saveGoal(data, draft), income.amountKopecks).goals.find((g) => g.goalId === draft.id)?.kopecks ?? 0)
+      : null;
+  const fromIncome = income && fromIncomeText(income);
+  const percentHint = percentTooBig
+    ? percentLimitText(others)
+    : share !== null && fromIncome
+      ? `${fromIncome.charAt(0).toUpperCase()}${fromIncome.slice(1)} отложится ${moneyInText(share)}.`
+      : undefined;
 
   return (
     <FormScreen title={existing ? existing.name : 'Новая цель'} onBack={onBack}>
@@ -503,16 +540,44 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
           <AmountInput value={initial} onChange={setInitial} inputRef={initialInput} />
         </Field>
       )}
-      <Field label="К какой дате" hint={ready ? `Будем откладывать по ${formatMoney(perPeriod)} в этом периоде.` : undefined}>
-        <input
-          ref={deadlineInput}
-          className="input"
-          type="date"
-          min={addDays(today, 1)}
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
+      <Field label="Как копим" group>
+        <Segmented
+          options={[
+            { value: 'deadline', label: 'К дате' },
+            { value: 'percent', label: 'Процент с дохода' },
+          ]}
+          value={mode}
+          onChange={setMode}
         />
       </Field>
+      {rescheduled && <p className="form-note">Уже накопленное останется в цели.</p>}
+      {mode === 'deadline' ? (
+        <Field label="К какой дате" hint={ready ? `Будем откладывать по ${formatMoney(perPeriod)} в этом периоде.` : undefined}>
+          <input
+            ref={deadlineInput}
+            className="input"
+            type="date"
+            min={addDays(today, 1)}
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+          />
+        </Field>
+      ) : (
+        <Field label="Сколько откладывать с каждого поступления" hint={percentHint}>
+          <span className="amount-input">
+            <input
+              ref={percentInput}
+              className="input"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="15"
+              value={percent}
+              onChange={(e) => setPercent(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            />
+            <span className="amount-input-currency">%</span>
+          </span>
+        </Field>
+      )}
       <SubmitButton
         missing={missing}
         onClick={() => {

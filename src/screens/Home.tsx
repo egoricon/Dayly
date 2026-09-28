@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react';
 import { addFavoriteExpense, addIncome, deleteTransaction, markPaymentPaid, MAX_FAVORITES } from '../appData';
 import { ExpenseSheet, type EntryMode, type IncomePreset } from '../components/ExpenseSheet';
 import { HeroAmount } from '../components/HeroAmount';
+import { IncomeSplitSheet, useIncomeSplit } from '../components/IncomeSplitSheet';
 import { InstallHint } from '../components/InstallHint';
 import { Ring } from '../components/Ring';
+import { SavingsCaption } from '../components/SavingsCaption';
+import { SavingsCards } from '../components/SavingsCards';
+import { addDays } from '../domain/dates';
+import { carrySavedKey, savingsRing } from '../ui/savings';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
 import { cushionSavedBy, type BudgetResult, type Occurrence } from '../domain/budget';
 import { recentOperations } from '../domain/history';
@@ -34,6 +39,9 @@ interface HomeProps {
   onOpenCalendar: (date: LocalDate | null) => void;
   /** Whether a feature is on in «Настройки → Функции». */
   feature: (key: FeatureKey) => boolean;
+  /** Cards closed for good, like «Итоги периода» of a period. */
+  isCardDismissed: (key: string) => boolean;
+  onDismissCard: (key: string) => void;
 }
 
 function signed(kopecks: number): string {
@@ -64,6 +72,9 @@ export function Home(props: HomeProps) {
   introPlayed = true;
   const [undo, setUndo] = useState<Undo | null>(null);
   const [expanded, setExpanded] = useState(false);
+  // «Копилка»: the thin outer ring, and how a confirmed income split up.
+  const ring = props.feature('savingsRing') ? savingsRing(data, today) : null;
+  const split = useIncomeSplit(data, budget, ring);
   useEffect(() => {
     if (!undo) return;
     const timer = window.setTimeout(() => setUndo(null), UNDO_MS);
@@ -83,7 +94,8 @@ export function Home(props: HomeProps) {
   const recent = recentOperations(data, today, RECENT_DAYS);
   const shown = expanded ? recent : recent.slice(0, COLLAPSED_OPERATIONS);
 
-  const carry = budget.carryFromYesterdayKopecks;
+  // Once yesterday's leftover is set aside it is not free any more, so «+8,00 с вчера» goes.
+  const carry = isBannerHidden(carrySavedKey(addDays(today, -1))) ? null : budget.carryFromYesterdayKopecks;
   const banner = pickBanner(data, budget, today, isBannerHidden);
 
   if (explainOpen) return <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />;
@@ -110,21 +122,30 @@ export function Home(props: HomeProps) {
             banner={banner}
             data={data}
             today={today}
-            onYes={() =>
+            onYes={() => {
+              if (banner.kind === 'income') split.onIncome(banner.occurrence.amountKopecks, banner.occurrence.sourceId);
               update((d) =>
                 banner.kind === 'income'
                   ? addIncome(d, banner.occurrence.amountKopecks, banner.occurrence.sourceId, banner.occurrence.date, today, new Date())
                   : markPaymentPaid(d, d.payments.find((p) => p.id === banner.occurrence.sourceId)!, banner.occurrence.date, today, new Date()),
-              )
-            }
+              );
+            }}
             onOtherAmount={() =>
               setSheet({ open: true, incomePreset: { sourceId: banner.occurrence.sourceId, plannedDate: banner.occurrence.date } })
             }
             onNotYet={() => onHideBanner(banner.key)}
           />
         )}
+        {/* «Итоги периода» or «Вчера осталось…»; a confirmation banner goes first. */}
+        {!banner && <SavingsCards {...props} />}
 
-        <Ring fraction={fraction} tone={deficit || overspent ? 'danger' : 'accent'} onClick={() => setExplainOpen(true)} fillIn={intro}>
+        <Ring
+          fraction={fraction}
+          tone={deficit || overspent ? 'danger' : 'accent'}
+          onClick={() => setExplainOpen(true)}
+          fillIn={intro}
+          savings={split.ringFraction}
+        >
           {deficit && budget.shortfall ? (
             <>
               <span className="ring-label">Не хватает денег</span>
@@ -152,7 +173,14 @@ export function Home(props: HomeProps) {
           )}
         </Ring>
 
-        {carry !== null && carry !== 0 && <div className={`carry-pill${carry < 0 ? ' is-negative' : ''}`}>{signed(carry)} с вчера</div>}
+        {((carry !== null && carry !== 0) || ring) && (
+          <div className="ring-pills">
+            {carry !== null && carry !== 0 && <div className={`carry-pill${carry < 0 ? ' is-negative' : ''}`}>{signed(carry)} с вчера</div>}
+            {ring && (
+              <SavingsCaption ring={ring} addedKopecks={split.addedKopecks} onOpen={() => onOpenFinances({ screen: 'main', section: 'savings' })} />
+            )}
+          </div>
+        )}
 
         {deficit && <DeficitHints data={data} today={today} onOpenFinances={onOpenFinances} />}
 
@@ -233,9 +261,16 @@ export function Home(props: HomeProps) {
           initialMode={sheet.mode}
           incomePreset={sheet.incomePreset}
           editing={sheet.editing}
-          onSave={(next) => update(() => next)}
+          onSave={(next) => {
+            split.onSaved(next);
+            update(() => next);
+          }}
           onClose={() => setSheet({ open: false })}
         />
+      )}
+
+      {split.state?.ready && (
+        <IncomeSplitSheet state={split.state} data={data} today={today} limitKopecks={budget.dailyLimitKopecks} onClose={split.close} />
       )}
 
       {actionsFor && (

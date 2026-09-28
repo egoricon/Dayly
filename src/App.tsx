@@ -14,7 +14,7 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { hideBanner, isBannerHidden, isFeatureOn, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent, type FeatureKey } from './uiState';
+import { dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, shouldShowInstallHint, UI_KEY, type Accent, type FeatureKey } from './uiState';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -178,6 +178,8 @@ export function App() {
           onOpenFinances={openFinances}
           onOpenCalendar={openCalendar}
           feature={feature}
+          isCardDismissed={(key) => isCardDismissed(ui, key)}
+          onDismissCard={(key) => setUi((state) => dismissCard(state, key))}
         />
       )}
       {tab === 'calendar' && (
