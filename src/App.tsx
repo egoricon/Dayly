@@ -4,6 +4,7 @@ import { TabBar, type Tab } from './components/TabBar';
 import { calculateBudget } from './domain/budget';
 import { toLocalDate } from './domain/dates';
 import type { AppData, LocalDate } from './domain/types';
+import { CalendarScreen } from './screens/CalendarScreen';
 import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
 import { Home } from './screens/Home';
@@ -129,12 +130,13 @@ export function App() {
     setFinanceRoute(route);
     setTab('finances');
   };
+  // «Настройки → Функции»: a feature turned off is not shown; its data stays.
+  const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   const openCalendar = (date: LocalDate | null) => {
+    if (!feature('calendar')) return;
     setCalendarDate(date);
     setTab('calendar');
   };
-  // «Настройки → Функции»: a feature turned off is not shown; its data stays.
-  const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   // «Сбросить всё»: this device forgets everything and the app starts from onboarding.
   const reset = () => {
     localStorage.removeItem(DATA_KEY);
@@ -180,9 +182,8 @@ export function App() {
           feature={feature}
         />
       )}
-      {tab === 'calendar' && (
-        // Placeholder until the «Календарь» screen of update 1 (task A) replaces it, opened on calendarDate.
-        <main className="screen with-tabs" data-testid="calendar-placeholder" data-date={calendarDate ?? ''} />
+      {tab === 'calendar' && feature('calendar') && (
+        <CalendarScreen data={data} budget={budget} today={today} update={update} initialDate={calendarDate} />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (
@@ -208,9 +209,11 @@ export function App() {
       )}
       <TabBar
         active={tab}
+        hidden={feature('calendar') ? [] : ['calendar']}
         onChange={(next) => {
           if (next === 'finances') setFinanceRoute({ screen: 'main' });
           if (next === 'settings') setSettingsRoute({ screen: 'main' });
+          if (next === 'calendar') setCalendarDate(null);
           setTab(next);
         }}
       />

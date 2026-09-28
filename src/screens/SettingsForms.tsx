@@ -20,13 +20,15 @@ import {
   setCushionPercent,
   takeFromCushion,
 } from '../appData';
-import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton } from '../components/Form';
+import { ChoiceRows } from '../components/EventSheet';
+import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton, type Missing } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
 import { activeCategories, findCategory, startCategory } from '../domain/categories';
-import { addDays, maxDate, nextOccurrence, weekdayIndex } from '../domain/dates';
+import { addDays, maxDate, nextOccurrence, weekdayIndex, type Schedule } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { Category, ExpenseCategory, IncomeSource, MandatoryPayment } from '../domain/types';
+import type { Category, ExpenseCategory, IncomeSource, LocalDate, MandatoryPayment } from '../domain/types';
+import { isCurrentPlan, startDateAfterSave } from '../events';
 import { formatDayMonth, scheduleText, WEEKDAY_SHORT } from '../ui/labels';
 import type { FinanceProps } from './Finances';
 
@@ -34,19 +36,89 @@ type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
 
 const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents', 'other'];
 
+/** How often an income comes or a payment is due; incomes can also be irregular. */
+type Repeat = 'monthly' | 'weekly' | 'once' | 'irregular';
+
+const REPEAT_OPTIONS: { value: Repeat; label: string }[] = [
+  { value: 'monthly', label: 'Раз в месяц' },
+  { value: 'weekly', label: 'Раз в неделю' },
+  { value: 'once', label: 'Один раз' },
+  { value: 'irregular', label: 'Нерегулярно' },
+];
+
+function repeatOf(schedule: Schedule): Repeat {
+  if (schedule.weekday !== null) return 'weekly';
+  if (schedule.dayOfMonth !== null) return 'monthly';
+  return schedule.date !== null ? 'once' : 'irregular';
+}
+
+/** The schedule being edited in a form: how often, and the day of the month, the weekday or the date. */
+function useSchedule(existing: Schedule | undefined, today: LocalDate, trackingStartDate: LocalDate) {
+  const [repeat, setRepeat] = useState<Repeat>(existing ? repeatOf(existing) : 'monthly');
+  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
+  const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
+  const [date, setDate] = useState(existing?.date ?? '');
+  const dateInput = useRef<HTMLInputElement>(null);
+  const schedule: Schedule = {
+    dayOfMonth: repeat === 'monthly' ? day : null,
+    weekday: repeat === 'weekly' ? weekday : null,
+    date: repeat === 'once' ? date : null,
+  };
+  const missing: [boolean, Missing][] = [
+    [repeat === 'once' && date === '', { text: 'Выбери дату', field: dateInput }],
+    // Days before the start of tracking are not counted, so the entry would never show.
+    [repeat === 'once' && date !== '' && date < trackingStartDate, { text: `Выбери дату не раньше ${formatDayMonth(trackingStartDate)}`, field: dateInput }],
+  ];
+  // A one-off in the past starts on its day, anything else today; a change of name or amount keeps the start.
+  const from = repeat === 'once' && date !== '' && date < today ? date : today;
+  return { repeat, setRepeat, day, setDay, weekday, setWeekday, date, setDate, dateInput, trackingStartDate, schedule, missing, from };
+}
+
+/** «Когда приходит» / «Когда платить»: the same rows as «Повтор» in the calendar, then the day, the weekday or the date. */
+function ScheduleFields({ label, hint, repeats, when }: { label: string; hint?: string; repeats: Repeat[]; when: ReturnType<typeof useSchedule> }) {
+  return (
+    <>
+      <Field label={label} group hint={hint}>
+        <ChoiceRows label={label} options={REPEAT_OPTIONS.filter((o) => repeats.includes(o.value))} value={when.repeat} onChange={when.setRepeat} />
+      </Field>
+      {when.repeat === 'monthly' && (
+        <Field label="Число месяца">
+          <DaySelect value={when.day} onChange={when.setDay} />
+        </Field>
+      )}
+      {when.repeat === 'weekly' && (
+        <Field label="День недели" group>
+          <Segmented
+            options={WEEKDAY_SHORT.map((label, i) => ({ value: String(i + 1), label }))}
+            value={String(when.weekday)}
+            onChange={(v) => when.setWeekday(Number(v))}
+          />
+        </Field>
+      )}
+      {when.repeat === 'once' && (
+        <Field label="Дата">
+          <input
+            ref={when.dateInput}
+            className="input"
+            type="date"
+            min={when.trackingStartDate}
+            value={when.date}
+            onChange={(e) => when.setDate(e.target.value)}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
 export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.incomeSources.find((s) => s.id === id);
-  // A one-off income keeps its date here; its day is changed in the calendar.
-  const oneOffDate = existing?.date ?? null;
   const [kind, setKind] = useState(existing?.kind ?? 'salary');
   const [name, setName] = useState(existing?.name ?? INCOME_KIND_NAMES.salary);
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [schedule, setSchedule] = useState<'monthly' | 'weekly' | 'irregular'>(
-    existing?.weekday != null ? 'weekly' : existing && existing.dayOfMonth === null ? 'irregular' : 'monthly',
-  );
-  const regular = oneOffDate === null && schedule !== 'irregular';
-  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
-  const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
+  const when = useSchedule(existing, today, data.settings.trackingStartDate);
+  // Only a monthly or weekly income can set the period.
+  const recurring = when.repeat === 'monthly' || when.repeat === 'weekly';
   const [isMain, setIsMain] = useState(existing ? data.settings.mainIncomeSourceId === existing.id : data.settings.mainIncomeSourceId === null);
   const kopecks = parseAmount(amount) ?? 0;
   const nameInput = useRef<HTMLInputElement>(null);
@@ -54,6 +126,7 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши название дохода', field: nameInput }],
     [kopecks === 0, { text: 'Напиши сумму', field: amountInput }],
+    ...when.missing,
   ]);
 
   const save = () => {
@@ -65,13 +138,11 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
           kind,
           name: name.trim(),
           amountKopecks: kopecks,
-          dayOfMonth: regular && schedule === 'monthly' ? day : null,
-          weekday: regular && schedule === 'weekly' ? weekday : null,
-          date: oneOffDate,
-          startDate: existing?.startDate ?? today,
+          ...when.schedule,
+          startDate: startDateAfterSave(existing, when.schedule, when.from),
           isActive: true,
         },
-        regular && isMain,
+        recurring && isMain,
       ),
     );
     onBack();
@@ -100,41 +171,23 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      {oneOffDate !== null ? (
-        <p className="form-note">Разовый доход: {formatDayMonth(oneOffDate)}.</p>
-      ) : (
-        <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
-          <Segmented
-            options={[
-              { value: 'monthly', label: 'Раз в месяц' },
-              { value: 'weekly', label: 'Раз в неделю' },
-              { value: 'irregular', label: 'Нерегулярно' },
-            ]}
-            value={schedule}
-            onChange={setSchedule}
-          />
-        </Field>
-      )}
-      {regular && (
-        <>
-          {schedule === 'monthly' ? (
-            <Field label="Число месяца">
-              <DaySelect value={day} onChange={setDay} />
-            </Field>
-          ) : (
-            <Field label="День недели" group>
-              <Segmented
-                options={WEEKDAY_SHORT.map((label, i) => ({ value: String(i + 1), label }))}
-                value={String(weekday)}
-                onChange={(v) => setWeekday(Number(v))}
-              />
-            </Field>
-          )}
-          <label className="checkbox-row">
-            <input type="checkbox" checked={isMain} onChange={(e) => setIsMain(e.target.checked)} />
-            <span>Основное поступление: бюджет растягивается до него</span>
-          </label>
-        </>
+      <ScheduleFields
+        label="Когда приходит"
+        repeats={['monthly', 'weekly', 'once', 'irregular']}
+        when={when}
+        hint={
+          when.repeat === 'irregular'
+            ? 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'
+            : when.repeat === 'once'
+              ? 'Учтём в прогнозе только в этот день.'
+              : undefined
+        }
+      />
+      {recurring && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={isMain} onChange={(e) => setIsMain(e.target.checked)} />
+          <span>Основное поступление: бюджет растягивается до него</span>
+        </label>
       )}
       <SubmitButton missing={missing} onClick={save}>
         Сохранить
@@ -156,11 +209,12 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
 }
 
 export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
-  // By the date shown: this period's occurrence, else the next one after it; a past one-off payment last.
+  // By the date shown: this period's occurrence, else the next one after it. One-off payments of
+  // earlier periods are history and stay only in the calendar.
   const shownDate = (p: MandatoryPayment) =>
     paymentOccurrence(data, p.id, budget.period) ?? nextOccurrence(p, addDays(budget.period.end, 1)) ?? '9999-12-31';
   const payments = data.payments
-    .filter((p) => p.isActive)
+    .filter((p) => p.isActive && isCurrentPlan(p, budget.period))
     .map((p) => ({ p, date: shownDate(p) }))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(({ p }) => p);
@@ -171,14 +225,23 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
           {payments.map((p) => {
             const date = paymentOccurrence(data, p.id, budget.period);
             const paid = date !== null && paymentTransaction(data, p.id, date) !== undefined;
-            const status = date === null ? 'в этом периоде нет' : paid ? `оплачено · ${formatDayMonth(date)}` : `до ${formatDayMonth(date)}`;
+            // '1-го · до 1 октября', 'по воскресеньям · оплачено · 27 сентября', 'разово · 10 ноября'.
+            const when = p.date !== null ? 'разово' : scheduleText(p);
+            const status =
+              date === null
+                ? p.date !== null
+                  ? formatDayMonth(p.date)
+                  : 'в этом периоде нет'
+                : paid
+                  ? `оплачено · ${formatDayMonth(date)}`
+                  : `до ${formatDayMonth(date)}`;
             return (
               <li key={p.id}>
                 <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'payment', id: p.id })}>
                   <span className="list-text">
                     <span className="list-name">{p.name}</span>
                     <span className="list-sub">
-                      {scheduleText(p)} · {status}
+                      {when} · {status}
                     </span>
                   </span>
                   <span className="list-value">{formatKopecks(p.amountKopecks)}</span>
@@ -197,17 +260,16 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
 
 export function PaymentForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.payments.find((p) => p.id === id);
-  // Weekly and one-off payments keep their schedule here; it is changed in the calendar.
-  const keptSchedule = existing && existing.dayOfMonth === null ? existing : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
+  const when = useSchedule(existing, today, data.settings.trackingStartDate);
   const kopecks = parseAmount(amount) ?? 0;
   const nameInput = useRef<HTMLInputElement>(null);
   const amountInput = useRef<HTMLInputElement>(null);
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши, что оплатить', field: nameInput }],
     [kopecks === 0, { text: 'Напиши сумму платежа', field: amountInput }],
+    ...when.missing,
   ]);
 
   const occurrence = existing ? paymentOccurrence(data, existing.id, budget.period) : null;
@@ -219,7 +281,10 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       {existing && (
         <div className="card status-card" data-testid="payment-status">
           {occurrence === null ? (
-            <span>В этом периоде платежа нет.{next !== null && ` Следующий — ${formatDayMonth(next)}.`}</span>
+            <span>
+              В этом периоде платежа нет.
+              {next !== null && (existing.date !== null ? ` Он будет ${formatDayMonth(next)}.` : ` Следующий — ${formatDayMonth(next)}.`)}
+            </span>
           ) : paidWith ? (
             <>
               <span>
@@ -249,13 +314,12 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      {keptSchedule ? (
-        <p className="form-note">Когда: {scheduleText(keptSchedule)}.</p>
-      ) : (
-        <Field label="Каждый месяц">
-          <DaySelect value={day} onChange={setDay} />
-        </Field>
-      )}
+      <ScheduleFields
+        label="Когда платить"
+        repeats={['monthly', 'weekly', 'once']}
+        when={when}
+        hint="Эти деньги отложим заранее, в дневной лимит они не попадут."
+      />
       <SubmitButton
         missing={missing}
         onClick={() => {
@@ -264,10 +328,8 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
               id: existing?.id ?? newId(),
               name: name.trim(),
               amountKopecks: kopecks,
-              dayOfMonth: keptSchedule ? null : day,
-              weekday: keptSchedule?.weekday ?? null,
-              date: keptSchedule?.date ?? null,
-              startDate: existing?.startDate ?? today,
+              ...when.schedule,
+              startDate: startDateAfterSave(existing, when.schedule, when.from),
               isActive: true,
             }),
           );

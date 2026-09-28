@@ -1,0 +1,335 @@
+/* «Календарь» of update 1: the tab, its month grid and the day sheet. Tokens from src/styles.css;
+   green is the colour of money coming in and of days within the limit. */
+
+:root {
+  --cal-income: oklch(0.62 0.15 150);
+  --cal-income-soft: oklch(0.92 0.06 150);
+  --cal-income-ink: oklch(0.45 0.12 150);
+  --cal-over-soft: oklch(0.91 0.05 28);
+}
+
+:root[data-theme='dark'] {
+  --cal-income: oklch(0.74 0.15 150);
+  --cal-income-soft: oklch(0.31 0.06 150);
+  --cal-income-ink: oklch(0.84 0.13 150);
+  --cal-over-soft: oklch(0.32 0.07 28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    --cal-income: oklch(0.74 0.15 150);
+    --cal-income-soft: oklch(0.31 0.06 150);
+    --cal-income-ink: oklch(0.84 0.13 150);
+    --cal-over-soft: oklch(0.32 0.07 28);
+  }
+}
+
+.calendar-screen {
+  gap: 12px;
+}
+
+/* Month name, «Сегодня» and the arrows */
+
+.cal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.cal-month {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-today {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  border: 1px solid var(--chip-border);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cal-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.cal-arrow svg {
+  stroke: currentColor;
+}
+
+.cal-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cal-today,
+.cal-arrow {
+  transition: transform 120ms ease-out;
+}
+
+.cal-today:active,
+.cal-arrow:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* The month grid; a sideways swipe on it turns the month, a vertical one scrolls the screen. */
+
+.cal-card {
+  padding: 12px 6px 8px;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cal-weekdays,
+.cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.cal-weekdays {
+  padding-bottom: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cal-days {
+  row-gap: 2px;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 3px 0 5px;
+  -webkit-touch-callout: none;
+}
+
+.cal-day:disabled {
+  cursor: default;
+}
+
+.cal-day-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 600;
+  transition:
+    transform 120ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.cal-day:active:not(:disabled) .cal-day-number {
+  transform: scale(0.9);
+}
+
+/* Past days: within the limit or over it. */
+.cal-day.is-in .cal-day-number {
+  background: var(--cal-income-soft);
+}
+
+.cal-day.is-over .cal-day-number {
+  background: var(--cal-over-soft);
+}
+
+/* Today, as the red circle of a phone calendar, in the accent colour; dark digits on it in both themes. */
+.cal-day.is-today .cal-day-number {
+  background: var(--accent);
+  color: #18181a;
+  font-weight: 800;
+}
+
+/* The day whose sheet is open. */
+.cal-day.is-selected .cal-day-number {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--ink);
+}
+
+.cal-dots {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  height: 6px;
+}
+
+.cal-dot {
+  display: block;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.cal-dot.is-income {
+  background: var(--cal-income);
+}
+
+.cal-dot.is-payment {
+  background: var(--danger);
+}
+
+/* Came or paid: still there, calmer. */
+.cal-dot.is-done {
+  opacity: 0.35;
+}
+
+/* The new month slides in from the side it came from. */
+.cal-month-grid.is-next {
+  animation: cal-from-right 240ms ease-out;
+}
+
+.cal-month-grid.is-previous {
+  animation: cal-from-left 240ms ease-out;
+}
+
+@keyframes cal-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes cal-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 6px 8px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* A narrow card wraps between the groups, not inside one. */
+.cal-legend-group {
+  display: inline-flex;
+  gap: 14px;
+}
+
+.cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-swatch {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.cal-swatch.is-in {
+  background: var(--cal-income-soft);
+}
+
+.cal-swatch.is-over {
+  background: var(--cal-over-soft);
+}
+
+/* An empty calendar says what to do. */
+.cal-hint {
+  padding: 4px 16px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* The day sheet */
+
+.day-sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-sheet-line {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.day-sheet-line.is-danger {
+  color: var(--danger);
+}
+
+.day-event .cal-dot {
+  width: 10px;
+  height: 10px;
+}
+
+.day-event .list-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.day-event .list-value.is-income {
+  color: var(--cal-income-ink);
+}
+
+.day-actions {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.day-add {
+  height: 56px;
+  border-radius: 28px;
+  font-size: 17px;
+  font-weight: 700;
+  transition: transform 120ms ease-out;
+}
+
+.day-add:active {
+  transform: scale(0.97);
+}
+
+.day-add.is-income {
+  background: var(--cal-income-soft);
+  color: var(--cal-income-ink);
+}
+
+.day-add.is-payment {
+  background: var(--cal-over-soft);
+  color: var(--danger);
+}

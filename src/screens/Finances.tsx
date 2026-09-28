@@ -5,6 +5,7 @@ import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/catego
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
+import { isCurrentPlan } from '../events';
 import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
@@ -65,8 +66,9 @@ export function Finances(props: FinanceProps) {
       break;
   }
 
-  const incomes = data.incomeSources.filter((s) => s.isActive);
-  const payments = data.payments.filter((p) => p.isActive);
+  // One-off incomes and payments of earlier periods are history; the calendar keeps them.
+  const incomes = data.incomeSources.filter((s) => s.isActive && isCurrentPlan(s, budget.period));
+  const payments = data.payments.filter((p) => p.isActive && isCurrentPlan(p, budget.period));
   const unpaid = budget.unpaidPayments.reduce((sum, p) => sum + p.amountKopecks, 0);
   const categories = activeCategories(data);
   const removedCategories = data.settings.categories.filter((c) => !c.isActive);
