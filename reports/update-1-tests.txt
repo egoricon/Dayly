@@ -1,0 +1,52 @@
+Обновление 1 — вывод проверок на итоговом коммите 03ecc91 (29.09.2026).
+e2e: список последних сценариев и итог (вывод обрезан до последних 25 строк).
+
+== HEAD 03ecc91
+== npm test
+
+> dayly@0.1.0 test
+> node node_modules/vitest/vitest.mjs run
+
+
+ RUN  v4.1.11 /home/claude/Dayly
+
+
+ Test Files  17 passed (17)
+      Tests  207 passed (207)
+   Start at  21:37:03
+   Duration  1.67s (transform 1.24s, setup 0ms, import 1.80s, tests 366ms, environment 2ms)
+
+exit 0
+== npm run typecheck
+
+> dayly@0.1.0 typecheck
+> node node_modules/typescript/bin/tsc --noEmit
+
+exit 0
+== npm run e2e
+  ✓  32 e2e/mvp.spec.ts:251:1 › weekly income: «Раз в неделю» with a weekday shows in settings (8.3s)
+  ✓  33 e2e/mvp.spec.ts:268:1 › home: name, «+ Доход», favourites with undo; «Финансы» tab; full reset after a warning (14.9s)
+  ✓  34 e2e/mvp.spec.ts:322:1 › backup: save a copy, reset everything, restore the copy (13.8s)
+  ✓  35 e2e/mvp.spec.ts:361:1 › inside Telegram a banner asks to open Safari, and the install hint stays hidden (7.5s)
+«Добавить» on 375×667: 60px high, bottom at 651
+  ✓  36 e2e/mvp.spec.ts:382:1 › small iPhone: «Добавить» keeps its size, a big overspend fits the ring, the list folds to two (10.6s)
+  ✓  37 e2e/mvp.spec.ts:418:1 › anonymous statistics: on by default, can be turned off, never counts on localhost (7.8s)
+  ✓  38 e2e/mvp.spec.ts:437:1 › own categories: a reserve «Спорт», removing «Кафе» and bringing it back (11.2s)
+  ✓  39 e2e/mvp.spec.ts:479:1 › a payment without a name: «Добавить» says what is missing and shows the field (3.4s)
+  ✓  40 e2e/mvp.spec.ts:514:1 › onboarding with a weekly income: next Friday, then every Friday (4.7s)
+  ✓  41 e2e/mvp.spec.ts:544:1 › onboarding without a planned income: «Пока нет постоянных» stretches the money over a month (4.6s)
+  ✓  42 e2e/savings.spec.ts:106:1 › a 15% goal: «Стипендия пришла?» with 300 puts 45,00 into it, the limit is recounted, the savings ring fills (6.1s)
+  ✓  43 e2e/savings.spec.ts:141:1 › «+ Доход» from a planned source splits too, and «Другая сумма» counts the amount that came (3.0s)
+  ✓  44 e2e/savings.spec.ts:160:1 › «Отложить» yesterday’s 8,00: the goal grows by 8,00, the limit goes down, the balance stays (4.0s)
+  ✓  45 e2e/savings.spec.ts:192:1 › «Не сейчас» puts the leftover off till tomorrow and keeps the pill (1.9s)
+  ✓  46 e2e/savings.spec.ts:203:1 › «Итоги периода» on the first day: 245,00 go to the goal, and the card stays closed (3.3s)
+  ✓  47 e2e/savings.spec.ts:229:1 › «Функции»: with the savings ring, the leftover and the summary off, none of them shows (1.1s)
+  ✓  48 e2e/savings.spec.ts:241:1 › the savings ring on and off; the day ring keeps its 300×300 box (1.2s)
+  ✓  49 e2e/savings.spec.ts:258:1 › a percent goal in its form: the rules stay below 100 %, the hint counts the main income (4.2s)
+  ✓  50 e2e/savings.spec.ts:311:5 › layout on 390×844, light: the rings, the pills and a savings card fit (3.1s)
+  ✓  51 e2e/savings.spec.ts:311:5 › layout on 390×844, dark: the rings, the pills and a savings card fit (3.1s)
+  ✓  52 e2e/savings.spec.ts:311:5 › layout on small iPhone 375×667, light: the rings, the pills and a savings card fit (3.1s)
+  ✓  53 e2e/savings.spec.ts:311:5 › layout on small iPhone 375×667, dark: the rings, the pills and a savings card fit (3.1s)
+
+  53 passed (5.0m)
+exit 0
