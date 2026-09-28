@@ -5,18 +5,23 @@ import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/catego
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
+import { isCurrentPlan } from '../events';
 import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
+import { percentRules } from '../ui/savings';
+import { IncomeSplitBlock } from '../components/IncomeSplitBlock';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
+import { TargetForm, TargetSection } from './TargetForm';
 
 export type FinanceRoute =
-  | { screen: 'main' }
+  | { screen: 'main'; section?: 'savings' } // 'savings': opened from the savings ring
   | { screen: 'income'; id: string | null }
   | { screen: 'payments' }
   | { screen: 'payment'; id: string | null }
   | { screen: 'category'; id: string | null }
   | { screen: 'cushion' }
   | { screen: 'goal'; id: string | null }
+  | { screen: 'target' } // «Хочу тратить в день»
   | { screen: 'reconcile' }
   | { screen: 'favorite'; id: string | null };
 
@@ -43,6 +48,13 @@ export function Finances(props: FinanceProps) {
   useEffect(() => {
     previous.current = route.screen;
   }, [route.screen]);
+  // From the savings ring: «С каждого поступления» scrolls to itself; without percent rules, the goals.
+  const focusSavings = route.screen === 'main' && route.section === 'savings';
+  const goalsLabel = useRef<HTMLSpanElement>(null);
+  const noPercentRules = percentRules(data).length === 0;
+  useEffect(() => {
+    if (focusSavings && noPercentRules) goalsLabel.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [focusSavings, noPercentRules]);
 
   switch (route.screen) {
     case 'income':
@@ -57,6 +69,8 @@ export function Finances(props: FinanceProps) {
       return <CushionForm {...props} onBack={back} />;
     case 'goal':
       return <GoalForm {...props} id={route.id} onBack={back} />;
+    case 'target':
+      return <TargetForm {...props} onBack={back} />;
     case 'reconcile':
       return <ReconcileForm {...props} onBack={back} />;
     case 'favorite':
@@ -65,8 +79,9 @@ export function Finances(props: FinanceProps) {
       break;
   }
 
-  const incomes = data.incomeSources.filter((s) => s.isActive);
-  const payments = data.payments.filter((p) => p.isActive);
+  // One-off incomes and payments of earlier periods are history; the calendar keeps them.
+  const incomes = data.incomeSources.filter((s) => s.isActive && isCurrentPlan(s, budget.period));
+  const payments = data.payments.filter((p) => p.isActive && isCurrentPlan(p, budget.period));
   const unpaid = budget.unpaidPayments.reduce((sum, p) => sum + p.amountKopecks, 0);
   const categories = activeCategories(data);
   const removedCategories = data.settings.categories.filter((c) => !c.isActive);
@@ -125,7 +140,17 @@ export function Finances(props: FinanceProps) {
         </li>
       </ul>
 
-      <span className="section-label">Коплю на</span>
+      <IncomeSplitBlock
+        data={data}
+        today={today}
+        onOpenCushion={() => onNavigate({ screen: 'cushion' })}
+        onOpenGoal={(id) => onNavigate({ screen: 'goal', id })}
+        focused={focusSavings}
+      />
+
+      <span className="section-label" ref={goalsLabel}>
+        Коплю на
+      </span>
       {goals.map((g) => {
         const saved = goalSavedBy(data, g, today);
         const perPeriod = goalSavedBy(data, g, budget.period.end) - goalSavedBy(data, g, addDays(budget.period.start, -1));
@@ -209,6 +234,8 @@ export function Finances(props: FinanceProps) {
           + Добавить любимую трату
         </button>
       )}
+
+      <TargetSection data={data} budget={budget} onOpen={() => onNavigate({ screen: 'target' })} />
 
       <span className="section-label">Баланс</span>
       <ul className="card list">

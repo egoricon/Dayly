@@ -136,8 +136,14 @@ const PRE_UPDATE_DATA = {
 /** The interface state of before update 1: no features, «Что нового» or tips yet. */
 const PRE_UPDATE_UI = { hiddenBanners: {}, accent: 'mint', launches: 12, installHintDismissed: true, statsEnabled: true };
 
-/** The «Календарь» tab is open. Until task A's screen replaces it, the tab is a placeholder. */
-const calendarTab = (page: Page) => page.getByTestId('calendar-placeholder');
+/** The «Календарь» button of the tab bar. */
+const calendarTab = (page: Page) => page.locator('.tab-bar').getByRole('button', { name: 'Календарь', exact: true });
+
+/** The «Календарь» tab is open. */
+async function expectCalendarOpen(page: Page) {
+  await expect(page.getByTestId('calendar-grid')).toBeVisible();
+  await expect(calendarTab(page)).toHaveAttribute('aria-current', 'page');
+}
 
 test('first setup with products and transport: an honest first limit and «Вот твой месяц»', async ({ page }) => {
   await page.clock.install({ time: TODAY });
@@ -326,6 +332,12 @@ test('first-launch tips: three in turn over the home screen, only once; a new pe
   await expect(tips).toContainText('3 из 3');
   await expect(tips.getByRole('button', { name: 'Пропустить' })).toHaveCount(0);
   await settle(page);
+  // The last one lights up the «Календарь» tab.
+  const tab = (await calendarTab(page).boundingBox())!;
+  const tabSpot = (await tips.locator('.tips-spot').boundingBox())!;
+  const [tx, ty] = [tab.x + tab.width / 2, tab.y + tab.height / 2];
+  expect(tx > tabSpot.x && tx < tabSpot.x + tabSpot.width && ty > tabSpot.y && ty < tabSpot.y + tabSpot.height).toBe(true);
+  expect(tabSpot.width).toBeLessThan(tab.width * 2);
   await page.screenshot({ path: test.info().outputPath('tip-calendar.png') });
   await tips.getByRole('button', { name: 'Понятно' }).click();
   await expect(tips).toHaveCount(0);
@@ -367,19 +379,19 @@ test('«Что нового»: on the home screen for someone from before update
   for (const line of WHATS_NEW) await expect(sheet).toContainText(line);
   await page.getByRole('button', { name: 'Открыть календарь' }).click();
   await expect(sheet).toHaveCount(0);
-  await expect(calendarTab(page)).toHaveCount(1);
+  await expectCalendarOpen(page);
 });
 
 test('«Открыть календарь» on the card closes «Что нового» and opens the calendar', async ({ page }) => {
   await openSeeded(page, PRE_UPDATE_DATA, PRE_UPDATE_UI);
   await page.getByTestId('whats-new').getByRole('button', { name: 'Открыть календарь' }).click();
-  await expect(calendarTab(page)).toHaveCount(1);
+  await expectCalendarOpen(page);
   await page.getByRole('button', { name: 'Сегодня' }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
   await expect(page.getByTestId('whats-new')).toHaveCount(0);
 });
 
-test('«Функции»: every feature on by default; «Календарь» turned off leaves the tips and «Что нового», and stays off', async ({ page }) => {
+test('«Функции»: every feature on by default; «Календарь» turned off leaves the tab bar, the tips and «Что нового», and stays off', async ({ page }) => {
   await page.clock.install({ time: TODAY });
   await page.goto('/');
   await setUpSkippingReserves(page);
@@ -400,8 +412,10 @@ test('«Функции»: every feature on by default; «Календарь» tu
   ]);
   for (const s of await features.getByRole('switch').all()) await expect(s).toHaveAttribute('aria-checked', 'true');
   const calendar = features.getByRole('switch', { name: 'Календарь' });
+  await expect(calendarTab(page)).toBeVisible();
   await calendar.click();
   await expect(calendar).toHaveAttribute('aria-checked', 'false');
+  await expect(calendarTab(page)).toHaveCount(0);
   await settle(page);
   await page.screenshot({ path: test.info().outputPath('features.png'), fullPage: true });
 
@@ -417,6 +431,7 @@ test('«Функции»: every feature on by default; «Календарь» tu
   await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
   await page.getByRole('button', { name: 'Настройки' }).click();
   await expect(features.getByRole('switch', { name: 'Календарь' })).toHaveAttribute('aria-checked', 'false');
+  await expect(calendarTab(page)).toHaveCount(0);
 
   // «Показать подсказки снова»: the tips come back on the home screen, without the calendar one.
   await page.getByRole('button', { name: /Показать подсказки снова/ }).click();
@@ -428,9 +443,10 @@ test('«Функции»: every feature on by default; «Календарь» tu
   await tips.getByRole('button', { name: 'Понятно' }).click();
   await expect(tips).toHaveCount(0);
 
-  // Back on: the calendar tip is there again.
+  // Back on: the tab and the calendar tip are there again.
   await page.getByRole('button', { name: 'Настройки' }).click();
   await features.getByRole('switch', { name: 'Календарь' }).click();
+  await expect(calendarTab(page)).toBeVisible();
   await page.getByRole('button', { name: /Показать подсказки снова/ }).click();
   await expect(tips).toContainText('1 из 3');
 });

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-// 'calendar' is the «Календарь» tab of update 1 (its entry in TABS comes with the calendar screen).
+// 'calendar' is the «Календарь» tab of update 1; «Настройки → Функции» can hide it.
 export type Tab = 'today' | 'calendar' | 'history' | 'finances' | 'settings';
 
 const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
@@ -10,6 +10,16 @@ const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="12" cy="12" r="8.5" fill="none" strokeWidth="3" />
+      </svg>
+    ),
+  },
+  {
+    tab: 'calendar',
+    label: 'Календарь',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" strokeWidth="2.2" />
+        <path d="M3.5 10h17M8 3v4M16 3v4" fill="none" strokeWidth="2.2" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -45,10 +55,11 @@ const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
   },
 ];
 
-export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
+/** `hidden`: tabs of features turned off in «Настройки → Функции». */
+export function TabBar({ active, onChange, hidden = [] }: { active: Tab; onChange: (tab: Tab) => void; hidden?: Tab[] }) {
   return (
     <nav className="tab-bar">
-      {TABS.map(({ tab, label, icon }) => (
+      {TABS.filter(({ tab }) => !hidden.includes(tab)).map(({ tab, label, icon }) => (
         <button
           key={tab}
           type="button"

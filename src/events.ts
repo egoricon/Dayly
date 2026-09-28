@@ -1,5 +1,5 @@
 import { INCOME_KIND_NAMES, newId, removeIncomeSource, removePayment, saveIncomeSource, savePayment } from './appData';
-import { weekdayIndex, type Schedule } from './domain/dates';
+import { weekdayIndex, type Period, type Schedule } from './domain/dates';
 import type { AppData, IncomeSource, LocalDate, MandatoryPayment } from './domain/types';
 
 // Planned incomes and payments as calendar events: one form for both, with «Повтор» as in a phone calendar.
@@ -42,11 +42,25 @@ function repeatOf(schedule: Schedule): Repeat {
   return 'once';
 }
 
+function sameDays(a: Schedule, b: Schedule): boolean {
+  return a.dayOfMonth === b.dayOfMonth && a.weekday === b.weekday && a.date === b.date;
+}
+
 /**
- * Adds an event, or changes the existing one `id`: a change applies to every repeat, and past
- * confirmed ones stay as they were (they are operations of their own). A new event is not
- * expected before its day. A new repeating income becomes the main one when there is none yet,
- * as in «Финансы → Добавить доход».
+ * The start of a planned income or payment after it is saved with `schedule`. A new one, or one
+ * whose days changed, starts at `from`: the new days apply from there on, so no occurrences of
+ * them appear in the past, and past confirmed ones stay as operations. A change of name or amount
+ * keeps the start and applies to every repeat.
+ */
+export function startDateAfterSave(existing: (Schedule & { startDate: LocalDate }) | undefined, schedule: Schedule, from: LocalDate): LocalDate {
+  return existing && sameDays(existing, schedule) ? existing.startDate : from;
+}
+
+/**
+ * Adds an event, or changes the existing one `id` from the occurrence `draft.date` on: a new
+ * amount applies to every repeat, new days start at that occurrence, and past confirmed ones stay
+ * as they were (they are operations of their own). A new event is not expected before its day.
+ * A new repeating income becomes the main one when there is none yet, as in «Финансы → Добавить доход».
  */
 export function saveEvent(data: AppData, draft: EventDraft, id: string | null): AppData {
   const schedule = scheduleOf(draft.repeat, draft.date);
@@ -58,7 +72,7 @@ export function saveEvent(data: AppData, draft: EventDraft, id: string | null): 
       name: draft.name,
       amountKopecks: draft.amountKopecks,
       ...schedule,
-      startDate: existing?.startDate ?? draft.date,
+      startDate: startDateAfterSave(existing, schedule, draft.date),
       isActive: true,
     };
     const main = data.settings.mainIncomeSourceId;
@@ -70,10 +84,15 @@ export function saveEvent(data: AppData, draft: EventDraft, id: string | null): 
     name: draft.name,
     amountKopecks: draft.amountKopecks,
     ...schedule,
-    startDate: existing?.startDate ?? draft.date,
+    startDate: startDateAfterSave(existing, schedule, draft.date),
     isActive: true,
   };
   return savePayment(data, payment);
+}
+
+/** A one-off income or payment of an earlier period is history: «Финансы» leaves it out, the calendar keeps it. */
+export function isCurrentPlan(item: Schedule, period: Period): boolean {
+  return item.date === null || item.date >= period.start;
 }
 
 /** Deleting stops the event and all its repeats; past operations keep its name. */

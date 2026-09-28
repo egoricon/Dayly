@@ -20,33 +20,107 @@ import {
   setCushionPercent,
   takeFromCushion,
 } from '../appData';
-import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton } from '../components/Form';
+import { ChoiceRows } from '../components/EventSheet';
+import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton, type Missing } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
 import { activeCategories, findCategory, startCategory } from '../domain/categories';
-import { addDays, maxDate, nextOccurrence, weekdayIndex } from '../domain/dates';
+import { addDays, maxDate, nextOccurrence, weekdayIndex, type Schedule } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { Category, ExpenseCategory, IncomeSource, MandatoryPayment } from '../domain/types';
+import { incomeSplit, rebasedGoal } from '../domain/savings';
+import type { Category, ExpenseCategory, Goal, IncomeSource, LocalDate, MandatoryPayment } from '../domain/types';
+import { isCurrentPlan, startDateAfterSave } from '../events';
 import { formatDayMonth, scheduleText, WEEKDAY_SHORT } from '../ui/labels';
+import { fromIncomeText, maxPercent, moneyInText, percentLimitText, percentRules, referenceIncome } from '../ui/savings';
 import type { FinanceProps } from './Finances';
 
 type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
 
 const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents', 'other'];
 
+/** How often an income comes or a payment is due; incomes can also be irregular. */
+type Repeat = 'monthly' | 'weekly' | 'once' | 'irregular';
+
+const REPEAT_OPTIONS: { value: Repeat; label: string }[] = [
+  { value: 'monthly', label: 'Раз в месяц' },
+  { value: 'weekly', label: 'Раз в неделю' },
+  { value: 'once', label: 'Один раз' },
+  { value: 'irregular', label: 'Нерегулярно' },
+];
+
+function repeatOf(schedule: Schedule): Repeat {
+  if (schedule.weekday !== null) return 'weekly';
+  if (schedule.dayOfMonth !== null) return 'monthly';
+  return schedule.date !== null ? 'once' : 'irregular';
+}
+
+/** The schedule being edited in a form: how often, and the day of the month, the weekday or the date. */
+function useSchedule(existing: Schedule | undefined, today: LocalDate, trackingStartDate: LocalDate) {
+  const [repeat, setRepeat] = useState<Repeat>(existing ? repeatOf(existing) : 'monthly');
+  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
+  const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
+  const [date, setDate] = useState(existing?.date ?? '');
+  const dateInput = useRef<HTMLInputElement>(null);
+  const schedule: Schedule = {
+    dayOfMonth: repeat === 'monthly' ? day : null,
+    weekday: repeat === 'weekly' ? weekday : null,
+    date: repeat === 'once' ? date : null,
+  };
+  const missing: [boolean, Missing][] = [
+    [repeat === 'once' && date === '', { text: 'Выбери дату', field: dateInput }],
+    // Days before the start of tracking are not counted, so the entry would never show.
+    [repeat === 'once' && date !== '' && date < trackingStartDate, { text: `Выбери дату не раньше ${formatDayMonth(trackingStartDate)}`, field: dateInput }],
+  ];
+  // A one-off in the past starts on its day, anything else today; a change of name or amount keeps the start.
+  const from = repeat === 'once' && date !== '' && date < today ? date : today;
+  return { repeat, setRepeat, day, setDay, weekday, setWeekday, date, setDate, dateInput, trackingStartDate, schedule, missing, from };
+}
+
+/** «Когда приходит» / «Когда платить»: the same rows as «Повтор» in the calendar, then the day, the weekday or the date. */
+function ScheduleFields({ label, hint, repeats, when }: { label: string; hint?: string; repeats: Repeat[]; when: ReturnType<typeof useSchedule> }) {
+  return (
+    <>
+      <Field label={label} group hint={hint}>
+        <ChoiceRows label={label} options={REPEAT_OPTIONS.filter((o) => repeats.includes(o.value))} value={when.repeat} onChange={when.setRepeat} />
+      </Field>
+      {when.repeat === 'monthly' && (
+        <Field label="Число месяца">
+          <DaySelect value={when.day} onChange={when.setDay} />
+        </Field>
+      )}
+      {when.repeat === 'weekly' && (
+        <Field label="День недели" group>
+          <Segmented
+            options={WEEKDAY_SHORT.map((label, i) => ({ value: String(i + 1), label }))}
+            value={String(when.weekday)}
+            onChange={(v) => when.setWeekday(Number(v))}
+          />
+        </Field>
+      )}
+      {when.repeat === 'once' && (
+        <Field label="Дата">
+          <input
+            ref={when.dateInput}
+            className="input"
+            type="date"
+            min={when.trackingStartDate}
+            value={when.date}
+            onChange={(e) => when.setDate(e.target.value)}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
 export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.incomeSources.find((s) => s.id === id);
-  // A one-off income keeps its date here; its day is changed in the calendar.
-  const oneOffDate = existing?.date ?? null;
   const [kind, setKind] = useState(existing?.kind ?? 'salary');
   const [name, setName] = useState(existing?.name ?? INCOME_KIND_NAMES.salary);
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [schedule, setSchedule] = useState<'monthly' | 'weekly' | 'irregular'>(
-    existing?.weekday != null ? 'weekly' : existing && existing.dayOfMonth === null ? 'irregular' : 'monthly',
-  );
-  const regular = oneOffDate === null && schedule !== 'irregular';
-  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
-  const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
+  const when = useSchedule(existing, today, data.settings.trackingStartDate);
+  // Only a monthly or weekly income can set the period.
+  const recurring = when.repeat === 'monthly' || when.repeat === 'weekly';
   const [isMain, setIsMain] = useState(existing ? data.settings.mainIncomeSourceId === existing.id : data.settings.mainIncomeSourceId === null);
   const kopecks = parseAmount(amount) ?? 0;
   const nameInput = useRef<HTMLInputElement>(null);
@@ -54,6 +128,7 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши название дохода', field: nameInput }],
     [kopecks === 0, { text: 'Напиши сумму', field: amountInput }],
+    ...when.missing,
   ]);
 
   const save = () => {
@@ -65,13 +140,11 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
           kind,
           name: name.trim(),
           amountKopecks: kopecks,
-          dayOfMonth: regular && schedule === 'monthly' ? day : null,
-          weekday: regular && schedule === 'weekly' ? weekday : null,
-          date: oneOffDate,
-          startDate: existing?.startDate ?? today,
+          ...when.schedule,
+          startDate: startDateAfterSave(existing, when.schedule, when.from),
           isActive: true,
         },
-        regular && isMain,
+        recurring && isMain,
       ),
     );
     onBack();
@@ -100,41 +173,23 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      {oneOffDate !== null ? (
-        <p className="form-note">Разовый доход: {formatDayMonth(oneOffDate)}.</p>
-      ) : (
-        <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
-          <Segmented
-            options={[
-              { value: 'monthly', label: 'Раз в месяц' },
-              { value: 'weekly', label: 'Раз в неделю' },
-              { value: 'irregular', label: 'Нерегулярно' },
-            ]}
-            value={schedule}
-            onChange={setSchedule}
-          />
-        </Field>
-      )}
-      {regular && (
-        <>
-          {schedule === 'monthly' ? (
-            <Field label="Число месяца">
-              <DaySelect value={day} onChange={setDay} />
-            </Field>
-          ) : (
-            <Field label="День недели" group>
-              <Segmented
-                options={WEEKDAY_SHORT.map((label, i) => ({ value: String(i + 1), label }))}
-                value={String(weekday)}
-                onChange={(v) => setWeekday(Number(v))}
-              />
-            </Field>
-          )}
-          <label className="checkbox-row">
-            <input type="checkbox" checked={isMain} onChange={(e) => setIsMain(e.target.checked)} />
-            <span>Основное поступление: бюджет растягивается до него</span>
-          </label>
-        </>
+      <ScheduleFields
+        label="Когда приходит"
+        repeats={['monthly', 'weekly', 'once', 'irregular']}
+        when={when}
+        hint={
+          when.repeat === 'irregular'
+            ? 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'
+            : when.repeat === 'once'
+              ? 'Учтём в прогнозе только в этот день.'
+              : undefined
+        }
+      />
+      {recurring && (
+        <label className="checkbox-row">
+          <input type="checkbox" checked={isMain} onChange={(e) => setIsMain(e.target.checked)} />
+          <span>Основное поступление: бюджет растягивается до него</span>
+        </label>
       )}
       <SubmitButton missing={missing} onClick={save}>
         Сохранить
@@ -156,11 +211,12 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
 }
 
 export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
-  // By the date shown: this period's occurrence, else the next one after it; a past one-off payment last.
+  // By the date shown: this period's occurrence, else the next one after it. One-off payments of
+  // earlier periods are history and stay only in the calendar.
   const shownDate = (p: MandatoryPayment) =>
     paymentOccurrence(data, p.id, budget.period) ?? nextOccurrence(p, addDays(budget.period.end, 1)) ?? '9999-12-31';
   const payments = data.payments
-    .filter((p) => p.isActive)
+    .filter((p) => p.isActive && isCurrentPlan(p, budget.period))
     .map((p) => ({ p, date: shownDate(p) }))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(({ p }) => p);
@@ -171,14 +227,23 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
           {payments.map((p) => {
             const date = paymentOccurrence(data, p.id, budget.period);
             const paid = date !== null && paymentTransaction(data, p.id, date) !== undefined;
-            const status = date === null ? 'в этом периоде нет' : paid ? `оплачено · ${formatDayMonth(date)}` : `до ${formatDayMonth(date)}`;
+            // '1-го · до 1 октября', 'по воскресеньям · оплачено · 27 сентября', 'разово · 10 ноября'.
+            const when = p.date !== null ? 'разово' : scheduleText(p);
+            const status =
+              date === null
+                ? p.date !== null
+                  ? formatDayMonth(p.date)
+                  : 'в этом периоде нет'
+                : paid
+                  ? `оплачено · ${formatDayMonth(date)}`
+                  : `до ${formatDayMonth(date)}`;
             return (
               <li key={p.id}>
                 <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'payment', id: p.id })}>
                   <span className="list-text">
                     <span className="list-name">{p.name}</span>
                     <span className="list-sub">
-                      {scheduleText(p)} · {status}
+                      {when} · {status}
                     </span>
                   </span>
                   <span className="list-value">{formatKopecks(p.amountKopecks)}</span>
@@ -197,17 +262,16 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
 
 export function PaymentForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.payments.find((p) => p.id === id);
-  // Weekly and one-off payments keep their schedule here; it is changed in the calendar.
-  const keptSchedule = existing && existing.dayOfMonth === null ? existing : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
-  const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
+  const when = useSchedule(existing, today, data.settings.trackingStartDate);
   const kopecks = parseAmount(amount) ?? 0;
   const nameInput = useRef<HTMLInputElement>(null);
   const amountInput = useRef<HTMLInputElement>(null);
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши, что оплатить', field: nameInput }],
     [kopecks === 0, { text: 'Напиши сумму платежа', field: amountInput }],
+    ...when.missing,
   ]);
 
   const occurrence = existing ? paymentOccurrence(data, existing.id, budget.period) : null;
@@ -219,7 +283,10 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       {existing && (
         <div className="card status-card" data-testid="payment-status">
           {occurrence === null ? (
-            <span>В этом периоде платежа нет.{next !== null && ` Следующий — ${formatDayMonth(next)}.`}</span>
+            <span>
+              В этом периоде платежа нет.
+              {next !== null && (existing.date !== null ? ` Он будет ${formatDayMonth(next)}.` : ` Следующий — ${formatDayMonth(next)}.`)}
+            </span>
           ) : paidWith ? (
             <>
               <span>
@@ -249,13 +316,12 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      {keptSchedule ? (
-        <p className="form-note">Когда: {scheduleText(keptSchedule)}.</p>
-      ) : (
-        <Field label="Каждый месяц">
-          <DaySelect value={day} onChange={setDay} />
-        </Field>
-      )}
+      <ScheduleFields
+        label="Когда платить"
+        repeats={['monthly', 'weekly', 'once']}
+        when={when}
+        hint="Эти деньги отложим заранее, в дневной лимит они не попадут."
+      />
       <SubmitButton
         missing={missing}
         onClick={() => {
@@ -264,10 +330,8 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
               id: existing?.id ?? newId(),
               name: name.trim(),
               amountKopecks: kopecks,
-              dayOfMonth: keptSchedule ? null : day,
-              weekday: keptSchedule?.weekday ?? null,
-              date: keptSchedule?.date ?? null,
-              startDate: existing?.startDate ?? today,
+              ...when.schedule,
+              startDate: startDateAfterSave(existing, when.schedule, when.from),
               isActive: true,
             }),
           );
@@ -390,6 +454,16 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   const amountKopecks = parseAmount(amount === '' ? '0' : amount);
   const percentValue = /^\d{1,2}$/.test(percent) ? Number(percent) : null;
   const takeKopecks = parseAmount(take) ?? 0;
+  // With percent goals the cushion's percent must leave something to live on too.
+  const goalRules = percentRules(data).filter((r) => r.goalId !== null);
+  const percentTooBig = (percentValue ?? 0) > maxPercent(goalRules);
+  const amountInput = useRef<HTMLInputElement>(null);
+  const percentInput = useRef<HTMLInputElement>(null);
+  const missing = firstMissing([
+    [mode === 'fixed' && amountKopecks === null, { text: 'Проверь сумму', field: amountInput }],
+    [mode === 'percent' && !percentValue, { text: 'Напиши процент от 1 до 99', field: percentInput }],
+    [mode === 'percent' && percentTooBig, { text: percentLimitText(goalRules), field: percentInput }],
+  ]);
 
   const save = () => {
     if (mode === 'fixed') update((d) => setCushionFixed(d, amountKopecks!));
@@ -413,24 +487,22 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
       />
       {mode === 'fixed' ? (
         <Field label="Держать в подушке">
-          <AmountInput value={amount} onChange={setAmount} />
+          <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
         </Field>
       ) : (
-        <Field label="Откладывать с каждого поступления" hint="Уже отложенное остаётся в подушке.">
+        <Field
+          label="Откладывать с каждого поступления"
+          hint={percentTooBig ? percentLimitText(goalRules) : 'Уже отложенное остаётся в подушке.'}
+        >
           <span className="amount-input">
-            <input className="input" inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value)} />
+            <input ref={percentInput} className="input" inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value)} />
             <span className="amount-input-currency">%</span>
           </span>
         </Field>
       )}
-      <button
-        type="button"
-        className="button-primary button-large"
-        disabled={mode === 'fixed' ? amountKopecks === null : percentValue === null || percentValue === 0}
-        onClick={save}
-      >
+      <SubmitButton missing={missing} onClick={save}>
         Сохранить
-      </button>
+      </SubmitButton>
 
       <span className="section-label">Взять из подушки</span>
       <Field label="Сколько взять" hint="Эти деньги станут свободными и попадут в дневной лимит.">
@@ -451,37 +523,64 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   );
 }
 
+/** A goal saved evenly by a date, or as a percent of every income (update 1). */
 export function GoalForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.goals.find((g) => g.id === id);
+  const [newGoalId] = useState(newId);
   const [name, setName] = useState(existing?.name ?? '');
   const [target, setTarget] = useState(amountText(existing?.targetKopecks ?? 0));
   const [initial, setInitial] = useState(amountText(existing?.initialSavedKopecks ?? 0));
+  const [mode, setMode] = useState<'deadline' | 'percent'>(existing?.percent != null ? 'percent' : 'deadline');
   const [deadline, setDeadline] = useState(existing?.deadline ?? '');
+  const [percent, setPercent] = useState(existing?.percent != null ? String(existing.percent) : '');
   const targetKopecks = parseAmount(target) ?? 0;
   const initialKopecks = parseAmount(initial === '' ? '0' : initial);
+  const percentValue = Number(percent); // digits only, at most two; 0 while empty
+  // Every percent rule but this goal's: together they must leave something to live on.
+  const others = percentRules(data).filter((r) => existing === undefined || r.goalId !== existing.id);
+  const percentTooBig = percentValue > maxPercent(others);
   const nameInput = useRef<HTMLInputElement>(null);
   const targetInput = useRef<HTMLInputElement>(null);
   const initialInput = useRef<HTMLInputElement>(null);
   const deadlineInput = useRef<HTMLInputElement>(null);
+  const percentInput = useRef<HTMLInputElement>(null);
   const missing = firstMissing([
     [name.trim() === '', { text: 'Напиши, на что копим', field: nameInput }],
     [targetKopecks === 0, { text: 'Напиши, сколько нужно', field: targetInput }],
     [initialKopecks === null || initialKopecks > targetKopecks, { text: 'Отложено не может быть больше цели', field: initialInput }],
-    [!(deadline > today), { text: 'Выбери дату позже сегодняшней', field: deadlineInput }],
+    [mode === 'deadline' && !(deadline > today), { text: 'Выбери дату позже сегодняшней', field: deadlineInput }],
+    [mode === 'percent' && percentValue === 0, { text: 'Напиши процент от 1 до 99', field: percentInput }],
+    [mode === 'percent' && percentTooBig, { text: percentLimitText(others), field: percentInput }],
   ]);
   const ready = missing === null;
 
-  const draft = {
-    id: existing?.id ?? newId(),
+  const fields = {
     name: name.trim(),
     targetKopecks,
-    initialSavedKopecks: initialKopecks ?? 0,
-    startDate: existing?.startDate ?? today,
-    deadline,
-    percent: null,
-    status: 'active' as const,
+    deadline: mode === 'deadline' ? deadline : null,
+    percent: mode === 'percent' ? percentValue : null,
   };
+  // A new rule starts today; so does a changed percent or way of saving, keeping what is saved by yesterday.
+  const rescheduled = existing !== undefined && existing.percent !== fields.percent;
+  const draft: Goal =
+    existing === undefined
+      ? { id: newGoalId, ...fields, initialSavedKopecks: initialKopecks ?? 0, startDate: today, status: 'active' }
+      : rescheduled
+        ? { ...rebasedGoal(data, existing, today), ...fields }
+        : { ...existing, ...fields };
   const perPeriod = ready ? goalSavedBy(data, draft, budget.period.end) - goalSavedBy(data, draft, addDays(budget.period.start, -1)) : 0;
+  // «Со стипендии 220,00 BYN отложится 33,00 BYN»: the share of the main (or next) income, up to what the goal still needs.
+  const income = referenceIncome(data, today);
+  const share =
+    mode === 'percent' && income && percentValue > 0 && !percentTooBig && targetKopecks > 0
+      ? (incomeSplit(saveGoal(data, draft), income.amountKopecks).goals.find((g) => g.goalId === draft.id)?.kopecks ?? 0)
+      : null;
+  const fromIncome = income && fromIncomeText(income);
+  const percentHint = percentTooBig
+    ? percentLimitText(others)
+    : share !== null && fromIncome
+      ? `${fromIncome.charAt(0).toUpperCase()}${fromIncome.slice(1)} отложится ${moneyInText(share)}.`
+      : undefined;
 
   return (
     <FormScreen title={existing ? existing.name : 'Новая цель'} onBack={onBack}>
@@ -503,16 +602,44 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
           <AmountInput value={initial} onChange={setInitial} inputRef={initialInput} />
         </Field>
       )}
-      <Field label="К какой дате" hint={ready ? `Будем откладывать по ${formatMoney(perPeriod)} в этом периоде.` : undefined}>
-        <input
-          ref={deadlineInput}
-          className="input"
-          type="date"
-          min={addDays(today, 1)}
-          value={deadline}
-          onChange={(e) => setDeadline(e.target.value)}
+      <Field label="Как копим" group>
+        <Segmented
+          options={[
+            { value: 'deadline', label: 'К дате' },
+            { value: 'percent', label: 'Процент с дохода' },
+          ]}
+          value={mode}
+          onChange={setMode}
         />
       </Field>
+      {rescheduled && <p className="form-note">Уже накопленное останется в цели.</p>}
+      {mode === 'deadline' ? (
+        <Field label="К какой дате" hint={ready ? `Будем откладывать по ${formatMoney(perPeriod)} в этом периоде.` : undefined}>
+          <input
+            ref={deadlineInput}
+            className="input"
+            type="date"
+            min={addDays(today, 1)}
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+          />
+        </Field>
+      ) : (
+        <Field label="Сколько откладывать с каждого поступления" hint={percentHint}>
+          <span className="amount-input">
+            <input
+              ref={percentInput}
+              className="input"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="15"
+              value={percent}
+              onChange={(e) => setPercent(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            />
+            <span className="amount-input-currency">%</span>
+          </span>
+        </Field>
+      )}
       <SubmitButton
         missing={missing}
         onClick={() => {

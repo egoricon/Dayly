@@ -1,0 +1,243 @@
+/* Update 1 «Копилка»: the savings ring, the split of an income, leftover and period cards.
+   One fixed green for savings, apart from every accent (the nearest, «Мята», is ΔE 0.23 light and
+   0.17 dark in OKLab) and from danger; as a stroke it has 3.3:1 on the light background, 6.3:1 on the dark. */
+:root {
+  --savings: oklch(0.6 0.15 150);
+  --savings-soft: oklch(0.94 0.05 150);
+  --savings-ink: oklch(0.45 0.12 150);
+}
+
+:root[data-theme='dark'] {
+  --savings: oklch(0.66 0.15 150);
+  --savings-soft: oklch(0.28 0.05 150);
+  --savings-ink: oklch(0.82 0.12 150);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    --savings: oklch(0.66 0.15 150);
+    --savings-soft: oklch(0.28 0.05 150);
+    --savings-ink: oklch(0.82 0.12 150);
+  }
+}
+
+/* The thin outer ring: saved of planned this period. It fills slower than the day ring, so a
+   confirmed income is seen going in. */
+.ring .ring-savings-track,
+.ring .ring-savings-arc {
+  stroke-width: 5px;
+}
+
+.ring-savings-track {
+  stroke: var(--ring-track);
+}
+
+.ring-savings-arc {
+  stroke: var(--savings);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ring-savings-arc.is-filling {
+  transition-duration: 800ms;
+}
+
+/* Pills under the ring: «+3,20 с вчера» and «копилка 45 из 110» side by side. */
+.ring-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.savings-caption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px 0 10px;
+  border-radius: 17px;
+  background: var(--savings-soft);
+  color: var(--savings-ink);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 120ms ease-out;
+}
+
+.savings-caption:active {
+  transform: scale(0.96);
+}
+
+.savings-caption svg {
+  flex-shrink: 0;
+}
+
+.savings-caption circle {
+  fill: none;
+  stroke-width: 3px;
+}
+
+.savings-caption .savings-caption-track {
+  stroke: var(--savings);
+  opacity: 0.25;
+}
+
+.savings-caption .savings-caption-arc {
+  stroke: var(--savings);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* «+45 BYN в копилку» after an income, for a few seconds. */
+.savings-caption.is-added {
+  animation: savings-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes savings-pop {
+  from {
+    transform: scale(0.9);
+  }
+}
+
+/* The sheet after an income: where the money went and the new limit. */
+.split-sheet {
+  max-height: calc(100% - env(safe-area-inset-top) - 24px);
+  overflow-y: auto;
+}
+
+.split-sheet > * {
+  flex-shrink: 0;
+}
+
+.split-list {
+  padding: 2px 18px;
+}
+
+.split-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  font-size: 16px;
+}
+
+.split-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.split-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--savings);
+}
+
+/* «На жизнь» in the colour of the day ring it goes to. */
+.split-dot.is-life {
+  background: var(--accent);
+}
+
+.split-row.is-saving .split-value {
+  color: var(--savings-ink);
+}
+
+.split-value {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.split-limit {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.split-limit strong {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+/* «С каждого поступления» in «Финансы» */
+.savings-split {
+  padding: 14px 16px 2px;
+}
+
+.savings-split-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.savings-split-line {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.savings-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--line-soft);
+}
+
+.savings-bar span {
+  background: var(--savings);
+}
+
+.savings-bar span + span {
+  opacity: 0.75;
+}
+
+.savings-split-rows > li + li {
+  border-top: 1px solid var(--line-soft);
+}
+
+.list-row.is-static {
+  cursor: default;
+}
+
+.savings-split.is-focused {
+  animation: savings-focus 1600ms ease-out;
+}
+
+@keyframes savings-focus {
+  from {
+    box-shadow: 0 0 0 3px var(--savings);
+  }
+  to {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+/* Leftover and «Итоги периода» cards: the banner's look with a choice of where the money goes. */
+.savings-card .chips {
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.savings-card .chip {
+  height: 34px;
+  border-radius: 17px;
+}
+
+.savings-card-note {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--savings-ink);
+}
+
+.savings-card .banner-actions {
+  margin-top: 12px;
+}

@@ -4,6 +4,7 @@ import { TabBar, type Tab } from './components/TabBar';
 import { calculateBudget } from './domain/budget';
 import { toLocalDate } from './domain/dates';
 import type { AppData, LocalDate } from './domain/types';
+import { CalendarScreen } from './screens/CalendarScreen';
 import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
 import { Home } from './screens/Home';
@@ -14,7 +15,7 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { hideBanner, isBannerHidden, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
+import { dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
 import { afterFirstSetup, atLaunch, shouldShowWhatsNew } from './intro';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
@@ -133,12 +134,13 @@ export function App() {
     setFinanceRoute(route);
     setTab('finances');
   };
+  // «Настройки → Функции»: a feature turned off is not shown; its data stays.
+  const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   const openCalendar = (date: LocalDate | null) => {
+    if (!feature('calendar')) return;
     setCalendarDate(date);
     setTab('calendar');
   };
-  // «Настройки → Функции»: a feature turned off is not shown; its data stays.
-  const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   // «Сбросить всё»: this device forgets everything and the app starts from onboarding.
   const reset = () => {
     localStorage.removeItem(DATA_KEY);
@@ -184,15 +186,16 @@ export function App() {
           onOpenFinances={openFinances}
           onOpenCalendar={openCalendar}
           feature={feature}
+          isCardDismissed={(key) => isCardDismissed(ui, key)}
+          onDismissCard={(key) => setUi((state) => dismissCard(state, key))}
           showTips={!ui.tipsShown}
           onTipsDone={() => setUi((state) => ({ ...state, tipsShown: true }))}
           showWhatsNew={shouldShowWhatsNew(ui, true)}
           onWhatsNewSeen={() => setUi((state) => ({ ...state, whatsNewSeen: WHATS_NEW_ID }))}
         />
       )}
-      {tab === 'calendar' && (
-        // Placeholder until the «Календарь» screen of update 1 (task A) replaces it, opened on calendarDate.
-        <main className="screen with-tabs" data-testid="calendar-placeholder" data-date={calendarDate ?? ''} />
+      {tab === 'calendar' && feature('calendar') && (
+        <CalendarScreen data={data} budget={budget} today={today} update={update} initialDate={calendarDate} />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (
@@ -225,9 +228,11 @@ export function App() {
       )}
       <TabBar
         active={tab}
+        hidden={feature('calendar') ? [] : ['calendar']}
         onChange={(next) => {
           if (next === 'finances') setFinanceRoute({ screen: 'main' });
           if (next === 'settings') setSettingsRoute({ screen: 'main' });
+          if (next === 'calendar') setCalendarDate(null);
           setTab(next);
         }}
       />
