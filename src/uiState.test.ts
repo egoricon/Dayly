@@ -63,7 +63,13 @@ describe('features and «Что нового» (update 1)', () => {
 
   it('state saved before update 1 loads with every feature on, «Что нового» not seen and no tips shown', () => {
     const old = { hiddenBanners: {}, accent: 'mint', launches: 7, installHintDismissed: true, statsEnabled: false };
-    expect(loadUiState(storageWith(JSON.stringify(old)))).toEqual({ ...old, features: defaultUiState().features, whatsNewSeen: null, tipsShown: false });
+    expect(loadUiState(storageWith(JSON.stringify(old)))).toEqual({
+      ...old,
+      features: defaultUiState().features,
+      whatsNewSeen: null,
+      tipsShown: false,
+      dismissedCards: [],
+    });
   });
 
   it('a feature turned off stays off; the others and unknown values stay on', () => {

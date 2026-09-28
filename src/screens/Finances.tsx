@@ -7,11 +7,13 @@ import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
 import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
+import { percentRules } from '../ui/savings';
+import { IncomeSplitBlock } from '../components/IncomeSplitBlock';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
 import { TargetForm, TargetSection } from './TargetForm';
 
 export type FinanceRoute =
-  | { screen: 'main' }
+  | { screen: 'main'; section?: 'savings' } // 'savings': opened from the savings ring
   | { screen: 'income'; id: string | null }
   | { screen: 'payments' }
   | { screen: 'payment'; id: string | null }
@@ -45,6 +47,13 @@ export function Finances(props: FinanceProps) {
   useEffect(() => {
     previous.current = route.screen;
   }, [route.screen]);
+  // From the savings ring: «С каждого поступления» scrolls to itself; without percent rules, the goals.
+  const focusSavings = route.screen === 'main' && route.section === 'savings';
+  const goalsLabel = useRef<HTMLSpanElement>(null);
+  const noPercentRules = percentRules(data).length === 0;
+  useEffect(() => {
+    if (focusSavings && noPercentRules) goalsLabel.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [focusSavings, noPercentRules]);
 
   switch (route.screen) {
     case 'income':
@@ -129,7 +138,17 @@ export function Finances(props: FinanceProps) {
         </li>
       </ul>
 
-      <span className="section-label">Коплю на</span>
+      <IncomeSplitBlock
+        data={data}
+        today={today}
+        onOpenCushion={() => onNavigate({ screen: 'cushion' })}
+        onOpenGoal={(id) => onNavigate({ screen: 'goal', id })}
+        focused={focusSavings}
+      />
+
+      <span className="section-label" ref={goalsLabel}>
+        Коплю на
+      </span>
       {goals.map((g) => {
         const saved = goalSavedBy(data, g, today);
         const perPeriod = goalSavedBy(data, g, budget.period.end) - goalSavedBy(data, g, addDays(budget.period.start, -1));
