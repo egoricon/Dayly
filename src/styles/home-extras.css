@@ -1,0 +1,262 @@
+/* Update 1 on the home screen: the ring warns early, the week strip, «Завтра будет…», the target daily
+   limit with «Как дотянуть», and «Ближайшее». Built on the tokens of styles.css. */
+
+:root {
+  /* The ring runs low (more than 80 % of today's limit spent): a saturated lemon yellow. It stays apart
+     from every accent, the default amber too (golden, hue 85), and the whole ring turns yellow with its track. */
+  --warning: oklch(0.86 0.18 103);
+  --warning-soft: oklch(0.94 0.07 103);
+  --warning-ink: oklch(0.47 0.1 95);
+  /* A day of the week strip that stayed within its limit. */
+  --day-in: oklch(0.7 0.13 150);
+}
+
+/* The same block twice, as in styles.css: for «Тёмная» and for «Авто» with a dark system theme. */
+:root[data-theme='dark'] {
+  --warning: oklch(0.88 0.18 103);
+  --warning-soft: oklch(0.33 0.07 103);
+  --warning-ink: oklch(0.9 0.16 103);
+  --day-in: oklch(0.72 0.13 150);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] {
+    --warning: oklch(0.88 0.18 103);
+    --warning-soft: oklch(0.33 0.07 103);
+    --warning-ink: oklch(0.9 0.16 103);
+    --day-in: oklch(0.72 0.13 150);
+  }
+}
+
+/* The ring warns early */
+
+.ring-arc-warning {
+  stroke: var(--warning);
+}
+
+.ring-track {
+  transition: stroke 400ms ease-out;
+}
+
+/* The track of a yellow arc turns pale yellow, so the change shows even when little arc is left. */
+.ring-track:has(+ .ring-arc-warning) {
+  stroke: var(--warning-soft);
+}
+
+.ring-label.is-warning {
+  color: var(--warning-ink);
+}
+
+/* The week strip under the ring */
+
+.week-strip {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 32px;
+  margin-top: -8px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.week-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.week-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ring-track);
+}
+
+.week-dot.is-in {
+  background: var(--day-in);
+}
+
+.week-dot.is-over {
+  background: var(--danger);
+}
+
+.week-dot.is-today {
+  background: none;
+  box-shadow: inset 0 0 0 2px var(--muted);
+}
+
+/* «Завтра будет…» and the target: quiet lines under the ring */
+
+.home-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 14 px like the balance line: «Остановишься сейчас — завтра 31,04 (+2,50)» fits one line on a 360-pt phone. */
+.home-line {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted);
+  text-align: center;
+}
+
+.home-line strong {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.home-line-gain {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.home-line.is-reached {
+  color: var(--accent-ink);
+}
+
+.target-line {
+  padding: 6px 10px;
+  margin: -6px -10px;
+  border-radius: 14px;
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+/* «Ближайшее» */
+
+/* The home list scrolls: its items keep their height. overflow: hidden would let this one shrink to nothing. */
+.week-strip,
+.home-lines,
+.upcoming {
+  flex-shrink: 0;
+}
+
+.upcoming {
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.upcoming-icon {
+  margin-right: 6px;
+  vertical-align: -3px;
+  stroke: currentColor;
+}
+
+/* A bigger tap area than the text, without moving the line. */
+.upcoming-item {
+  padding: 10px 4px;
+  margin: -10px -4px;
+  border-radius: 12px;
+}
+
+.upcoming-day {
+  color: var(--ink);
+}
+
+/* «Как дотянуть» */
+
+.levers-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 20px;
+}
+
+.levers-numbers {
+  display: flex;
+  gap: 24px;
+}
+
+.levers-number {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.levers-caption {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.levers-number strong {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* A wish, not a debt: the gap is said calmly, not in red. */
+.levers-verdict {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.levers-verdict.is-reached {
+  color: var(--accent-ink);
+}
+
+.levers-list {
+  padding: 2px 16px;
+}
+
+.lever {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 0 12px;
+  font-size: 15px;
+}
+
+.lever-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.lever-effect {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-ink);
+}
+
+.lever-apply {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent-ink-strong);
+  font-size: 14px;
+  font-weight: 700;
+  transition: transform 120ms ease-out;
+}
+
+.lever-apply:active,
+.week-strip:active,
+.target-line:active {
+  transform: scale(0.96);
+}
+
+.week-strip,
+.target-line {
+  transition: transform 120ms ease-out;
+}
