@@ -1,12 +1,13 @@
 import { defaultCategories } from './domain/categories';
-import type { AppData, IncomeSource } from './domain/types';
+import type { AppData, Goal, IncomeSource, MandatoryPayment } from './domain/types';
 
 export const DATA_KEY = 'dayly:data';
 const CORRUPT_KEY = 'dayly:data:corrupt';
 
 /**
  * Upgrades saved data step by step: version 2 added a weekday for weekly incomes,
- * version 3 added favourite expenses, version 4 own categories and reserves.
+ * version 3 added favourite expenses, version 4 own categories and reserves,
+ * version 5 one-off incomes, weekly and one-off payments, percent goals and the target daily limit.
  */
 function migrate(data: { schemaVersion: number }): AppData | null {
   let current = data as unknown as Record<string, unknown> & { schemaVersion: number };
@@ -27,7 +28,21 @@ function migrate(data: { schemaVersion: number }): AppData | null {
     const categories = defaultCategories(reserves?.groceriesKopecks ?? 0, reserves?.transportKopecks ?? 0);
     current = { ...current, schemaVersion: 4, settings: { ...settings, categories } };
   }
-  return current.schemaVersion === 4 ? (current as unknown as AppData) : null;
+  if (current.schemaVersion === 4) {
+    // Everything planned so far repeats, every goal has a deadline, and there is no target limit.
+    const sources = current.incomeSources as Omit<IncomeSource, 'date'>[];
+    const payments = (current.payments ?? []) as Omit<MandatoryPayment, 'weekday' | 'date'>[];
+    const goals = (current.goals ?? []) as Omit<Goal, 'percent'>[];
+    current = {
+      ...current,
+      schemaVersion: 5,
+      settings: { ...(current.settings as object), targetDailyLimitKopecks: null },
+      incomeSources: sources.map((s) => ({ ...s, date: null })),
+      payments: payments.map((p) => ({ ...p, weekday: null, date: null })),
+      goals: goals.map((g) => ({ ...g, percent: null })),
+    };
+  }
+  return current.schemaVersion === 5 ? (current as unknown as AppData) : null;
 }
 
 /** Any saved or exported data brought to the current version; null when it is not Dayly data. */

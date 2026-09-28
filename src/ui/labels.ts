@@ -1,4 +1,4 @@
-import { addDays, diffDays } from '../domain/dates';
+import { addDays, diffDays, type Schedule } from '../domain/dates';
 import type { BudgetResult } from '../domain/budget';
 import type { AppData, IncomeSource, LocalDate } from '../domain/types';
 
@@ -71,10 +71,11 @@ export function untilPeriodEnd(data: AppData, budget: BudgetResult): string {
 export const WEEKDAY_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const WEEKDAY_EVERY = ['по понедельникам', 'по вторникам', 'по средам', 'по четвергам', 'по пятницам', 'по субботам', 'по воскресеньям'];
 
-/** How often an income comes: '5-го', 'по пятницам', 'нерегулярно'. */
-export function incomeScheduleText(source: { dayOfMonth: number | null; weekday: number | null }): string {
-  if (source.weekday !== null) return WEEKDAY_EVERY[source.weekday - 1]!;
-  if (source.dayOfMonth !== null) return `${source.dayOfMonth}-го`;
+/** When an income or a payment comes: '5-го', 'по пятницам', '13 октября' (once), 'нерегулярно'. */
+export function scheduleText(schedule: Schedule): string {
+  if (schedule.weekday !== null) return WEEKDAY_EVERY[schedule.weekday - 1]!;
+  if (schedule.dayOfMonth !== null) return `${schedule.dayOfMonth}-го`;
+  if (schedule.date !== null) return formatDayMonth(schedule.date);
   return 'нерегулярно';
 }
 

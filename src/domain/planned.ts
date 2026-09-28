@@ -1,11 +1,13 @@
 import type { Occurrence } from './budget';
-import { addDays, diffDays, isRegular, maxDate, monthlyOccurrences, scheduleOccurrences, type Period } from './dates';
-import type { AppData, LocalDate, Transaction } from './types';
+import { addDays, diffDays, isRegular, maxDate, scheduleOccurrences, type Period } from './dates';
+import type { AppData, IncomeSource, LocalDate, MandatoryPayment, Transaction } from './types';
 
-// Planned incomes and payments: which occurrences are waiting for a confirmation.
+// Planned incomes and payments: which occurrences are waiting for a confirmation, and what is coming.
 
 /** How far back the home screen asks «Стипендия пришла?». */
 export const CONFIRM_WINDOW_DAYS = 14;
+/** How far ahead «Ближайшее» looks for planned events. */
+const UPCOMING_HORIZON_DAYS = 366;
 /** How early an income can arrive and still close its planned occurrence. */
 const EARLY_ARRIVAL_DAYS = 7;
 
@@ -58,15 +60,66 @@ export function occurrenceToClose(data: AppData, sourceId: string, today: LocalD
   return best;
 }
 
-/** The occurrence of a payment in the given period, if it falls into it. */
-export function paymentOccurrence(data: AppData, paymentId: string, period: Period): LocalDate | null {
+/** Every occurrence of a payment in the period: one for a monthly payment, several for a weekly one. */
+export function paymentOccurrences(data: AppData, paymentId: string, period: Period): LocalDate[] {
   const payment = data.payments.find((p) => p.id === paymentId);
-  if (!payment) return null;
+  if (!payment) return [];
   const from = maxDate(period.start, maxDate(payment.startDate, data.settings.trackingStartDate));
-  return monthlyOccurrences(payment.dayOfMonth, from, period.end)[0] ?? null;
+  return scheduleOccurrences(payment, from, period.end);
+}
+
+/**
+ * The occurrence of a payment in the period to show and mark paid: the first unpaid one,
+ * or the last one when all are paid. Null when the payment does not fall into the period.
+ */
+export function paymentOccurrence(data: AppData, paymentId: string, period: Period): LocalDate | null {
+  const dates = paymentOccurrences(data, paymentId, period);
+  return dates.find((date) => paymentTransaction(data, paymentId, date) === undefined) ?? dates[dates.length - 1] ?? null;
 }
 
 /** The operation that paid a payment occurrence, if any. */
 export function paymentTransaction(data: AppData, paymentId: string, date: LocalDate): Transaction | undefined {
   return data.transactions.find((t) => t.type === 'expense' && t.paymentId === paymentId && t.plannedDate === date);
+}
+
+/** A planned income or payment on its day, for the calendar and «Ближайшее». */
+export interface PlannedEvent {
+  kind: 'income' | 'payment';
+  sourceId: string; // the income source or the payment
+  date: LocalDate;
+  amountKopecks: number; // planned; for a done event, what actually came or was paid
+  done: boolean; // the income is confirmed or the payment is paid
+}
+
+/**
+ * Occurrences of active incomes and payments within [from, to], sorted by date (incomes first on a day).
+ * Occurrences before the source's or payment's `startDate` and before the start of tracking are not planned.
+ */
+export function plannedEvents(data: AppData, from: LocalDate, to: LocalDate): PlannedEvent[] {
+  const closing = new Map<string, Transaction>();
+  for (const t of data.transactions) {
+    if (t.plannedDate === null) continue;
+    if (t.type === 'income' && t.incomeSourceId !== null) closing.set(`income|${key(t.incomeSourceId, t.plannedDate)}`, t);
+    if (t.type === 'expense' && t.paymentId !== null) closing.set(`payment|${key(t.paymentId, t.plannedDate)}`, t);
+  }
+  const events: PlannedEvent[] = [];
+  const add = (kind: PlannedEvent['kind'], item: IncomeSource | MandatoryPayment) => {
+    if (!item.isActive) return;
+    const start = maxDate(from, maxDate(item.startDate, data.settings.trackingStartDate));
+    for (const date of scheduleOccurrences(item, start, to)) {
+      const t = closing.get(`${kind}|${key(item.id, date)}`);
+      events.push({ kind, sourceId: item.id, date, amountKopecks: t ? t.amountKopecks : item.amountKopecks, done: t !== undefined });
+    }
+  };
+  for (const source of data.incomeSources) add('income', source);
+  for (const payment of data.payments) add('payment', payment);
+  // Stable sort: on the same day incomes stay before payments, each in the order of the data.
+  return events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+/** «Ближайшее»: the next `count` planned events from today on that are not confirmed or paid yet. */
+export function upcomingEvents(data: AppData, today: LocalDate, count: number): PlannedEvent[] {
+  return plannedEvents(data, today, addDays(today, UPCOMING_HORIZON_DAYS))
+    .filter((e) => !e.done)
+    .slice(0, count);
 }

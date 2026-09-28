@@ -1,6 +1,6 @@
-import { cushionSavedBy } from './domain/budget';
 import { activeCategories, defaultCategories, MAX_CATEGORIES } from './domain/categories';
-import { addDays, isRegular, weekdayIndex } from './domain/dates';
+import { isRecurring, weekdayIndex } from './domain/dates';
+import { rebasedCushion, rebasedGoal } from './domain/savings';
 import type {
   AppData,
   Category,
@@ -81,11 +81,12 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     amountKopecks: result.income.amountKopecks,
     dayOfMonth: result.income.weekly ? null : dayOf(result.income.date),
     weekday: result.income.weekly ? weekdayIndex(result.income.date) + 1 : null,
+    date: null,
     startDate: result.income.date,
     isActive: true,
   };
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
@@ -95,6 +96,7 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
       theme: 'auto',
       lastCategory: 'cafe',
       favorites: [],
+      targetDailyLimitKopecks: null,
     },
     incomeSources: income ? [income] : [],
     payments: result.payments.map((p) => ({
@@ -102,6 +104,8 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
       name: p.name,
       amountKopecks: p.amountKopecks,
       dayOfMonth: dayOf(p.date),
+      weekday: null,
+      date: null,
       startDate: today,
       isActive: true,
     })),
@@ -172,9 +176,10 @@ export function recordDaySummary(data: AppData, date: LocalDate, dailyLimitKopec
 
 // Incomes
 
+/** Only a monthly or weekly income can be the main one: a one-off or irregular one cannot define the period. */
 export function saveIncomeSource(data: AppData, source: IncomeSource, isMain: boolean): AppData {
   const main = data.settings.mainIncomeSourceId;
-  const mainIncomeSourceId = isMain && isRegular(source) ? source.id : main === source.id ? null : main;
+  const mainIncomeSourceId = isMain && isRecurring(source) ? source.id : main === source.id ? null : main;
   return { ...data, incomeSources: upsert(data.incomeSources, source), settings: { ...data.settings, mainIncomeSourceId } };
 }
 
@@ -257,14 +262,7 @@ export function setCushionFixed(data: AppData, amountKopecks: number): AppData {
  * are counted once, at the new percent.
  */
 export function setCushionPercent(data: AppData, percent: number, today: LocalDate, takeKopecks = 0): AppData {
-  const savedBeforeToday = cushionSavedBy(data, addDays(today, -1));
-  return {
-    ...data,
-    settings: {
-      ...data.settings,
-      cushion: { mode: 'percent', percent, baseKopecks: Math.max(0, savedBeforeToday - takeKopecks), sinceDate: today },
-    },
-  };
+  return { ...data, settings: { ...data.settings, cushion: rebasedCushion(data, percent, today, -takeKopecks) } };
 }
 
 /** «Взять из подушки X»: the cushion shrinks by X, and the money becomes free. */
@@ -295,6 +293,38 @@ export function buyGoal(data: AppData, goalId: string, amountKopecks: number, to
 export function cancelGoal(data: AppData, goalId: string): AppData {
   const goal = data.goals.find((g) => g.id === goalId);
   return goal ? saveGoal(data, { ...goal, status: 'cancelled' }) : data;
+}
+
+/** Where «Отложить остаток» puts the money: a goal or the cushion. */
+export type SavingsTarget = { goalId: string } | { cushion: true };
+
+/**
+ * «Отложить остаток» and «Отправить в копилку»: moves money into savings without an operation, so the
+ * balance stays and the limit goes down. What a goal or the cushion holds grows by exactly the amount
+ * (a goal up to its target):
+ * - a deadline goal is counted afresh from today with what it saved by yesterday plus the amount, and
+ *   spreads the smaller rest over the days left, so today's own share shrinks a little;
+ * - a percent goal and the percent cushion keep their start and get the amount on top of their base,
+ *   so their growth in the period stays as it was (see periodSavings);
+ * - a fixed cushion simply grows.
+ */
+export function setAsideLeftover(data: AppData, target: SavingsTarget, amountKopecks: number, today: LocalDate): AppData {
+  if ('goalId' in target) {
+    const goal = data.goals.find((g) => g.id === target.goalId);
+    if (!goal) return data;
+    if (goal.percent !== null) {
+      return saveGoal(data, { ...goal, initialSavedKopecks: Math.min(goal.targetKopecks, goal.initialSavedKopecks + amountKopecks) });
+    }
+    return saveGoal(data, rebasedGoal(data, goal, today, amountKopecks));
+  }
+  const cushion = data.settings.cushion;
+  if (cushion.mode === 'fixed') return setCushionFixed(data, cushion.amountKopecks + amountKopecks);
+  return { ...data, settings: { ...data.settings, cushion: { ...cushion, baseKopecks: cushion.baseKopecks + amountKopecks } } };
+}
+
+/** «Хочу тратить N в день»; null removes the target. */
+export function setTargetDailyLimit(data: AppData, kopecks: number | null): AppData {
+  return { ...data, settings: { ...data.settings, targetDailyLimitKopecks: kopecks } };
 }
 
 // Theme

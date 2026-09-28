@@ -21,7 +21,7 @@ import { incomesToConfirm, occurrenceToClose, paymentOccurrence } from './domain
 import { transactionName } from './components/TransactionRow';
 import { activeCategories, MAX_CATEGORIES } from './domain/categories';
 import type { AppData } from './domain/types';
-import { hideBanner, isBannerHidden } from './uiState';
+import { defaultUiState, hideBanner, isBannerHidden } from './uiState';
 
 const NOW = new Date('2026-09-26T09:00:00');
 
@@ -55,6 +55,7 @@ function configured(): AppData {
     initialSavedKopecks: 0,
     startDate: '2026-09-26',
     deadline: '2026-11-20',
+    percent: null,
     status: 'active',
   });
 }
@@ -225,7 +226,7 @@ describe('confirmations', () => {
   });
 
   it('«Ещё нет» hides a banner until tomorrow', () => {
-    const state = hideBanner({ hiddenBanners: { old: '2026-10-04' }, accent: 'amber', launches: 1, installHintDismissed: false, statsEnabled: true }, 'income|x|2026-10-05', '2026-10-05');
+    const state = hideBanner({ ...defaultUiState(), hiddenBanners: { old: '2026-10-04' }, launches: 1 }, 'income|x|2026-10-05', '2026-10-05');
     expect(state.hiddenBanners).toEqual({ 'income|x|2026-10-05': '2026-10-05' });
     expect(isBannerHidden(state, 'income|x|2026-10-05', '2026-10-05')).toBe(true);
     expect(isBannerHidden(state, 'income|x|2026-10-05', '2026-10-06')).toBe(false);

@@ -5,7 +5,7 @@ import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/catego
 import { addDays } from '../domain/dates';
 import { formatKopecks, formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
-import { formatDayMonth, incomeScheduleText } from '../ui/labels';
+import { formatDayMonth, scheduleText } from '../ui/labels';
 import { CategoryForm, CushionForm, FavoriteForm, GoalForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
 
 export type FinanceRoute =
@@ -84,7 +84,7 @@ export function Finances(props: FinanceProps) {
               <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'income', id: s.id })}>
                 <span className="list-text">
                   <span className="list-name">
-                    {s.name} · {incomeScheduleText(s)}
+                    {s.name} · {scheduleText(s)}
                   </span>
                   {s.id === data.settings.mainIncomeSourceId && <span className="list-sub">основное, от него считается период</span>}
                 </span>
@@ -124,8 +124,8 @@ export function Finances(props: FinanceProps) {
 
       <span className="section-label">Коплю на</span>
       {goals.map((g) => {
-        const saved = goalSavedBy(g, today);
-        const perPeriod = goalSavedBy(g, budget.period.end) - goalSavedBy(g, addDays(budget.period.start, -1));
+        const saved = goalSavedBy(data, g, today);
+        const perPeriod = goalSavedBy(data, g, budget.period.end) - goalSavedBy(data, g, addDays(budget.period.start, -1));
         return (
           <button key={g.id} type="button" className="card goal-card" onClick={() => onNavigate({ screen: 'goal', id: g.id })}>
             <span className="goal-head">
@@ -138,7 +138,9 @@ export function Finances(props: FinanceProps) {
               <span style={{ width: `${Math.min(100, (saved / g.targetKopecks) * 100)}%` }} />
             </span>
             <span className="list-sub">
-              по {formatKopecks(perPeriod)} за период · к {formatDayMonth(g.deadline)}
+              {g.deadline !== null
+                ? `по ${formatKopecks(perPeriod)} за период · к ${formatDayMonth(g.deadline)}`
+                : `${g.percent}% с каждого поступления`}
             </span>
           </button>
         );

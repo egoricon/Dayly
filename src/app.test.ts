@@ -1,11 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { addExpense, addFavoriteExpense, createInitialData, deleteTransaction, recordDaySummary, removeFavorite, saveFavorite, setReserve } from './appData';
+import {
+  addExpense,
+  addFavoriteExpense,
+  createInitialData,
+  deleteTransaction,
+  recordDaySummary,
+  removeFavorite,
+  saveFavorite,
+  saveGoal,
+  setReserve,
+} from './appData';
 import { transactionName } from './components/TransactionRow';
 import { calculateBudget } from './domain/budget';
 import { backupFileName, makeBackup, parseBackup } from './backup';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { applyKey, type KeypadKey } from './ui/amountInput';
 import { formatDayHeader, untilPeriodEnd } from './ui/labels';
+import type { AppData } from './domain/types';
 
 function memoryStorage(): Storage {
   const items = new Map<string, string>();
@@ -26,6 +37,43 @@ function type(keys: string): string {
 }
 
 const NOW = new Date('2026-09-26T09:12:00');
+
+/** The same data as version 4 saved it: without the fields version 5 added. */
+function toV4(data: AppData) {
+  const { targetDailyLimitKopecks: _t, ...settings } = data.settings;
+  return {
+    ...data,
+    schemaVersion: 4,
+    settings,
+    incomeSources: data.incomeSources.map(({ date: _d, ...rest }) => rest),
+    payments: data.payments.map(({ weekday: _w, date: _d, ...rest }) => rest),
+    goals: data.goals.map(({ percent: _p, ...rest }) => rest),
+  };
+}
+
+/** Example А after onboarding and settings, with an expense: everything version 5 changed is present. */
+function exampleData(): AppData {
+  let data = createInitialData(
+    '2026-09-26',
+    {
+      balanceKopecks: 58600,
+      income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' },
+      payments: [{ name: 'Общежитие', amountKopecks: 4500, date: '2026-10-01' }],
+    },
+    NOW,
+  );
+  data = saveGoal(setReserve(data, 'groceries', 50000), {
+    id: 'headphones',
+    name: 'Наушники',
+    targetKopecks: 15000,
+    initialSavedKopecks: 0,
+    startDate: '2026-09-26',
+    deadline: '2026-11-20',
+    percent: null,
+    status: 'active',
+  });
+  return addExpense(data, 1840, 'groceries', '2026-09-26', NOW);
+}
 
 describe('keypad input', () => {
   it('follows the design rules', () => {
@@ -85,9 +133,10 @@ describe('storage', () => {
   it('upgrades version 1 data: incomes get weekday null, favourites start empty', () => {
     const storage = memoryStorage();
     const data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
-    const { favorites: _f, categories: _c, ...rest } = data.settings;
+    const v4 = toV4(data);
+    const { favorites: _f, categories: _c, ...rest } = v4.settings;
     const v1Settings = { ...rest, reserves: { groceriesKopecks: 0, transportKopecks: 0 } };
-    const v1 = { ...data, schemaVersion: 1, settings: v1Settings, incomeSources: data.incomeSources.map(({ weekday: _, ...rest }) => rest) };
+    const v1 = { ...v4, schemaVersion: 1, settings: v1Settings, incomeSources: v4.incomeSources.map(({ weekday: _, ...rest }) => rest) };
     storage.setItem(DATA_KEY, JSON.stringify(v1));
     expect(loadData(storage)).toEqual(data);
   });
@@ -96,8 +145,9 @@ describe('storage', () => {
     const storage = memoryStorage();
     let data = createInitialData('2026-09-26', { balanceKopecks: 58600, income: { kind: 'scholarship', amountKopecks: 22000, date: '2026-10-05' }, payments: [] }, NOW);
     data = addExpense(setReserve(setReserve(data, 'groceries', 50000), 'transport', 10000), 1840, 'groceries', '2026-09-26', NOW);
-    const { categories: _c, ...rest } = data.settings;
-    const v3 = { ...data, schemaVersion: 3, settings: { ...rest, reserves: { groceriesKopecks: 50000, transportKopecks: 10000 } } };
+    const v4 = toV4(data);
+    const { categories: _c, ...rest } = v4.settings;
+    const v3 = { ...v4, schemaVersion: 3, settings: { ...rest, reserves: { groceriesKopecks: 50000, transportKopecks: 10000 } } };
     storage.setItem(DATA_KEY, JSON.stringify(v3));
     const loaded = loadData(storage)!;
     expect(loaded).toEqual(data);
@@ -109,6 +159,27 @@ describe('storage', () => {
       ['Продукты', 50000],
       ['Транспорт', 10000],
     ]);
+    expect(calculateBudget(loaded, '2026-09-26')).toEqual(calculateBudget(data, '2026-09-26'));
+  });
+
+  it('upgrades version 4 data: everything planned repeats, goals keep their deadline, no target limit', () => {
+    const storage = memoryStorage();
+    const data = exampleData();
+    const v4 = toV4(data);
+    expect(['targetDailyLimitKopecks' in v4.settings, 'date' in v4.incomeSources[0]!, 'weekday' in v4.payments[0]!, 'percent' in v4.goals[0]!]).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+    storage.setItem(DATA_KEY, JSON.stringify(v4));
+    const loaded = loadData(storage)!;
+    expect(loaded).toEqual(data);
+    expect(loaded.schemaVersion).toBe(5);
+    expect(loaded.settings.targetDailyLimitKopecks).toBeNull();
+    expect(loaded.incomeSources[0]).toMatchObject({ dayOfMonth: 5, weekday: null, date: null });
+    expect(loaded.payments[0]).toMatchObject({ dayOfMonth: 1, weekday: null, date: null });
+    expect(loaded.goals[0]).toMatchObject({ deadline: '2026-11-20', percent: null });
     expect(calculateBudget(loaded, '2026-09-26')).toEqual(calculateBudget(data, '2026-09-26'));
   });
 
@@ -153,10 +224,17 @@ describe('backup', () => {
   });
 
   it('upgrades a copy made by an older version', () => {
-    const { favorites: _f, categories: _c, ...rest } = data.settings;
+    const v4 = toV4(data);
+    const { favorites: _f, categories: _c, ...rest } = v4.settings;
     const oldSettings = { ...rest, reserves: { groceriesKopecks: 0, transportKopecks: 0 } };
-    const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: { ...data, schemaVersion: 2, settings: oldSettings } };
+    const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: { ...v4, schemaVersion: 2, settings: oldSettings } };
     expect(parseBackup(JSON.stringify(old))?.data).toEqual(data);
+  });
+
+  it('restores a copy made before update 1 (version 4)', () => {
+    const full = exampleData();
+    const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: toV4(full) };
+    expect(parseBackup(JSON.stringify(old, null, 1))).toEqual({ data: full, exportedAt: NOW.toISOString() });
   });
 
   it('rejects files that are not a Dayly copy', () => {

@@ -7,7 +7,7 @@ import { StepProgress } from '../components/StepProgress';
 import { addDays, addMonths, diffDays, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import type { IncomeSource, LocalDate } from '../domain/types';
-import { formatDayMonth, formatDays, incomeScheduleText } from '../ui/labels';
+import { formatDayMonth, formatDays, scheduleText } from '../ui/labels';
 import { StartBalance } from './StartBalance';
 
 type Step = 'welcome' | 'balance' | 'income' | 'payments';
@@ -74,7 +74,7 @@ export function Onboarding({ today, onComplete }: OnboardingProps) {
     // Up to the same day next month (next week for a weekly income): an earlier occurrence of
     // that day would cut the period short.
     const maxDate = weekly ? addDays(today, 7) : addMonths(today, 1);
-    const repeats = incomeDate && weekly ? `, дальше ${incomeScheduleText({ dayOfMonth: null, weekday: weekdayIndex(incomeDate) + 1 })}` : '';
+    const repeats = incomeDate && weekly ? `, дальше ${scheduleText({ dayOfMonth: null, weekday: weekdayIndex(incomeDate) + 1, date: null })}` : '';
     return (
       <main className="screen onboarding">
         <StepProgress step={2} onBack={() => setStep('balance')} />

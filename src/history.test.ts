@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addExpense, buyGoal, createInitialData, deleteTransaction, recordDaySummary, saveGoal, setCushionFixed, setReserve, updateExpense } from './appData';
 import { calculateBudget, previewExpense } from './domain/budget';
-import { historyDays, recentOperations } from './domain/history';
+import { dayResults, historyDays, limitStreak, recentOperations } from './domain/history';
 import { formatOperationTime } from './ui/labels';
 import type { AppData } from './domain/types';
 
@@ -33,6 +33,7 @@ function configured(): AppData {
     initialSavedKopecks: 0,
     startDate: '2026-09-26',
     deadline: '2026-11-20',
+    percent: null,
     status: 'active',
   });
 }
@@ -139,5 +140,35 @@ describe('«Как считается»', () => {
       b.freeKopecks,
     );
     expect(Math.floor(b.freeKopecks / b.days)).toBe(r.dailyLimitKopecks);
+  });
+});
+
+describe('days in the limit (update 1)', () => {
+  /** 26 Sep within (3,50 of 28,54, groceries from the reserve), 27 Sep over, 28–29 Sep within, 25 Sep before tracking. */
+  function week(): AppData {
+    let data = withFirstDay();
+    data = recordDaySummary(data, '2026-09-27', 3104);
+    data = addExpense(data, 4000, 'fun', '2026-09-27', new Date('2026-09-27T20:00:00'));
+    data = recordDaySummary(data, '2026-09-28', 2604);
+    data = recordDaySummary(data, '2026-09-29', 2604);
+    return addExpense(data, 2604, 'cafe', '2026-09-29', new Date('2026-09-29T12:00:00'));
+  }
+
+  it('each day: within the recorded limit, over it, or no limit recorded', () => {
+    expect(dayResults(week(), '2026-09-25', '2026-09-29')).toEqual([
+      { date: '2026-09-25', status: 'none', dailyLimitKopecks: null, spentFromLimitKopecks: 0 },
+      { date: '2026-09-26', status: 'in', dailyLimitKopecks: 2854, spentFromLimitKopecks: 350 },
+      { date: '2026-09-27', status: 'over', dailyLimitKopecks: 3104, spentFromLimitKopecks: 4000 },
+      { date: '2026-09-28', status: 'in', dailyLimitKopecks: 2604, spentFromLimitKopecks: 0 },
+      { date: '2026-09-29', status: 'in', dailyLimitKopecks: 2604, spentFromLimitKopecks: 2604 }, // exactly the limit
+    ]);
+  });
+
+  it('the streak counts days in a row before today and stops at an overspent day or a day without a limit', () => {
+    const data = week();
+    expect(limitStreak(data, '2026-09-30')).toBe(2);
+    expect(limitStreak(data, '2026-09-28')).toBe(0);
+    expect(limitStreak(data, '2026-09-27')).toBe(1);
+    expect(limitStreak(data, '2026-10-02')).toBe(0);
   });
 });

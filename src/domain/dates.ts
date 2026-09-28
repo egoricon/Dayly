@@ -59,10 +59,14 @@ function shiftMonth(year: number, month: number, delta: number): [number, number
   return [Math.floor(index / 12), (index % 12) + 1];
 }
 
-/** A monthly (dayOfMonth) or weekly (weekday, 1 = Monday … 7 = Sunday) schedule; both null means none. */
+/**
+ * When an income or a payment comes: monthly (dayOfMonth), weekly (weekday, 1 = Monday … 7 = Sunday)
+ * or once (date). At most one is set; all null means irregular.
+ */
 export interface Schedule {
   dayOfMonth: number | null;
   weekday: number | null;
+  date: LocalDate | null;
 }
 
 export interface Period {
@@ -116,15 +120,28 @@ export function weeklyOccurrences(weekday: number, from: LocalDate, to: LocalDat
   return result;
 }
 
-/** Occurrences of a monthly or weekly schedule within [from, to]; none for an irregular one. */
+/** Occurrences of a schedule within [from, to]: every month, every week or its one date; none for an irregular one. */
 export function scheduleOccurrences(schedule: Schedule, from: LocalDate, to: LocalDate): LocalDate[] {
   if (schedule.weekday !== null) return weeklyOccurrences(schedule.weekday, from, to);
   if (schedule.dayOfMonth !== null) return monthlyOccurrences(schedule.dayOfMonth, from, to);
+  if (schedule.date !== null) return schedule.date >= from && schedule.date <= to ? [schedule.date] : [];
   return [];
 }
 
+/** Planned: monthly, weekly or once. Only planned incomes are forecast. */
 export function isRegular(schedule: Schedule): boolean {
+  return schedule.dayOfMonth !== null || schedule.weekday !== null || schedule.date !== null;
+}
+
+/** Repeats every month or week. Only such a main income defines the period; a one-off one cannot. */
+export function isRecurring(schedule: Schedule): boolean {
   return schedule.dayOfMonth !== null || schedule.weekday !== null;
+}
+
+/** The first occurrence on or after `from`; null for an irregular schedule or a one-off date already past. */
+export function nextOccurrence(schedule: Schedule, from: LocalDate): LocalDate | null {
+  if (!isRecurring(schedule)) return schedule.date !== null && schedule.date >= from ? schedule.date : null;
+  return scheduleOccurrences(schedule, from, addMonths(from, 1))[0] ?? null;
 }
 
 /** The same day `months` months later; 29–31 fall back to the last day of that month. */

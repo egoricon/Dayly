@@ -1,4 +1,4 @@
-import { addDays, daysInclusive, diffDays, getPeriod, isRegular, maxDate, monthlyOccurrences, scheduleOccurrences, type Period } from './dates';
+import { addDays, daysInclusive, diffDays, getPeriod, isRecurring, isRegular, maxDate, scheduleOccurrences, type Period } from './dates';
 import { reserveCategories } from './categories';
 import type { AppData, Category, ExpenseCategory, Goal, LocalDate, Transaction } from './types';
 
@@ -78,10 +78,12 @@ function ceilDiv(numerator: number, denominator: number): number {
   return Math.ceil(numerator / denominator);
 }
 
-function periodOf(data: AppData, date: LocalDate): Period {
+/** The period containing `date`. */
+export function periodOf(data: AppData, date: LocalDate): Period {
   const main = data.incomeSources.find((s) => s.id === data.settings.mainIncomeSourceId);
   // Without a main income the money stretches over a month from the day tracking started (26.09.2026).
-  if (!main || (main.dayOfMonth === null && main.weekday === null)) {
+  // A one-off main income cannot define a period either.
+  if (!main || !isRecurring(main)) {
     return getPeriod(date, Number(data.settings.trackingStartDate.slice(8, 10)));
   }
   return getPeriod(date, main.dayOfMonth, main.weekday);
@@ -151,12 +153,38 @@ export function splitExpenses(data: AppData, date: LocalDate): ExpenseSplit[] {
     .map((t) => splits.get(t.id)!);
 }
 
+/** Balance at the end of `date`: incomes and adjustments with their sign, expenses subtracted. */
+export function balanceOn(data: AppData, date: LocalDate): number {
+  return sum(data.transactions.filter((t) => t.date <= date).map((t) => (t.type === 'expense' ? -t.amountKopecks : t.amountKopecks)));
+}
+
 function spentFromLimit(data: AppData, date: LocalDate): number {
   return sum(splitExpenses(data, date).map((s) => s.fromLimitKopecks));
 }
 
-/** How much of a goal must be saved by the end of day `date`. */
-export function goalSavedBy(goal: Goal, date: LocalDate): number {
+/** What a percent rule sets aside from one income, rounded up. */
+export function percentShare(amountKopecks: number, percent: number): number {
+  return ceilDiv(amountKopecks * percent, 100);
+}
+
+/** Percent shares of every income operation dated from `from` to `to`: the percent cushion and percent goals. */
+function incomeShares(data: AppData, percent: number, from: LocalDate, to: LocalDate): number {
+  return sum(
+    data.transactions
+      .filter((t) => t.type === 'income' && t.date >= from && t.date <= to)
+      .map((t) => percentShare(t.amountKopecks, percent)),
+  );
+}
+
+/**
+ * How much of a goal is saved by the end of day `date`. A deadline goal saves evenly by day;
+ * a percent goal saves its percent of every income since `startDate`. Never above the target.
+ */
+export function goalSavedBy(data: AppData, goal: Goal, date: LocalDate): number {
+  if (goal.percent !== null) {
+    return Math.min(goal.targetKopecks, goal.initialSavedKopecks + incomeShares(data, goal.percent, goal.startDate, date));
+  }
+  if (goal.deadline === null) return goal.initialSavedKopecks;
   const totalDays = daysInclusive(goal.startDate, goal.deadline);
   if (totalDays <= 0) return goal.targetKopecks;
   const elapsed = Math.min(Math.max(daysInclusive(goal.startDate, date), 0), totalDays);
@@ -164,25 +192,30 @@ export function goalSavedBy(goal: Goal, date: LocalDate): number {
   return Math.min(goal.targetKopecks, goal.initialSavedKopecks + ceilDiv(rest * elapsed, totalDays));
 }
 
-function cushionShare(amountKopecks: number, percent: number): number {
-  return ceilDiv(amountKopecks * percent, 100);
+/**
+ * What a goal holds at a checkpoint whose last day is `lastDay`. A percent goal adds its share of the
+ * expected incomes before the checkpoint to what it holds today.
+ */
+function goalAtCheckpoint(data: AppData, goal: Goal, today: LocalDate, lastDay: LocalDate, incomesBefore: Occurrence[]): number {
+  if (goal.percent === null) return goalSavedBy(data, goal, lastDay);
+  const percent = goal.percent;
+  const expected = sum(incomesBefore.filter((i) => i.date >= goal.startDate).map((i) => percentShare(i.amountKopecks, percent)));
+  return Math.min(goal.targetKopecks, goalSavedBy(data, goal, today) + expected);
 }
 
 /** Cushion saved by the end of day `date` (the percent mode counts incomes up to that day). */
 export function cushionSavedBy(data: AppData, date: LocalDate): number {
   const cushion = data.settings.cushion;
   if (cushion.mode === 'fixed') return cushion.amountKopecks;
-  const incomes = data.transactions.filter(
-    (t) => t.type === 'income' && t.date >= cushion.sinceDate && t.date <= date,
-  );
-  return cushion.baseKopecks + sum(incomes.map((t) => cushionShare(t.amountKopecks, cushion.percent)));
+  return cushion.baseKopecks + incomeShares(data, cushion.percent, cushion.sinceDate, date);
 }
 
 function occurrenceKey(sourceId: string, date: LocalDate): string {
   return `${sourceId}|${date}`;
 }
 
-function expectedIncomes(data: AppData, today: LocalDate, period: Period): Occurrence[] {
+/** Unconfirmed occurrences of planned incomes from `today` to the end of `period`. */
+export function expectedIncomes(data: AppData, today: LocalDate, period: Period): Occurrence[] {
   const confirmed = new Set(
     data.transactions
       .filter((t) => t.type === 'income' && t.incomeSourceId !== null && t.plannedDate !== null)
@@ -201,7 +234,8 @@ function expectedIncomes(data: AppData, today: LocalDate, period: Period): Occur
   return result.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-function unpaidPayments(data: AppData, period: Period): Occurrence[] {
+/** Occurrences of payments in `period` (monthly, weekly or one-off) without a paying operation, overdue ones too. */
+export function unpaidPayments(data: AppData, period: Period): Occurrence[] {
   const paid = new Set(
     data.transactions
       .filter((t) => t.type === 'expense' && t.paymentId !== null && t.plannedDate !== null)
@@ -211,7 +245,7 @@ function unpaidPayments(data: AppData, period: Period): Occurrence[] {
   for (const payment of data.payments) {
     if (!payment.isActive) continue;
     const from = maxDate(period.start, maxDate(payment.startDate, data.settings.trackingStartDate));
-    for (const date of monthlyOccurrences(payment.dayOfMonth, from, period.end)) {
+    for (const date of scheduleOccurrences(payment, from, period.end)) {
       if (!paid.has(occurrenceKey(payment.id, date))) {
         result.push({ sourceId: payment.id, date, amountKopecks: payment.amountKopecks });
       }
@@ -220,17 +254,15 @@ function unpaidPayments(data: AppData, period: Period): Occurrence[] {
   return result.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-type DayResult = Omit<BudgetResult, 'tomorrowLimitKopecks' | 'carryFromYesterdayKopecks'>;
+/** The day's budget without the look at tomorrow and yesterday. */
+export type DayBudget = Omit<BudgetResult, 'tomorrowLimitKopecks' | 'carryFromYesterdayKopecks'>;
 
-function computeDay(data: AppData, today: LocalDate): DayResult {
+/** calculateBudget for one day only: the limit, checkpoints and reserves, without tomorrow and the carry. */
+export function calculateDay(data: AppData, today: LocalDate): DayBudget {
   const period = periodOf(data, today);
   const { splits, reserves } = splitPeriodExpenses(data, period);
 
-  const balanceKopecks = sum(
-    data.transactions
-      .filter((t) => t.date <= today)
-      .map((t) => (t.type === 'expense' ? -t.amountKopecks : t.amountKopecks)),
-  );
+  const balanceKopecks = balanceOn(data, today);
   const spentTodayKopecks = sum(
     data.transactions
       .filter((t) => t.type === 'expense' && t.date === today)
@@ -256,9 +288,9 @@ function computeDay(data: AppData, today: LocalDate): DayResult {
     const paymentsKopecks = sum(paymentsBefore.map((p) => p.amountKopecks));
     const reserveTerms = reserves.map((r) => ({ category: r.category, kopecks: ceilDiv(r.remainingKopecks * days, daysToEnd) }));
     const reservesKopecks = sum(reserveTerms.map((r) => r.kopecks));
-    const goalTerms = activeGoals.map((g) => ({ goalId: g.id, kopecks: goalSavedBy(g, addDays(date, -1)) }));
+    const goalTerms = activeGoals.map((g) => ({ goalId: g.id, kopecks: goalAtCheckpoint(data, g, today, addDays(date, -1), incomesBefore) }));
     const goalsKopecks = sum(goalTerms.map((g) => g.kopecks));
-    const cushionKopecks = cushionNow + sum(incomesBefore.map((i) => cushionShare(i.amountKopecks, cushionPercent)));
+    const cushionKopecks = cushionNow + sum(incomesBefore.map((i) => percentShare(i.amountKopecks, cushionPercent)));
     const freeKopecks = startOfDayKopecks + incomeKopecks - paymentsKopecks - reservesKopecks - goalsKopecks - cushionKopecks;
     const isEnd = date === periodEndCheckpoint;
     return {
@@ -308,7 +340,7 @@ function computeDay(data: AppData, today: LocalDate): DayResult {
 }
 
 /** Incomes expected today count as arrived when looking at tomorrow. */
-function withTodayIncomesArrived(data: AppData, day: DayResult): AppData {
+function withTodayIncomesArrived(data: AppData, day: DayBudget): AppData {
   const arrived: Transaction[] = day.expectedIncomes
     .filter((i) => i.date === day.today)
     .map((i) => ({
@@ -328,8 +360,8 @@ function withTodayIncomesArrived(data: AppData, day: DayResult): AppData {
 }
 
 export function calculateBudget(data: AppData, today: LocalDate): BudgetResult {
-  const day = computeDay(data, today);
-  const tomorrow = computeDay(withTodayIncomesArrived(data, day), addDays(today, 1));
+  const day = calculateDay(data, today);
+  const tomorrow = calculateDay(withTodayIncomesArrived(data, day), addDays(today, 1));
 
   const yesterday = addDays(today, -1);
   const summary = data.daySummaries.find((s) => s.date === yesterday);
@@ -375,7 +407,7 @@ export function previewExpense(
     ? { ...data, transactions: data.transactions.map((t) => (t.id === original.id ? draft : t)) }
     : { ...data, transactions: [...data.transactions, draft] };
   const split = splitExpenses(next, draft.date).find((s) => s.transactionId === draft.id)!;
-  const result = computeDay(next, today);
+  const result = calculateDay(next, today);
   return {
     fromLimitKopecks: split.fromLimitKopecks,
     fromReserveKopecks: split.fromReserveKopecks,

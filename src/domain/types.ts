@@ -34,6 +34,7 @@ export interface Settings {
   theme: 'light' | 'dark' | 'auto';
   lastCategory: Category;
   favorites: Favorite[]; // at most MAX_FAVORITES, in display order
+  targetDailyLimitKopecks: number | null; // «Хочу тратить N в день»; null: no target
 }
 
 export interface IncomeSource {
@@ -41,9 +42,11 @@ export interface IncomeSource {
   kind: 'scholarship' | 'salary' | 'parents' | 'other';
   name: string;
   amountKopecks: number;
-  dayOfMonth: number | null; // monthly income; null for weekly and irregular
-  weekday: number | null; // weekly income: 1 = Monday … 7 = Sunday; both null means irregular, not forecast
-  startDate: LocalDate;
+  // At most one of the three is set; all null means irregular, not forecast.
+  dayOfMonth: number | null; // monthly income
+  weekday: number | null; // weekly income: 1 = Monday … 7 = Sunday
+  date: LocalDate | null; // one-off income on that day
+  startDate: LocalDate; // occurrences before it are not expected
   isActive: boolean;
 }
 
@@ -51,8 +54,11 @@ export interface MandatoryPayment {
   id: string;
   name: string;
   amountKopecks: number;
-  dayOfMonth: number;
-  startDate: LocalDate;
+  // Exactly one of the three is set.
+  dayOfMonth: number | null; // monthly payment
+  weekday: number | null; // weekly payment: 1 = Monday … 7 = Sunday
+  date: LocalDate | null; // one-off payment on that day
+  startDate: LocalDate; // occurrences before it are not due
   isActive: boolean;
 }
 
@@ -62,7 +68,9 @@ export interface Goal {
   targetKopecks: number;
   initialSavedKopecks: number;
   startDate: LocalDate;
-  deadline: LocalDate;
+  // Exactly one of the two is set.
+  deadline: LocalDate | null; // saved evenly by day up to the deadline
+  percent: number | null; // 1–99: saved as this percent of every income
   status: 'active' | 'done' | 'cancelled';
 }
 
@@ -86,7 +94,9 @@ export interface DaySummary {
 }
 
 export interface AppData {
-  schemaVersion: 4; // 2 added IncomeSource.weekday, 3 settings.favorites, 4 settings.categories instead of reserves
+  // 2 added IncomeSource.weekday, 3 settings.favorites, 4 settings.categories instead of reserves,
+  // 5 one-off incomes, weekly and one-off payments, percent goals and the target daily limit
+  schemaVersion: 5;
   settings: Settings;
   incomeSources: IncomeSource[];
   payments: MandatoryPayment[];

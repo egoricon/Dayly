@@ -1,110 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { calculateBudget, previewExpense, splitExpenses } from './budget';
-import type { AppData, Category, Goal, IncomeSource, MandatoryPayment, Transaction } from './types';
-import { defaultCategories } from './categories';
+import { calculateBudget, goalSavedBy, previewExpense, splitExpenses } from './budget';
+import { emptyData, exampleA, exampleB, exampleV, expense, headphones, headphonesPercent, oneOffPayment, source, tx, weeklyPayment } from './fixtures';
 
-// Reference numbers: PROJECT_MAP.md section 2, examples А and Б.
-
-let seq = 0;
-function tx(fields: Partial<Transaction> & Pick<Transaction, 'type' | 'amountKopecks' | 'date'>): Transaction {
-  seq += 1;
-  return {
-    id: `t${seq}`,
-    createdAt: `${fields.date}T12:00:${String(seq % 60).padStart(2, '0')}.000Z`,
-    category: null,
-    incomeSourceId: null,
-    paymentId: null,
-    goalId: null,
-    plannedDate: null,
-    note: null,
-    ...fields,
-  };
-}
-
-const expense = (date: string, amountKopecks: number, category: Category) =>
-  tx({ type: 'expense', amountKopecks, date, category });
-
-function source(
-  id: string,
-  kind: IncomeSource['kind'],
-  amountKopecks: number,
-  dayOfMonth: number | null,
-  startDate: string,
-  weekday: number | null = null,
-): IncomeSource {
-  return { id, kind, name: id, amountKopecks, dayOfMonth, weekday, startDate, isActive: true };
-}
-
-function payment(id: string, amountKopecks: number, dayOfMonth: number, startDate: string): MandatoryPayment {
-  return { id, name: id, amountKopecks, dayOfMonth, startDate, isActive: true };
-}
-
-function emptyData(trackingStartDate: string): AppData {
-  return {
-    schemaVersion: 4,
-    settings: {
-      onboardingCompleted: true,
-      trackingStartDate,
-      mainIncomeSourceId: null,
-      categories: defaultCategories(),
-      cushion: { mode: 'fixed', amountKopecks: 0 },
-      theme: 'auto',
-      lastCategory: 'cafe',
-      favorites: [],
-    },
-    incomeSources: [],
-    payments: [],
-    goals: [],
-    transactions: [],
-    daySummaries: [],
-  };
-}
-
-const headphones: Goal = {
-  id: 'headphones',
-  name: 'Наушники',
-  targetKopecks: 15000,
-  initialSavedKopecks: 0,
-  startDate: '2026-09-26',
-  deadline: '2026-11-20',
-  status: 'active',
-};
-
-/** Example А, first launch on 26 September: 586,00 on hand, scholarship on the 5th, three payments. */
-function exampleA(options: { full?: boolean; balanceKopecks?: number } = {}): AppData {
-  const start = '2026-09-26';
-  const data = emptyData(start);
-  data.settings.mainIncomeSourceId = 'scholarship';
-  data.incomeSources = [
-    source('scholarship', 'scholarship', 22000, 5, start),
-    source('parents', 'parents', 30000, 10, start),
-    source('salary', 'salary', 50000, 20, start),
-  ];
-  data.payments = [payment('dorm', 4500, 1, start), payment('internet', 3000, 3, start), payment('phone', 2000, 4, start)];
-  data.transactions = [tx({ type: 'adjustment', amountKopecks: options.balanceKopecks ?? 58600, date: start })];
-  if (options.full ?? true) {
-    data.settings.categories = defaultCategories(50000, 10000);
-    data.settings.cushion = { mode: 'fixed', amountKopecks: 3000 };
-    data.goals = [headphones];
-  }
-  return data;
-}
-
-/** Example Б: 5 October, scholarship arrived, 350,00 on hand, salary 500,00 on the 20th. */
-function exampleB(): AppData {
-  const start = '2026-10-05';
-  const data = emptyData(start);
-  data.settings.mainIncomeSourceId = 'scholarship';
-  data.settings.categories = defaultCategories(40000, 4000);
-  data.settings.cushion = { mode: 'fixed', amountKopecks: 5000 };
-  data.incomeSources = [source('scholarship', 'scholarship', 22000, 5, start), source('salary', 'salary', 50000, 20, start)];
-  data.payments = [payment('dorm', 4500, 1, start), payment('internet', 3000, 3, start), payment('phone', 2000, 4, start)];
-  data.transactions = [
-    tx({ type: 'adjustment', amountKopecks: 13000, date: start }),
-    tx({ type: 'income', amountKopecks: 22000, date: start, incomeSourceId: 'scholarship', plannedDate: start }),
-  ];
-  return data;
-}
+// Reference numbers: PROJECT_MAP.md section 2, examples А, Б and В.
 
 describe('standard case (example А)', () => {
   it('first limit without reserves: (586,00 − 95,00) ÷ 9 = 54,55', () => {
@@ -396,5 +294,95 @@ describe('weekly income', () => {
       ['2026-10-01', 3000],
     ]);
     expect(r.dailyLimitKopecks).toBe(2500);
+  });
+});
+
+describe('weekly and one-off payments (update 1)', () => {
+  // Example А on 26 September: free 256,89 over 9 days, limit 28,54.
+  it('a weekly payment is due on every weekday of the period: Sundays 27 September and 4 October', () => {
+    const data = exampleA();
+    data.payments.push(weeklyPayment('gym', 500, 7, '2026-09-26'));
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.unpaidPayments.filter((p) => p.sourceId === 'gym').map((p) => p.date)).toEqual(['2026-09-27', '2026-10-04']);
+    expect(r.breakdown.paymentsKopecks).toBe(10500);
+    expect(r.dailyLimitKopecks).toBe(2743); // (256,89 − 10,00) ÷ 9
+
+    // Paying one Sunday closes only that occurrence.
+    data.transactions.push(tx({ type: 'expense', amountKopecks: 500, date: '2026-09-27', paymentId: 'gym', plannedDate: '2026-09-27' }));
+    const paid = calculateBudget(data, '2026-09-27');
+    expect(paid.unpaidPayments.filter((p) => p.sourceId === 'gym').map((p) => p.date)).toEqual(['2026-10-04']);
+  });
+
+  it('a one-off payment counts only in the period of its date', () => {
+    const data = exampleA();
+    data.payments.push(oneOffPayment('concert', 2500, '2026-10-02', '2026-09-26'), oneOffPayment('later', 9900, '2026-10-10', '2026-09-26'));
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.unpaidPayments.map((p) => [p.sourceId, p.date])).toEqual([
+      ['dorm', '2026-10-01'],
+      ['concert', '2026-10-02'],
+      ['internet', '2026-10-03'],
+      ['phone', '2026-10-04'],
+    ]);
+    expect(r.dailyLimitKopecks).toBe(2576); // (256,89 − 25,00) ÷ 9
+    expect(calculateBudget(data, '2026-10-05').unpaidPayments.map((p) => p.sourceId)).toEqual(['later', 'dorm', 'internet', 'phone']);
+  });
+});
+
+describe('one-off incomes (update 1)', () => {
+  it('a one-off income is expected on its day and adds a checkpoint', () => {
+    const data = exampleA();
+    data.incomeSources.push(source('gift', 'other', 5000, null, '2026-09-26', null, '2026-09-30'));
+    const r = calculateBudget(data, '2026-09-26');
+    expect(r.expectedIncomes).toEqual([{ sourceId: 'gift', date: '2026-09-30', amountKopecks: 5000 }]);
+    // 30 Sep: 465,27 ÷ 4 = 116,31; 5 Oct: (256,89 + 50,00) ÷ 9 = 34,09
+    expect(r.checkpoints.map((c) => [c.date, c.freeKopecks, c.limitKopecks])).toEqual([
+      ['2026-09-30', 46527, 11631],
+      ['2026-10-05', 30689, 3409],
+    ]);
+    expect(r.dailyLimitKopecks).toBe(3409);
+    // After its day it is late, like any planned income.
+    expect(calculateBudget(data, '2026-10-01').expectedIncomes).toEqual([]);
+  });
+
+  it('a one-off main income cannot define the period: a month from the start of tracking', () => {
+    const data = exampleA();
+    data.incomeSources[0] = source('scholarship', 'scholarship', 22000, null, '2026-09-26', null, '2026-10-05');
+    expect(calculateBudget(data, '2026-09-26').period).toEqual({ start: '2026-09-26', end: '2026-10-25' });
+  });
+});
+
+describe('percent goals (example В)', () => {
+  it('saved = 15 % of every income since the start, never above the target', () => {
+    const data = exampleV();
+    expect(goalSavedBy(data, headphonesPercent, '2026-10-04')).toBe(0);
+    expect(goalSavedBy(data, headphonesPercent, '2026-10-05')).toBe(3300); // 15 % of 220,00
+    data.transactions.push(tx({ type: 'income', amountKopecks: 200000, date: '2026-10-07' }));
+    expect(goalSavedBy(data, headphonesPercent, '2026-10-07')).toBe(15000);
+  });
+
+  it('the checkpoint adds 15 % of the expected incomes before it: limit 2,13 until 20 October', () => {
+    const r = calculateBudget(exampleV(), '2026-10-05');
+    expect(r.checkpoints.map((c) => [c.date, c.goalsKopecks, c.cushionKopecks, c.freeKopecks, c.limitKopecks])).toEqual([
+      ['2026-10-20', 3300, 7200, 3209, 213],
+      ['2026-11-05', 10800, 12200, 8500, 274],
+    ]);
+    expect(r.dailyLimitKopecks).toBe(213);
+    expect(r.bindingCheckpoint).toEqual({ date: '2026-10-20', incomeSourceId: 'salary' });
+  });
+
+  it('confirming the salary on its day does not change the limit', () => {
+    const data = exampleV();
+    const expected = calculateBudget(data, '2026-10-20');
+    data.transactions.push(
+      tx({ type: 'income', amountKopecks: 50000, date: '2026-10-20', incomeSourceId: 'salary', plannedDate: '2026-10-20' }),
+    );
+    const confirmed = calculateBudget(data, '2026-10-20');
+    expect(goalSavedBy(data, headphonesPercent, '2026-10-20')).toBe(10800); // 33,00 + 75,00
+    expect(confirmed.dailyLimitKopecks).toBe(expected.dailyLimitKopecks);
+    expect(confirmed.breakdown.goalsKopecks).toBe(expected.breakdown.goalsKopecks);
+  });
+
+  it('a deadline goal keeps its even saving', () => {
+    expect(goalSavedBy(exampleA(), headphones, '2026-10-04')).toBe(2411);
   });
 });

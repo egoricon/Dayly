@@ -367,7 +367,7 @@ interface DeficitHintsProps {
 
 /** What the student can do when money runs short. The app never touches the cushion by itself. */
 function DeficitHints({ data, today, onOpenFinances }: DeficitHintsProps) {
-  const goal = data.goals.find((g) => g.status === 'active');
+  const goal = data.goals.find((g) => g.status === 'active' && g.deadline !== null);
   const cushion = cushionSavedBy(data, today);
   return (
     <div className="card hint-list" data-testid="deficit-hints">

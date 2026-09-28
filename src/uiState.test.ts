@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { detectInAppBrowser, detectPlatform } from './install';
-import { hideBanner, loadUiState, shouldShowInstallHint, UI_KEY, type UiState } from './uiState';
+import {
+  defaultUiState,
+  FEATURES,
+  hideBanner,
+  isFeatureOn,
+  loadUiState,
+  setFeature,
+  shouldShowInstallHint,
+  UI_KEY,
+  WHATS_NEW_ID,
+  type UiState,
+} from './uiState';
 import { canCount, launchHitUrl, launchMode } from './stats';
 
 function storageWith(value: string | null): Storage {
@@ -17,7 +28,8 @@ const DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Ch
 describe('ui state', () => {
   it('fills defaults for state saved before accents and the install hint', () => {
     const state = loadUiState(storageWith(JSON.stringify({ hiddenBanners: { a: '2026-09-26' } })));
-    expect(state).toEqual({ hiddenBanners: { a: '2026-09-26' }, accent: 'amber', launches: 0, installHintDismissed: false, statsEnabled: true });
+    expect(state).toEqual({ ...defaultUiState(), hiddenBanners: { a: '2026-09-26' } });
+    expect(state).toMatchObject({ accent: 'amber', launches: 0, installHintDismissed: false, statsEnabled: true });
   });
 
   it('ignores an unknown accent', () => {
@@ -26,13 +38,54 @@ describe('ui state', () => {
   });
 
   it('keeps the accent when a banner is hidden', () => {
-    const state: UiState = { hiddenBanners: {}, accent: 'sky', launches: 3, installHintDismissed: false, statsEnabled: true };
+    const state: UiState = { ...defaultUiState(), accent: 'sky', launches: 3 };
     expect(hideBanner(state, 'x', '2026-09-26').accent).toBe('sky');
   });
 });
 
+describe('features and «Что нового» (update 1)', () => {
+  it('every feature is on by default, in the order of «Настройки → Функции»', () => {
+    expect(FEATURES.map((f) => [f.key, f.label])).toEqual([
+      ['calendar', 'Календарь'],
+      ['savingsRing', 'Кольцо копилки'],
+      ['leftover', 'Остаток дня в копилку'],
+      ['periodSummary', 'Итоги периода'],
+      ['weekStrip', 'Полоска недели и серия'],
+      ['tomorrowHint', '«Завтра будет…»'],
+      ['earlyWarning', 'Жёлтое кольцо на 80%'],
+      ['undo', 'Отмена траты'],
+      ['upcoming', '«Ближайшее»'],
+    ]);
+    const state = defaultUiState();
+    expect(FEATURES.every((f) => isFeatureOn(state, f.key))).toBe(true);
+    expect(state).toMatchObject({ whatsNewSeen: null, tipsShown: false });
+  });
+
+  it('state saved before update 1 loads with every feature on, «Что нового» not seen and no tips shown', () => {
+    const old = { hiddenBanners: {}, accent: 'mint', launches: 7, installHintDismissed: true, statsEnabled: false };
+    expect(loadUiState(storageWith(JSON.stringify(old)))).toEqual({ ...old, features: defaultUiState().features, whatsNewSeen: null, tipsShown: false });
+  });
+
+  it('a feature turned off stays off; the others and unknown values stay on', () => {
+    const off = setFeature(defaultUiState(), 'calendar', false);
+    expect(isFeatureOn(off, 'calendar')).toBe(false);
+    expect(isFeatureOn(off, 'undo')).toBe(true);
+    expect(isFeatureOn(setFeature(off, 'calendar', true), 'calendar')).toBe(true);
+    const loaded = loadUiState(storageWith(JSON.stringify({ features: { calendar: false, undo: 'no', unknown: false } })));
+    expect(loaded.features).toEqual({ ...defaultUiState().features, calendar: false });
+  });
+
+  it('keeps which «Что нового» was seen and whether the tips were shown', () => {
+    const saved = { ...defaultUiState(), whatsNewSeen: WHATS_NEW_ID, tipsShown: true };
+    expect(loadUiState(storageWith(JSON.stringify(saved)))).toEqual(saved);
+    expect(WHATS_NEW_ID).toBe('update-1');
+    expect(loadUiState(storageWith(JSON.stringify({ whatsNewSeen: 5 }))).whatsNewSeen).toBeNull();
+    expect(loadUiState(storageWith('{broken'))).toEqual(defaultUiState());
+  });
+});
+
 describe('install hint', () => {
-  const base: UiState = { hiddenBanners: {}, accent: 'amber', launches: 2, installHintDismissed: false, statsEnabled: true };
+  const base: UiState = { ...defaultUiState(), launches: 2 };
 
   it('shows from the second launch on a phone in the browser', () => {
     expect(shouldShowInstallHint({ ...base, launches: 1 }, 'ios', false)).toBe(false);

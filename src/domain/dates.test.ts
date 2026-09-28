@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, daysInclusive, diffDays, getPeriod, monthlyOccurrences, toLocalDate, weeklyOccurrences } from './dates';
+import {
+  addDays,
+  daysInclusive,
+  diffDays,
+  getPeriod,
+  isRecurring,
+  isRegular,
+  monthlyOccurrences,
+  nextOccurrence,
+  scheduleOccurrences,
+  toLocalDate,
+  weeklyOccurrences,
+} from './dates';
 
 describe('dates', () => {
   it('adds and diffs days across months and years', () => {
@@ -42,5 +54,29 @@ describe('dates', () => {
     expect(weeklyOccurrences(5, '2026-09-26', '2026-10-17')).toEqual(['2026-10-02', '2026-10-09', '2026-10-16']);
     expect(weeklyOccurrences(6, '2026-09-26', '2026-10-03')).toEqual(['2026-09-26', '2026-10-03']);
     expect(weeklyOccurrences(1, '2026-09-26', '2026-09-27')).toEqual([]);
+  });
+
+  it('one-off, monthly and weekly schedules (update 1)', () => {
+    const once = { dayOfMonth: null, weekday: null, date: '2026-10-13' };
+    const monthly = { dayOfMonth: 5, weekday: null, date: null };
+    const weekly = { dayOfMonth: null, weekday: 1, date: null };
+    const irregular = { dayOfMonth: null, weekday: null, date: null };
+    expect(scheduleOccurrences(once, '2026-10-01', '2026-10-31')).toEqual(['2026-10-13']);
+    expect(scheduleOccurrences(once, '2026-10-14', '2026-10-31')).toEqual([]);
+    expect(scheduleOccurrences(monthly, '2026-10-01', '2026-11-30')).toEqual(['2026-10-05', '2026-11-05']);
+    expect(scheduleOccurrences(weekly, '2026-10-01', '2026-10-13')).toEqual(['2026-10-05', '2026-10-12']);
+    expect(scheduleOccurrences(irregular, '2026-10-01', '2026-10-31')).toEqual([]);
+    expect([once, monthly, weekly, irregular].map(isRegular)).toEqual([true, true, true, false]);
+    // Only a repeating main income can define the period.
+    expect([once, monthly, weekly, irregular].map(isRecurring)).toEqual([false, true, true, false]);
+  });
+
+  it('finds the next occurrence on or after a day', () => {
+    expect(nextOccurrence({ dayOfMonth: 31, weekday: null, date: null }, '2026-02-01')).toBe('2026-02-28');
+    expect(nextOccurrence({ dayOfMonth: 5, weekday: null, date: null }, '2026-10-05')).toBe('2026-10-05');
+    expect(nextOccurrence({ dayOfMonth: null, weekday: 5, date: null }, '2026-09-26')).toBe('2026-10-02');
+    expect(nextOccurrence({ dayOfMonth: null, weekday: null, date: '2027-03-01' }, '2026-09-26')).toBe('2027-03-01');
+    expect(nextOccurrence({ dayOfMonth: null, weekday: null, date: '2026-09-25' }, '2026-09-26')).toBeNull();
+    expect(nextOccurrence({ dayOfMonth: null, weekday: null, date: null }, '2026-09-26')).toBeNull();
   });
 });

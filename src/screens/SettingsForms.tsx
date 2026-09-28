@@ -23,11 +23,11 @@ import {
 import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton } from '../components/Form';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from '../domain/budget';
 import { activeCategories, findCategory, startCategory } from '../domain/categories';
-import { addDays, monthlyOccurrences, weekdayIndex } from '../domain/dates';
+import { addDays, maxDate, nextOccurrence, weekdayIndex } from '../domain/dates';
 import { formatKopecks, formatMoney, parseAmount } from '../domain/money';
 import { paymentOccurrence, paymentTransaction } from '../domain/planned';
-import type { Category, ExpenseCategory, IncomeSource } from '../domain/types';
-import { formatDayMonth, WEEKDAY_SHORT } from '../ui/labels';
+import type { Category, ExpenseCategory, IncomeSource, MandatoryPayment } from '../domain/types';
+import { formatDayMonth, scheduleText, WEEKDAY_SHORT } from '../ui/labels';
 import type { FinanceProps } from './Finances';
 
 type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
@@ -36,13 +36,15 @@ const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents'
 
 export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.incomeSources.find((s) => s.id === id);
+  // A one-off income keeps its date here; its day is changed in the calendar.
+  const oneOffDate = existing?.date ?? null;
   const [kind, setKind] = useState(existing?.kind ?? 'salary');
   const [name, setName] = useState(existing?.name ?? INCOME_KIND_NAMES.salary);
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
   const [schedule, setSchedule] = useState<'monthly' | 'weekly' | 'irregular'>(
     existing?.weekday != null ? 'weekly' : existing && existing.dayOfMonth === null ? 'irregular' : 'monthly',
   );
-  const regular = schedule !== 'irregular';
+  const regular = oneOffDate === null && schedule !== 'irregular';
   const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
   const [weekday, setWeekday] = useState(existing?.weekday ?? weekdayIndex(today) + 1);
   const [isMain, setIsMain] = useState(existing ? data.settings.mainIncomeSourceId === existing.id : data.settings.mainIncomeSourceId === null);
@@ -63,8 +65,9 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
           kind,
           name: name.trim(),
           amountKopecks: kopecks,
-          dayOfMonth: schedule === 'monthly' ? day : null,
-          weekday: schedule === 'weekly' ? weekday : null,
+          dayOfMonth: regular && schedule === 'monthly' ? day : null,
+          weekday: regular && schedule === 'weekly' ? weekday : null,
+          date: oneOffDate,
           startDate: existing?.startDate ?? today,
           isActive: true,
         },
@@ -97,17 +100,21 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
-        <Segmented
-          options={[
-            { value: 'monthly', label: 'Раз в месяц' },
-            { value: 'weekly', label: 'Раз в неделю' },
-            { value: 'irregular', label: 'Нерегулярно' },
-          ]}
-          value={schedule}
-          onChange={setSchedule}
-        />
-      </Field>
+      {oneOffDate !== null ? (
+        <p className="form-note">Разовый доход: {formatDayMonth(oneOffDate)}.</p>
+      ) : (
+        <Field label="Когда приходит" group hint={regular ? undefined : 'Нерегулярные деньги не входят в прогноз. Внеси их в «Доход», когда придут.'}>
+          <Segmented
+            options={[
+              { value: 'monthly', label: 'Раз в месяц' },
+              { value: 'weekly', label: 'Раз в неделю' },
+              { value: 'irregular', label: 'Нерегулярно' },
+            ]}
+            value={schedule}
+            onChange={setSchedule}
+          />
+        </Field>
+      )}
       {regular && (
         <>
           {schedule === 'monthly' ? (
@@ -149,7 +156,14 @@ export function IncomeForm({ data, today, update, id, onBack }: FormProps & { id
 }
 
 export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
-  const payments = data.payments.filter((p) => p.isActive).sort((a, b) => a.dayOfMonth - b.dayOfMonth);
+  // By the date shown: this period's occurrence, else the next one after it; a past one-off payment last.
+  const shownDate = (p: MandatoryPayment) =>
+    paymentOccurrence(data, p.id, budget.period) ?? nextOccurrence(p, addDays(budget.period.end, 1)) ?? '9999-12-31';
+  const payments = data.payments
+    .filter((p) => p.isActive)
+    .map((p) => ({ p, date: shownDate(p) }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .map(({ p }) => p);
   return (
     <FormScreen title="Обязательные платежи" onBack={onBack}>
       {payments.length > 0 && (
@@ -164,7 +178,7 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
                   <span className="list-text">
                     <span className="list-name">{p.name}</span>
                     <span className="list-sub">
-                      {p.dayOfMonth}-го · {status}
+                      {scheduleText(p)} · {status}
                     </span>
                   </span>
                   <span className="list-value">{formatKopecks(p.amountKopecks)}</span>
@@ -183,6 +197,8 @@ export function PaymentsList({ data, budget, onNavigate, onBack }: FormProps) {
 
 export function PaymentForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
   const existing = data.payments.find((p) => p.id === id);
+  // Weekly and one-off payments keep their schedule here; it is changed in the calendar.
+  const keptSchedule = existing && existing.dayOfMonth === null ? existing : null;
   const [name, setName] = useState(existing?.name ?? '');
   const [amount, setAmount] = useState(amountText(existing?.amountKopecks ?? 0));
   const [day, setDay] = useState(existing?.dayOfMonth ?? Number(today.slice(8)));
@@ -196,13 +212,14 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
 
   const occurrence = existing ? paymentOccurrence(data, existing.id, budget.period) : null;
   const paidWith = existing && occurrence ? paymentTransaction(data, existing.id, occurrence) : undefined;
+  const next = existing ? nextOccurrence(existing, maxDate(addDays(budget.period.end, 1), existing.startDate)) : null;
 
   return (
     <FormScreen title={existing ? existing.name : 'Новый платёж'} onBack={onBack}>
       {existing && (
         <div className="card status-card" data-testid="payment-status">
           {occurrence === null ? (
-            <span>В этом периоде платежа нет. Следующий — {formatDayMonth(nextOccurrence(existing.dayOfMonth, budget.period.end))}.</span>
+            <span>В этом периоде платежа нет.{next !== null && ` Следующий — ${formatDayMonth(next)}.`}</span>
           ) : paidWith ? (
             <>
               <span>
@@ -232,9 +249,13 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       <Field label="Сумма">
         <AmountInput value={amount} onChange={setAmount} inputRef={amountInput} />
       </Field>
-      <Field label="Каждый месяц">
-        <DaySelect value={day} onChange={setDay} />
-      </Field>
+      {keptSchedule ? (
+        <p className="form-note">Когда: {scheduleText(keptSchedule)}.</p>
+      ) : (
+        <Field label="Каждый месяц">
+          <DaySelect value={day} onChange={setDay} />
+        </Field>
+      )}
       <SubmitButton
         missing={missing}
         onClick={() => {
@@ -243,7 +264,9 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
               id: existing?.id ?? newId(),
               name: name.trim(),
               amountKopecks: kopecks,
-              dayOfMonth: day,
+              dayOfMonth: keptSchedule ? null : day,
+              weekday: keptSchedule?.weekday ?? null,
+              date: keptSchedule?.date ?? null,
               startDate: existing?.startDate ?? today,
               isActive: true,
             }),
@@ -267,10 +290,6 @@ export function PaymentForm({ data, budget, today, update, id, onBack }: FormPro
       )}
     </FormScreen>
   );
-}
-
-function nextOccurrence(dayOfMonth: number, periodEnd: string): string {
-  return monthlyOccurrences(dayOfMonth, addDays(periodEnd, 1), addDays(periodEnd, 32))[0]!;
 }
 
 /** A category: its name, and whether its expenses go to the daily limit or spend a reserve first. */
@@ -459,16 +478,17 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
     initialSavedKopecks: initialKopecks ?? 0,
     startDate: existing?.startDate ?? today,
     deadline,
+    percent: null,
     status: 'active' as const,
   };
-  const perPeriod = ready ? goalSavedBy(draft, budget.period.end) - goalSavedBy(draft, addDays(budget.period.start, -1)) : 0;
+  const perPeriod = ready ? goalSavedBy(data, draft, budget.period.end) - goalSavedBy(data, draft, addDays(budget.period.start, -1)) : 0;
 
   return (
     <FormScreen title={existing ? existing.name : 'Новая цель'} onBack={onBack}>
       {existing && (
         <div className="card status-card">
           <span>
-            Накоплено {formatMoney(goalSavedBy(existing, today))} из {formatMoney(existing.targetKopecks)}
+            Накоплено {formatMoney(goalSavedBy(data, existing, today))} из {formatMoney(existing.targetKopecks)}
           </span>
         </div>
       )}
