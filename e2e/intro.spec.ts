@@ -70,8 +70,11 @@ async function setUpSkippingReserves(page: Page) {
   await page.getByRole('button', { name: 'На главную' }).click();
 }
 
-/** Opens the app with what an older version saved; `ui` is the saved interface state. Seeds once, so a reload keeps changes. */
-async function openSeeded(page: Page, data: unknown, ui: unknown) {
+/**
+ * Opens the app with what an older version saved; `ui` is the saved interface state. Seeds once, so
+ * a reload keeps changes. `hero` is the limit the home screen should show.
+ */
+async function openSeeded(page: Page, data: unknown, ui: unknown, hero = '54,55') {
   await page.addInitScript(
     ([data, ui]) => {
       if (localStorage.getItem('dayly:data') === null) {
@@ -82,8 +85,8 @@ async function openSeeded(page: Page, data: unknown, ui: unknown) {
     [JSON.stringify(data), JSON.stringify(ui)] as const,
   );
   await page.clock.install({ time: TODAY });
-  await page.goto('/');
-  await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
+  await page.goto(BASE);
+  await expect(page.getByTestId('hero-amount')).toHaveText(hero);
 }
 
 /** Example А as the app saved it before update 1 (data version 4), set up on 20 September. */
@@ -380,6 +383,32 @@ test('«Что нового»: on the home screen for someone from before update
   await page.getByRole('button', { name: 'Открыть календарь' }).click();
   await expect(sheet).toHaveCount(0);
   await expectCalendarOpen(page);
+});
+
+test('«Что нового» sits right under the ring: a small phone shows its title without scrolling', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 375, height: 667 }, locale: 'ru-RU' });
+  const page = await context.newPage();
+  // A lived week: the week strip and «с вчера» are under the ring too.
+  const coffee = { ...PRE_UPDATE_DATA.transactions[0]!, id: 'coffee', type: 'expense', amountKopecks: 1250, date: '2026-09-25', createdAt: '2026-09-25T12:00:00.000Z', category: 'cafe', note: null };
+  const lived = {
+    ...PRE_UPDATE_DATA,
+    transactions: [...PRE_UPDATE_DATA.transactions, coffee],
+    daySummaries: [
+      { date: '2026-09-24', dailyLimitKopecks: 5000 },
+      { date: '2026-09-25', dailyLimitKopecks: 5100 },
+    ],
+  };
+  await openSeeded(page, lived, PRE_UPDATE_UI, '53,16'); // (573,50 − 95,00) ÷ 9
+  const title = (await page.getByTestId('whats-new').getByText('Что нового в Dayly').boundingBox())!;
+  const ring = (await page.getByTestId('ring').boundingBox())!;
+  const bar = (await page.locator('.home-bottom').boundingBox())!;
+  console.log(`375×667: ring bottom ${Math.round(ring.y + ring.height)}, «Что нового» title ${Math.round(title.y)}–${Math.round(title.y + title.height)}, bottom bar from ${Math.round(bar.y)}`);
+  expect(title.y).toBeGreaterThan(ring.y + ring.height);
+  expect(title.y + title.height).toBeLessThanOrEqual(bar.y);
+  await expect(page.getByText('В лимите 2 дня подряд')).toBeAttached();
+  await settle(page);
+  await page.screenshot({ path: test.info().outputPath('whats-new-small.png') });
+  await context.close();
 });
 
 test('«Открыть календарь» on the card closes «Что нового» and opens the calendar', async ({ page }) => {

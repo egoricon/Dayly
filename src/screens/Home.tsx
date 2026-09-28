@@ -206,6 +206,18 @@ export function Home(props: HomeProps) {
           )}
         </Ring>
 
+        {/* Right under the ring, so that a small phone shows it without scrolling until it is closed. */}
+        {props.showWhatsNew && (
+          <WhatsNewCard
+            canOpenCalendar={props.feature('calendar')}
+            onOpenCalendar={() => {
+              props.onWhatsNewSeen();
+              props.onOpenCalendar(null);
+            }}
+            onClose={props.onWhatsNewSeen}
+          />
+        )}
+
         {feature('weekStrip') && <WeekStrip data={data} today={today} onOpen={openCalendar && (() => openCalendar(null))} />}
 
         {((carry !== null && carry !== 0) || ring) && (
@@ -234,17 +246,6 @@ export function Home(props: HomeProps) {
         )}
 
         {feature('upcoming') && <Upcoming data={data} today={today} onOpenDate={openCalendar} />}
-
-        {props.showWhatsNew && (
-          <WhatsNewCard
-            canOpenCalendar={props.feature('calendar')}
-            onOpenCalendar={() => {
-              props.onWhatsNewSeen();
-              props.onOpenCalendar(null);
-            }}
-            onClose={props.onWhatsNewSeen}
-          />
-        )}
 
         {installHint && <InstallHint platform={installHint} onDismiss={onDismissInstallHint} />}
 
