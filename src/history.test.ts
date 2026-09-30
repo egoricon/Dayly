@@ -25,7 +25,7 @@ function configured(): AppData {
   );
   data = setReserve(data, 'groceries', 50000);
   data = setReserve(data, 'transport', 10000);
-  data = setCushionFixed(data, 3000);
+  data = setCushionFixed(data, 3000, '2026-09-26');
   return saveGoal(data, {
     id: 'headphones',
     name: 'Наушники',
@@ -34,6 +34,7 @@ function configured(): AppData {
     startDate: '2026-09-26',
     deadline: '2026-11-20',
     percent: null,
+    schedule: null,
     status: 'active',
   });
 }
@@ -101,7 +102,7 @@ describe('editing expenses', () => {
     const cafe = data.transactions.find((t) => t.category === 'cafe')!;
     expect(previewExpense(data, '2026-09-26', 4000, 'fun', cafe.id).remainingTodayKopecks).toBe(-1146);
 
-    const next = updateExpense(data, cafe.id, 4000, 'fun');
+    const next = updateExpense(data, cafe.id, 4000, 'fun', '2026-09-26');
     const edited = next.transactions.find((t) => t.id === cafe.id)!;
     expect(edited).toMatchObject({ amountKopecks: 4000, category: 'fun', createdAt: cafe.createdAt, date: '2026-09-26' });
     expect(calculateBudget(next, '2026-09-26').remainingTodayKopecks).toBe(-1146);

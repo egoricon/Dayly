@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculateBudget, goalSavedBy, previewExpense, splitExpenses } from './budget';
-import { emptyData, exampleA, exampleB, exampleV, expense, headphones, headphonesPercent, oneOffPayment, source, tx, weeklyPayment } from './fixtures';
+import { emptyData, exampleA, exampleB, exampleV, expense, headphones, headphonesPercent, oneOffPayment, percentCushion, source, tx, weeklyPayment } from './fixtures';
 
 // Reference numbers: PROJECT_MAP.md section 2, examples А, Б and В.
 
@@ -236,7 +236,7 @@ describe('payments, goals and cushion', () => {
 
   it('percent cushion: saved share of incomes plus the share of expected incomes', () => {
     const data = exampleB();
-    data.settings.cushion = { mode: 'percent', percent: 3, baseKopecks: 5000, sinceDate: '2026-10-05' };
+    data.settings.cushion = percentCushion(3, 5000, '2026-10-05');
     const r = calculateBudget(data, '2026-10-05');
     // 50,00 + 3% of 220,00; at 5 Nov plus 3% of the expected 500,00
     expect(r.checkpoints.map((c) => c.cushionKopecks)).toEqual([5660, 7160]);

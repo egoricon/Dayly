@@ -4,16 +4,19 @@ import {
   addFavoriteExpense,
   createInitialData,
   deleteTransaction,
+  putIntoJar,
   recordDaySummary,
   removeFavorite,
   saveFavorite,
   saveGoal,
   setReserve,
+  setRoundUp,
 } from './appData';
 import { transactionName } from './components/TransactionRow';
 import { calculateBudget } from './domain/budget';
+import { exampleV } from './domain/fixtures';
 import { backupFileName, makeBackup, parseBackup } from './backup';
-import { DATA_KEY, loadData, saveData } from './storage';
+import { DATA_KEY, loadData, saveData, upgradeData } from './storage';
 import { applyKey, type KeypadKey } from './ui/amountInput';
 import { formatDayHeader, untilPeriodEnd } from './ui/labels';
 import type { AppData } from './domain/types';
@@ -38,16 +41,30 @@ function type(keys: string): string {
 
 const NOW = new Date('2026-09-26T09:12:00');
 
-/** The same data as version 4 saved it: without the fields version 5 added. */
-function toV4(data: AppData) {
-  const { targetDailyLimitKopecks: _t, ...settings } = data.settings;
+/** The same data as version 5 saved it: without the fields version 6 added. */
+function toV5(data: AppData) {
+  const { savingsMoves: _m, ...rest } = data;
+  const { roundUp: _r, cushion, ...settings } = data.settings;
+  const { targetKopecks: _t, ...oldCushion } = cushion;
   return {
-    ...data,
+    ...rest,
+    schemaVersion: 5,
+    settings: { ...settings, cushion: oldCushion },
+    goals: data.goals.map(({ schedule: _s, ...goal }) => goal),
+  };
+}
+
+/** The same data as version 4 saved it: without the fields versions 5 and 6 added. */
+function toV4(data: AppData) {
+  const v5 = toV5(data);
+  const { targetDailyLimitKopecks: _t, ...settings } = v5.settings;
+  return {
+    ...v5,
     schemaVersion: 4,
     settings,
-    incomeSources: data.incomeSources.map(({ date: _d, ...rest }) => rest),
-    payments: data.payments.map(({ weekday: _w, date: _d, ...rest }) => rest),
-    goals: data.goals.map(({ percent: _p, ...rest }) => rest),
+    incomeSources: v5.incomeSources.map(({ date: _d, ...rest }) => rest),
+    payments: v5.payments.map(({ weekday: _w, date: _d, ...rest }) => rest),
+    goals: v5.goals.map(({ percent: _p, ...rest }) => rest),
   };
 }
 
@@ -70,6 +87,7 @@ function exampleData(): AppData {
     startDate: '2026-09-26',
     deadline: '2026-11-20',
     percent: null,
+    schedule: null,
     status: 'active',
   });
   return addExpense(data, 1840, 'groceries', '2026-09-26', NOW);
@@ -236,12 +254,42 @@ describe('storage', () => {
     storage.setItem(DATA_KEY, JSON.stringify(v4));
     const loaded = loadData(storage)!;
     expect(loaded).toEqual(data);
-    expect(loaded.schemaVersion).toBe(5);
+    expect(loaded.schemaVersion).toBe(6);
     expect(loaded.settings.targetDailyLimitKopecks).toBeNull();
     expect(loaded.incomeSources[0]).toMatchObject({ dayOfMonth: 5, weekday: null, date: null });
     expect(loaded.payments[0]).toMatchObject({ dayOfMonth: 1, weekday: null, date: null });
     expect(loaded.goals[0]).toMatchObject({ deadline: '2026-11-20', percent: null });
     expect(calculateBudget(loaded, '2026-09-26')).toEqual(calculateBudget(data, '2026-09-26'));
+  });
+
+  it('upgrades version 5 data: no moves yet, goals keep their way of saving, rounding up off, no cushion target', () => {
+    const storage = memoryStorage();
+    const data = exampleData();
+    const v5 = toV5(data);
+    expect(['roundUp' in v5.settings, 'targetKopecks' in v5.settings.cushion, 'schedule' in v5.goals[0]!, 'savingsMoves' in v5]).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+    storage.setItem(DATA_KEY, JSON.stringify(v5));
+    const loaded = loadData(storage)!;
+    expect(loaded).toEqual(data);
+    expect(loaded.schemaVersion).toBe(6);
+    expect(loaded.settings.roundUp).toBeNull();
+    expect(loaded.settings.cushion).toEqual({ mode: 'fixed', amountKopecks: 0, targetKopecks: null });
+    expect(loaded.goals[0]).toMatchObject({ deadline: '2026-11-20', percent: null, schedule: null });
+    expect(loaded.savingsMoves).toEqual([]);
+    expect(calculateBudget(loaded, '2026-09-30')).toEqual(calculateBudget(data, '2026-09-30'));
+  });
+
+  it('upgrades what update 1 set aside as it is: a percent cushion and goal keep their base, the limit stays', () => {
+    // Example В after «Отложить остаток» 8,00 in update 1: the amount went into the goal's initial savings.
+    const data = exampleV();
+    data.goals = [{ ...data.goals[0]!, initialSavedKopecks: 800 }];
+    const loaded = upgradeData(JSON.parse(JSON.stringify(toV5(data))))!;
+    expect(loaded).toEqual(data);
+    expect(calculateBudget(loaded, '2026-10-06').dailyLimitKopecks).toBe(226);
   });
 
   it('keeps unreadable data aside instead of losing it', () => {
@@ -296,6 +344,18 @@ describe('backup', () => {
     const full = exampleData();
     const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: toV4(full) };
     expect(parseBackup(JSON.stringify(old, null, 1))).toEqual({ data: full, exportedAt: NOW.toISOString() });
+  });
+
+  it('restores a copy made before update 2 (version 5)', () => {
+    const full = exampleData();
+    const old = { app: 'dayly', exportedAt: NOW.toISOString(), data: toV5(full) };
+    expect(parseBackup(JSON.stringify(old, null, 1))).toEqual({ data: full, exportedAt: NOW.toISOString() });
+  });
+
+  it('a copy keeps savings moves, schedules and rounding up', () => {
+    const full = putIntoJar(setRoundUp(exampleData(), { cushion: true }), { goalId: 'headphones' }, 1000, '2026-09-26', NOW);
+    const withSchedule = saveGoal(full, { ...full.goals[0]!, id: 'trip', deadline: null, schedule: { amountKopecks: 2000, dayOfMonth: null, weekday: 1 } });
+    expect(parseBackup(makeBackup(withSchedule, NOW))?.data).toEqual(withSchedule);
   });
 
   it('rejects files that are not a Dayly copy', () => {

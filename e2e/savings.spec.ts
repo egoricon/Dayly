@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { emptyData, expense, source, tx } from '../src/domain/fixtures';
+import { emptyData, expense, fixedCushion, percentCushion, source, tx } from '../src/domain/fixtures';
 import type { AppData, Goal } from '../src/domain/types';
 
 // Update 1 «Копилка» (task B) in a real browser: a percent goal, the split of a confirmed income,
@@ -18,6 +18,7 @@ const headphones: Goal = {
   startDate: '2026-09-01',
   deadline: null,
   percent: 15,
+  schedule: null,
   status: 'active',
 };
 
@@ -42,7 +43,7 @@ function lateScholarship(): AppData {
 function leftoverFromYesterday(): AppData {
   const data = emptyData('2026-09-20');
   data.settings.mainIncomeSourceId = 'scholarship';
-  data.settings.cushion = { mode: 'fixed', amountKopecks: 3000 };
+  data.settings.cushion = fixedCushion(3000);
   data.incomeSources = [{ ...source('scholarship', 'scholarship', 22000, 5, '2026-09-20'), name: 'Стипендия' }];
   data.goals = [{ ...headphones, initialSavedKopecks: 2000, startDate: '2026-09-20' }];
   data.transactions = [tx({ type: 'adjustment', amountKopecks: 40000, date: '2026-09-20', note: 'Стартовый баланс' }), expense('2026-09-25', 1200, 'cafe')];
@@ -358,7 +359,7 @@ for (const [name, viewport] of [
       const data = lateScholarship();
       // A leftover from yesterday too, so the pill sits beside the savings caption.
       data.daySummaries = [{ date: '2026-09-25', dailyLimitKopecks: 900 }];
-      data.settings.cushion = { mode: 'percent', percent: 10, baseKopecks: 0, sinceDate: '2026-09-01' };
+      data.settings.cushion = percentCushion(10, 0, '2026-09-01');
       await open(page, data);
       await expect(page.getByTestId('savings-caption')).toBeVisible();
       await expect(page.locator('.carry-pill')).toHaveText('+9,00 с вчера');

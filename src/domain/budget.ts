@@ -1,6 +1,6 @@
 import { addDays, daysInclusive, diffDays, getPeriod, isRecurring, isRegular, maxDate, scheduleOccurrences, type Period } from './dates';
 import { reserveCategories } from './categories';
-import type { AppData, Category, ExpenseCategory, Goal, LocalDate, Transaction } from './types';
+import type { AppData, Category, ExpenseCategory, Goal, GoalSchedule, LocalDate, Transaction } from './types';
 
 // Daily limit model: CLAUDE.md «Модель расчёта», full algorithm in PROJECT_MAP.md section 2.
 
@@ -176,25 +176,72 @@ function incomeShares(data: AppData, percent: number, from: LocalDate, to: Local
   );
 }
 
+/** Moves of a goal (null: the cushion) dated up to `date`, summed. */
+export function movesBy(data: AppData, goalId: string | null, date: LocalDate): number {
+  return sum(data.savingsMoves.filter((m) => m.goalId === goalId && m.date <= date).map((m) => m.amountKopecks));
+}
+
+/** The days a goal's schedule puts its amount in, from `from` to `to`, both inclusive. */
+export function goalScheduleDates(schedule: GoalSchedule, from: LocalDate, to: LocalDate): LocalDate[] {
+  return scheduleOccurrences({ dayOfMonth: schedule.dayOfMonth, weekday: schedule.weekday, date: null }, from, to);
+}
+
 /**
- * How much of a goal is saved by the end of day `date`. A deadline goal saves evenly by day;
- * a percent goal saves its percent of every income since `startDate`. Never above the target.
+ * A deadline goal's plan from `from` on: `base` plus the rest up to the target spread evenly by day,
+ * rounded up, until the deadline. Starting after the deadline, the whole target is due at once.
+ */
+function deadlineAccrued(goal: Goal, base: number, from: LocalDate, to: LocalDate): number {
+  const totalDays = daysInclusive(from, goal.deadline!);
+  if (totalDays <= 0) return goal.targetKopecks;
+  const elapsed = Math.min(Math.max(daysInclusive(from, to), 0), totalDays);
+  return base + ceilDiv((goal.targetKopecks - base) * elapsed, totalDays);
+}
+
+/**
+ * A deadline goal with its moves: every day with moves starts the plan afresh with what was saved by the
+ * day before plus the moves, so money put in lowers the daily amount and money taken out raises it,
+ * while the days before keep their values. Without moves this is the plain even plan.
+ */
+function deadlineSavedBy(data: AppData, goal: Goal, date: LocalDate): number {
+  const moves = data.savingsMoves.filter((m) => m.goalId === goal.id);
+  let base = goal.initialSavedKopecks + sum(moves.filter((m) => m.date < goal.startDate).map((m) => m.amountKopecks));
+  let segmentStart = goal.startDate;
+  const days = [...new Set(moves.map((m) => m.date).filter((d) => d >= goal.startDate && d <= date))].sort();
+  for (const day of days) {
+    const moved = sum(moves.filter((m) => m.date === day).map((m) => m.amountKopecks));
+    base = deadlineAccrued(goal, base, segmentStart, addDays(day, -1)) + moved;
+    segmentStart = day;
+  }
+  return deadlineAccrued(goal, base, segmentStart, date);
+}
+
+/**
+ * What a goal holds by the end of day `date` before it is kept within 0 and the target: a percent goal
+ * or one on a schedule keeps accruing on paper once full. Moves up to that day are included.
+ */
+export function goalUnclampedBy(data: AppData, goal: Goal, date: LocalDate): number {
+  if (goal.deadline !== null) return deadlineSavedBy(data, goal, date);
+  const plan =
+    goal.percent !== null
+      ? incomeShares(data, goal.percent, goal.startDate, date)
+      : goal.schedule !== null
+        ? goal.schedule.amountKopecks * goalScheduleDates(goal.schedule, goal.startDate, date).length
+        : 0;
+  return goal.initialSavedKopecks + plan + movesBy(data, goal.id, date);
+}
+
+/**
+ * How much of a goal is saved by the end of day `date`, with its moves: a deadline goal saves evenly by
+ * day, a percent goal its percent of every income since `startDate`, a scheduled one its amount on every
+ * occurrence, a goal by hand only what is put in. Never below 0 or above the target.
  */
 export function goalSavedBy(data: AppData, goal: Goal, date: LocalDate): number {
-  if (goal.percent !== null) {
-    return Math.min(goal.targetKopecks, goal.initialSavedKopecks + incomeShares(data, goal.percent, goal.startDate, date));
-  }
-  if (goal.deadline === null) return goal.initialSavedKopecks;
-  const totalDays = daysInclusive(goal.startDate, goal.deadline);
-  if (totalDays <= 0) return goal.targetKopecks;
-  const elapsed = Math.min(Math.max(daysInclusive(goal.startDate, date), 0), totalDays);
-  const rest = goal.targetKopecks - goal.initialSavedKopecks;
-  return Math.min(goal.targetKopecks, goal.initialSavedKopecks + ceilDiv(rest * elapsed, totalDays));
+  return Math.min(goal.targetKopecks, Math.max(0, goalUnclampedBy(data, goal, date)));
 }
 
 /**
  * What a goal holds at a checkpoint whose last day is `lastDay`. A percent goal adds its share of the
- * expected incomes before the checkpoint to what it holds today.
+ * expected incomes before the checkpoint to what it holds today; the others hold what they saved by `lastDay`.
  */
 function goalAtCheckpoint(data: AppData, goal: Goal, today: LocalDate, lastDay: LocalDate, incomesBefore: Occurrence[]): number {
   if (goal.percent === null) return goalSavedBy(data, goal, lastDay);
@@ -203,11 +250,11 @@ function goalAtCheckpoint(data: AppData, goal: Goal, today: LocalDate, lastDay: 
   return Math.min(goal.targetKopecks, goalSavedBy(data, goal, today) + expected);
 }
 
-/** Cushion saved by the end of day `date` (the percent mode counts incomes up to that day). */
+/** Cushion saved by the end of day `date` with its moves (the percent mode counts incomes up to that day); never below 0. */
 export function cushionSavedBy(data: AppData, date: LocalDate): number {
   const cushion = data.settings.cushion;
-  if (cushion.mode === 'fixed') return cushion.amountKopecks;
-  return cushion.baseKopecks + incomeShares(data, cushion.percent, cushion.sinceDate, date);
+  const plan = cushion.mode === 'fixed' ? cushion.amountKopecks : cushion.baseKopecks + incomeShares(data, cushion.percent, cushion.sinceDate, date);
+  return Math.max(0, plan + movesBy(data, null, date));
 }
 
 function occurrenceKey(sourceId: string, date: LocalDate): string {

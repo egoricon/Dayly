@@ -213,7 +213,7 @@ describe('«Отменить» after «Добавить»', () => {
     expect(added).toMatchObject({ type: 'expense', amountKopecks: 450 });
     expect(undoText(added, withExpense)).toBe('Кафе −4,50');
 
-    const edited = updateExpense(withExpense, added.id, 300, 'cafe');
+    const edited = updateExpense(withExpense, added.id, 300, 'cafe', TODAY);
     expect(addedTransaction(withExpense, edited)).toBeNull();
   });
 

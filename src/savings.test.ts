@@ -1,61 +1,72 @@
 import { describe, expect, it } from 'vitest';
-import { addIncome, createInitialData, saveIncomeSource, setAsideLeftover, setTargetDailyLimit } from './appData';
+import { addIncome, createInitialData, putIntoJar, saveIncomeSource, setTargetDailyLimit } from './appData';
 import { calculateBudget, cushionSavedBy, goalSavedBy } from './domain/budget';
 import { exampleA, exampleV, headphones, headphonesPercent, source, tx } from './domain/fixtures';
 import { incomeSplit, periodSavings } from './domain/savings';
 import type { AppData } from './domain/types';
 
-// Update 1, app layer: «Отложить остаток», the split of a confirmed income, the target limit.
+// Update 1, app layer: «Отложить остаток» (a savings move since update 2), the split of a confirmed income, the target limit.
 
 const NOW = new Date('2026-10-05T09:00:00');
 
 const goal = (data: AppData) => data.goals.find((g) => g.id === 'headphones')!;
 
 describe('«Отложить остаток»', () => {
-  it('8,00 into a deadline goal: +8,00 by yesterday exactly, today’s share recounted; balance stays, limit goes down', () => {
+  it('8,00 into a deadline goal: a move dated today, today’s share recounted; balance stays, limit goes down', () => {
     // Example А on 30 September: headphones 10,72 by yesterday, 13,40 by today; limit 256,89 ÷ 5 = 51,37.
     const data = exampleA();
     const before = calculateBudget(data, '2026-09-30');
-    const next = setAsideLeftover(data, { goalId: 'headphones' }, 800, '2026-09-30');
-    expect(goal(next)).toMatchObject({ startDate: '2026-09-30', initialSavedKopecks: 1872, deadline: '2026-11-20' });
+    const next = putIntoJar(data, { goalId: 'headphones' }, 800, '2026-09-30', NOW, 'leftover');
+    // Update 2: the goal is not counted afresh any more, the money is a move.
+    expect(goal(next)).toEqual(headphones);
+    expect(next.savingsMoves).toEqual([
+      { id: expect.any(String), goalId: 'headphones', amountKopecks: 800, date: '2026-09-30', createdAt: NOW.toISOString(), source: 'leftover', transactionId: null },
+    ]);
     const savedBy = (d: AppData, date: string) => goalSavedBy(d, goal(d), date);
-    expect([savedBy(data, '2026-09-29'), savedBy(next, '2026-09-29')]).toEqual([1072, 1872]); // exactly +8,00
+    // The day before keeps its value (update 1 showed 18,72 there: the rebase moved the 8,00 into the past).
+    expect([savedBy(data, '2026-09-29'), savedBy(next, '2026-09-29')]).toEqual([1072, 1072]);
     // Today's share was 2,68 of what was left over 56 days; now 2,53 of 131,28 over the 52 days left.
     expect([savedBy(data, '2026-09-30'), savedBy(next, '2026-09-30')]).toEqual([1340, 2125]);
     expect([savedBy(data, '2026-10-04'), savedBy(next, '2026-10-04')]).toEqual([2411, 3135]);
     expect(savedBy(next, '2026-11-20')).toBe(15000);
-    expect(goal(data)).toEqual(headphones);
     const after = calculateBudget(next, '2026-09-30');
     expect(after.balanceKopecks).toBe(before.balanceKopecks);
     expect(next.transactions).toEqual(data.transactions);
     expect([before.dailyLimitKopecks, after.dailyLimitKopecks]).toEqual([5137, 4993]);
   });
 
-  it('8,00 into a percent goal: +8,00 today and after every later income; the period keeps its growth', () => {
+  it('8,00 into a percent goal: +8,00 from today on and after every later income; the savings ring grows by 8,00', () => {
     const data = exampleV();
-    const next = setAsideLeftover(data, { goalId: 'headphones' }, 800, '2026-10-06');
-    expect(goal(next)).toMatchObject({ startDate: '2026-10-05', initialSavedKopecks: 800, percent: 15 });
-    expect(goalSavedBy(next, goal(next), '2026-10-06')).toBe(4100); // 33,00 + 8,00
+    const next = putIntoJar(data, { goalId: 'headphones' }, 800, '2026-10-06', NOW, 'leftover');
+    expect(goal(next)).toEqual(headphonesPercent);
+    expect([goalSavedBy(next, goal(next), '2026-10-05'), goalSavedBy(next, goal(next), '2026-10-06')]).toEqual([3300, 4100]); // 33,00 + 8,00
     const salary = tx({ type: 'income', amountKopecks: 50000, date: '2026-10-20', incomeSourceId: 'salary', plannedDate: '2026-10-20' });
     const later = { ...next, transactions: [...next.transactions, salary] };
     expect(goalSavedBy(later, goal(later), '2026-10-20')).toBe(11600); // 108,00 + 8,00
     expect([calculateBudget(data, '2026-10-06').dailyLimitKopecks, calculateBudget(next, '2026-10-06').dailyLimitKopecks]).toEqual([283, 226]);
-    expect(periodSavings(next, '2026-10-06')).toEqual(periodSavings(data, '2026-10-06'));
+    // Update 1 kept the ring as it was (the 8,00 went into the goal's base); a move counts in its period.
+    expect(periodSavings(data, '2026-10-06')).toEqual({ savedKopecks: 5500, plannedKopecks: 18000 });
+    expect(periodSavings(next, '2026-10-06')).toEqual({ savedKopecks: 6300, plannedKopecks: 18800 });
     expect(calculateBudget(next, '2026-10-06').balanceKopecks).toBe(calculateBudget(data, '2026-10-06').balanceKopecks);
   });
 
-  it('into the cushion: a percent cushion gets the amount on its base, a fixed one simply grows', () => {
-    const percent = setAsideLeftover(exampleV(), { cushion: true }, 800, '2026-10-06');
-    expect(percent.settings.cushion).toEqual({ mode: 'percent', percent: 10, baseKopecks: 5800, sinceDate: '2026-10-05' });
-    expect(cushionSavedBy(percent, '2026-10-06')).toBe(cushionSavedBy(exampleV(), '2026-10-06') + 800); // 72,00 → 80,00
-    expect(setAsideLeftover(exampleA(), { cushion: true }, 800, '2026-09-30').settings.cushion).toEqual({ mode: 'fixed', amountKopecks: 3800 });
+  it('into the cushion: a move on top of what it holds, in either mode', () => {
+    const percent = putIntoJar(exampleV(), { cushion: true }, 800, '2026-10-06', NOW, 'leftover');
+    expect(percent.settings.cushion).toEqual(exampleV().settings.cushion);
+    expect([cushionSavedBy(exampleV(), '2026-10-06'), cushionSavedBy(percent, '2026-10-06')]).toEqual([7200, 8000]);
+    const fixed = putIntoJar(exampleA(), { cushion: true }, 800, '2026-09-30', NOW, 'leftover');
+    expect(fixed.settings.cushion).toEqual(exampleA().settings.cushion);
+    expect(cushionSavedBy(fixed, '2026-09-30')).toBe(3800);
   });
 
   it('a goal never holds more than its target; an unknown goal changes nothing', () => {
-    expect(goal(setAsideLeftover(exampleA(), { goalId: 'headphones' }, 20000, '2026-09-30')).initialSavedKopecks).toBe(15000);
-    expect(goal(setAsideLeftover(exampleV(), { goalId: 'headphones' }, 20000, '2026-10-06')).initialSavedKopecks).toBe(15000);
+    const deadline = putIntoJar(exampleA(), { goalId: 'headphones' }, 20000, '2026-09-30', NOW);
+    expect(deadline.savingsMoves.map((m) => m.amountKopecks)).toEqual([15000 - 1340]);
+    const percent = putIntoJar(exampleV(), { goalId: 'headphones' }, 20000, '2026-10-06', NOW);
+    expect(percent.savingsMoves.map((m) => m.amountKopecks)).toEqual([15000 - 3300]);
+    expect(goalSavedBy(percent, goal(percent), '2026-10-06')).toBe(15000);
     const data = exampleA();
-    expect(setAsideLeftover(data, { goalId: 'nope' }, 800, '2026-09-30')).toBe(data);
+    expect(putIntoJar(data, { goalId: 'nope' }, 800, '2026-09-30', NOW)).toBe(data);
   });
 });
 
@@ -74,7 +85,7 @@ describe('a confirmed income with percent savings', () => {
 });
 
 describe('model v5 in the app layer', () => {
-  it('onboarding creates version 5 data: monthly payments, no target limit', () => {
+  it('onboarding creates current data: monthly payments, no target limit', () => {
     const data = createInitialData(
       '2026-09-26',
       {
@@ -84,7 +95,7 @@ describe('model v5 in the app layer', () => {
       },
       NOW,
     );
-    expect(data.schemaVersion).toBe(5);
+    expect(data.schemaVersion).toBe(6);
     expect(data.settings.targetDailyLimitKopecks).toBeNull();
     expect(data.incomeSources[0]).toMatchObject({ dayOfMonth: 5, weekday: null, date: null });
     expect(data.payments[0]).toMatchObject({ dayOfMonth: 1, weekday: null, date: null });
