@@ -1,0 +1,259 @@
+/* Update 2 «Свинка»: the piggy bank of «Копилка». Flat, with a bold rounded outline like the tab icons
+   (12 of 200: about 11 px at full size); coloured by the accent (hue and chroma from data-accent,
+   lightness per theme). */
+.piggy {
+  --piggy-line: var(--accent-ink);
+  --piggy-body: oklch(0.975 calc(var(--accent-c) * 0.2) var(--accent-h));
+  --piggy-coin: var(--accent);
+  --piggy-coin-edge: oklch(0.67 calc(var(--accent-c) * 0.95) var(--accent-ink-h));
+  --piggy-face: var(--accent-ink-strong);
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  align-self: center;
+  width: 228px;
+  height: 190px;
+  margin: 0 auto;
+}
+
+:root[data-theme='dark'] .piggy {
+  --piggy-line: var(--accent);
+  --piggy-body: oklch(0.29 calc(var(--accent-c) * 0.35) var(--accent-h));
+  --piggy-coin: oklch(0.74 var(--accent-c) var(--accent-h));
+  --piggy-coin-edge: oklch(0.52 calc(var(--accent-c) * 0.9) var(--accent-h));
+  --piggy-face: var(--piggy-body);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='auto'] .piggy {
+    --piggy-line: var(--accent);
+    --piggy-body: oklch(0.29 calc(var(--accent-c) * 0.35) var(--accent-h));
+    --piggy-coin: oklch(0.74 var(--accent-c) var(--accent-h));
+    --piggy-coin-edge: oklch(0.52 calc(var(--accent-c) * 0.9) var(--accent-h));
+    --piggy-face: var(--piggy-body);
+  }
+}
+
+/* On a short phone it gives the room to the rest of the screen. */
+@media (max-height: 700px) {
+  .piggy {
+    width: 180px;
+    height: 150px;
+  }
+}
+
+.piggy-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.piggy-shape,
+.piggy-shape > *,
+.piggy-outline {
+  fill: var(--piggy-body);
+  stroke: var(--piggy-line);
+  stroke-width: 12px;
+  stroke-linejoin: round;
+}
+
+.piggy-outline {
+  fill: none;
+}
+
+.piggy-inside {
+  fill: var(--piggy-body);
+}
+
+.piggy-tail {
+  fill: none;
+  stroke: var(--piggy-line);
+  stroke-width: 8px;
+  stroke-linecap: round;
+}
+
+.piggy-slot {
+  fill: none;
+  stroke: var(--piggy-line);
+  stroke-width: 7px;
+  stroke-linecap: round;
+}
+
+.piggy-eye,
+.piggy-nostril {
+  fill: var(--piggy-line);
+}
+
+/* The body colour around the eye keeps it seen once the coins rise over it. */
+.piggy-eye-halo {
+  fill: var(--piggy-body);
+}
+
+/* Happy: eyes squint and it smiles, always over the coins, so in a colour that stands out on them. */
+.piggy-face path {
+  fill: none;
+  stroke: var(--piggy-face);
+  stroke-width: 6px;
+  stroke-linecap: round;
+}
+
+.piggy.is-full .piggy-slot {
+  stroke: var(--piggy-face);
+}
+
+/* Coins inside: a flat level with a texture of coins and a pile on top. */
+.piggy-level {
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* On mount it fills from empty, a little slower, as the day ring does. */
+.piggy-level.is-filling {
+  transition-duration: 800ms;
+}
+
+.piggy-coins {
+  fill: var(--piggy-coin);
+}
+
+.piggy pattern ellipse {
+  fill: none;
+  stroke: var(--piggy-coin-edge);
+  stroke-width: 1.8px;
+  opacity: 0.5;
+}
+
+.piggy-pile {
+  fill: var(--piggy-coin);
+  stroke: var(--piggy-coin-edge);
+  stroke-width: 2.5px;
+}
+
+/* The coin that drops into the slot: it turns edge-on and goes in; the level rises after it. */
+.piggy-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: piggy-coin-drop 420ms cubic-bezier(0.55, 0, 0.9, 0.55) both;
+}
+
+.piggy-coin circle {
+  fill: var(--piggy-coin);
+  stroke: var(--piggy-line);
+  stroke-width: 4px;
+}
+
+.piggy-coin .piggy-coin-mark {
+  fill: none;
+  stroke: var(--piggy-coin-edge);
+  stroke-width: 3px;
+}
+
+@keyframes piggy-coin-drop {
+  0% {
+    transform: translateY(-38px) scaleX(1);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(4px) scaleX(0.45);
+  }
+  100% {
+    transform: translateY(34px) scaleX(0.3);
+    opacity: 1;
+  }
+}
+
+/* Full: a hop and confetti in the accent colours from the slot. */
+.piggy.is-cheering .piggy-art {
+  transform-origin: 50% 95%;
+  animation: piggy-hop 560ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes piggy-hop {
+  35% {
+    transform: translateY(-10px) scale(1.03);
+  }
+}
+
+.piggy-confetti {
+  position: absolute;
+  left: 45.8%; /* the slot */
+  top: 30%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.piggy-confetti span {
+  position: absolute;
+  left: -4px;
+  top: -6px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: piggy-confetti 1100ms both;
+}
+
+.piggy-confetti .is-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.piggy-confetti .is-tone-0 {
+  background: var(--accent);
+}
+
+.piggy-confetti .is-tone-1 {
+  background: var(--accent-ink);
+}
+
+.piggy-confetti .is-tone-2 {
+  background: var(--piggy-coin-edge);
+}
+
+@keyframes piggy-confetti {
+  0% {
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  45% {
+    transform: translate(calc(var(--dx) * 0.8), var(--up)) scale(1) rotate(calc(var(--turn) * 0.5));
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.6);
+  }
+  100% {
+    transform: translate(var(--dx), calc(var(--up) + var(--fall))) scale(1) rotate(var(--turn));
+    opacity: 0;
+  }
+}
+
+.piggy.is-tappable {
+  cursor: pointer;
+  border-radius: 28px;
+  transition: transform 120ms ease-out;
+}
+
+.piggy.is-tappable:active {
+  transform: scale(0.97);
+}
+
+.piggy.is-tappable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+/* No drop and no confetti; the level jumps. */
+@media (prefers-reduced-motion: reduce) {
+  .piggy-level {
+    transition: none;
+  }
+
+  .piggy-coin,
+  .piggy-confetti {
+    display: none;
+  }
+}
