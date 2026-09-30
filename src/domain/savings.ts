@@ -1,10 +1,11 @@
-import { balanceOn, cushionSavedBy, expectedIncomes, goalSavedBy, percentShare, periodOf, type Occurrence } from './budget';
+import { balanceOn, cushionSavedBy, expectedIncomes, goalSavedBy, goalUnclampedBy, movesBy, percentShare, periodOf, type Occurrence } from './budget';
 import { addDays, type Period } from './dates';
 import { dayResults } from './history';
 import type { AppData, Cushion, Goal, LocalDate } from './types';
 
 // Savings of update 1: how an income splits by percent rules, what the current period saves
 // (the savings ring) and «Итоги периода» of the previous one. Goals count only while active.
+// Savings moves (update 2) are a part of every saved amount, so all of these pick them up.
 
 /** A date after every operation: «everything recorded so far». */
 const ALL_TIME: LocalDate = '9999-12-31';
@@ -53,9 +54,9 @@ export interface PeriodSavings {
 
 /**
  * The savings ring: what active goals and the cushion saved in the current period so far and what
- * they plan to save by its end. A deadline goal grows by day; a percent goal and the percent cushion
- * grow by their share of the incomes still expected in the period (a goal up to its target).
- * A fixed cushion does not grow.
+ * they plan to save by its end. A deadline goal grows by day and a scheduled one on its days; a percent
+ * goal and the percent cushion grow by their share of the incomes still expected in the period (a goal
+ * up to its target). A fixed cushion and a goal saved by hand grow only by moves, which count on their day.
  */
 export function periodSavings(data: AppData, today: LocalDate): PeriodSavings {
   const period = periodOf(data, today);
@@ -106,20 +107,41 @@ export function periodSummary(data: AppData, today: LocalDate): PeriodSummary | 
 }
 
 /**
- * The goal counted afresh from today: what it saved by yesterday plus `extraKopecks` (up to the target)
- * becomes its initial savings. Used when money is added to it and when its percent changes, so the
- * past is not recounted. Pass the goal as it was; set a new percent or deadline on the result.
+ * The goal counted afresh from today: what it saved by yesterday stays, its moves stay as they are,
+ * and its plan starts today. Used when its percent, schedule or way of saving changes, so the past is
+ * not recounted. Pass the goal as it was; set the new percent, deadline or schedule on the result.
  */
-export function rebasedGoal(data: AppData, goal: Goal, today: LocalDate, extraKopecks = 0): Goal {
-  const savedByYesterday = goalSavedBy(data, goal, addDays(today, -1));
-  return { ...goal, startDate: today, initialSavedKopecks: Math.min(goal.targetKopecks, savedByYesterday + extraKopecks) };
+export function rebasedGoal(data: AppData, goal: Goal, today: LocalDate): Goal {
+  const yesterday = addDays(today, -1);
+  return { ...goal, startDate: today, initialSavedKopecks: goalSavedBy(data, goal, yesterday) - movesBy(data, goal.id, yesterday) };
 }
 
 /**
- * A percent cushion counted afresh from today at `percent`: what the cushion held by yesterday,
- * changed by `changeKopecks` (never below 0), becomes its base; today's incomes count at the new percent.
+ * A goal that holds more than its target on paper (a full percent or scheduled goal keeps accruing),
+ * counted afresh from today so that today it holds exactly the target: a withdrawal then takes exactly
+ * its amount. What it saved by yesterday stays, unless the goal went over the target only today.
+ * Unchanged while it is within the target.
  */
-export function rebasedCushion(data: AppData, percent: number, today: LocalDate, changeKopecks = 0): Extract<Cushion, { mode: 'percent' }> {
-  const savedByYesterday = cushionSavedBy(data, addDays(today, -1));
-  return { mode: 'percent', percent, baseKopecks: Math.max(0, savedByYesterday + changeKopecks), sinceDate: today };
+export function goalWithinTarget(data: AppData, goal: Goal, today: LocalDate): Goal {
+  if (goalUnclampedBy(data, goal, today) <= goal.targetKopecks) return goal;
+  const rebased = rebasedGoal(data, goal, today);
+  // A deadline goal whose base is the target stays at the target.
+  if (goal.deadline !== null) return { ...rebased, initialSavedKopecks: goal.targetKopecks - movesBy(data, goal.id, today) };
+  const excess = goalUnclampedBy(data, rebased, today) - goal.targetKopecks;
+  return excess > 0 ? { ...rebased, initialSavedKopecks: rebased.initialSavedKopecks - excess } : rebased;
+}
+
+/**
+ * A percent cushion counted afresh from today at `percent`: what the cushion held by yesterday stays,
+ * its moves stay as they are, and today's incomes count at the new percent. The target stays.
+ */
+export function rebasedCushion(data: AppData, percent: number, today: LocalDate): Extract<Cushion, { mode: 'percent' }> {
+  const yesterday = addDays(today, -1);
+  const baseKopecks = cushionSavedBy(data, yesterday) - movesBy(data, null, yesterday);
+  return { mode: 'percent', percent, baseKopecks, sinceDate: today, targetKopecks: data.settings.cushion.targetKopecks };
+}
+
+/** A fixed cushion that holds `amountKopecks` today, its moves included. The target stays. */
+export function heldCushion(data: AppData, amountKopecks: number, today: LocalDate): Extract<Cushion, { mode: 'fixed' }> {
+  return { mode: 'fixed', amountKopecks: amountKopecks - movesBy(data, null, today), targetKopecks: data.settings.cushion.targetKopecks };
 }

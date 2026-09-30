@@ -14,7 +14,7 @@ import {
   setCushionFixed,
   setCushionPercent,
   setReserve,
-  takeFromCushion,
+  takeFromJar,
 } from './appData';
 import { calculateBudget, cushionSavedBy } from './domain/budget';
 import { incomesToConfirm, occurrenceToClose, paymentOccurrence } from './domain/planned';
@@ -47,7 +47,7 @@ function configured(): AppData {
   let data = onboarded();
   data = setReserve(data, 'groceries', 50000);
   data = setReserve(data, 'transport', 10000);
-  data = setCushionFixed(data, 3000);
+  data = setCushionFixed(data, 3000, '2026-09-26');
   return saveGoal(data, {
     id: 'headphones',
     name: 'Наушники',
@@ -56,6 +56,7 @@ function configured(): AppData {
     startDate: '2026-09-26',
     deadline: '2026-11-20',
     percent: null,
+    schedule: null,
     status: 'active',
   });
 }
@@ -177,7 +178,7 @@ describe('settings', () => {
     data = addIncome(data, 22000, scholarshipId(data), '2026-10-05', '2026-10-05', NOW);
     expect(cushionSavedBy(data, '2026-10-05')).toBe(3660); // 30,00 + 3% of 220,00
     const before = calculateBudget(data, '2026-10-05').breakdown;
-    data = takeFromCushion(data, 1000, '2026-10-05');
+    data = takeFromJar(data, { cushion: true }, 1000, '2026-10-05', NOW);
     expect(cushionSavedBy(data, '2026-10-05')).toBe(2660);
     const after = calculateBudget(data, '2026-10-05').breakdown;
     expect(after.freeKopecks - before.freeKopecks).toBe(1000);

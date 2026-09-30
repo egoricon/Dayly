@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calculateBudget } from './budget';
-import { exampleA, exampleV, headphonesPercent } from './fixtures';
+import { exampleA, exampleV, headphonesPercent, percentCushion } from './fixtures';
 import { limitLevers } from './levers';
 
 // «Как дотянуть» (update 1): examples А and В of PROJECT_MAP.md section 2.
@@ -58,7 +58,7 @@ describe('ways to raise the daily limit', () => {
   it('no lever below 1 % and none that does not raise the limit', () => {
     const data = exampleV();
     data.goals = [{ ...headphonesPercent, percent: 1 }];
-    data.settings.cushion = { mode: 'percent', percent: 1, baseKopecks: 5000, sinceDate: '2026-10-05' };
+    data.settings.cushion = percentCushion(1, 5000, '2026-10-05');
     expect(limitLevers(data, '2026-10-05').map((l) => l.kind)).toEqual(['reserve', 'reserve']);
     // Short of 79,11: no single step closes it, the limit stays 0.
     expect(limitLevers(exampleA({ balanceKopecks: 25000 }), '2026-09-26')).toEqual([]);

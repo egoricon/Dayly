@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { addExpense, addIncome, setAsideLeftover } from '../appData';
+import { addExpense, addIncome, putIntoJar } from '../appData';
 import { calculateBudget, goalSavedBy } from '../domain/budget';
 import { addDays } from '../domain/dates';
-import { exampleA, exampleV, expense, headphones, headphonesPercent, source } from '../domain/fixtures';
+import { exampleA, exampleV, expense, fixedCushion, headphones, headphonesPercent, source } from '../domain/fixtures';
 import { incomeSplit, rebasedGoal } from '../domain/savings';
 import type { AppData, Goal } from '../domain/types';
 import { defaultUiState, dismissCard, isCardDismissed, loadUiState, MAX_DISMISSED_CARDS, UI_KEY, type FeatureKey } from '../uiState';
@@ -50,7 +50,7 @@ describe('percent rules', () => {
   it('names typed with capitals stay as typed; deadline, done and cancelled goals are no rules', () => {
     const data = exampleV();
     data.goals = [{ ...headphonesPercent, name: 'PS5' }, { ...bike, status: 'done' }, headphones];
-    data.settings.cushion = { mode: 'fixed', amountKopecks: 5000 };
+    data.settings.cushion = fixedCushion(5000);
     expect(percentLine(percentRules(data))).toBe('15% PS5 · 85% на жизнь');
   });
 
@@ -125,7 +125,7 @@ describe('where leftover money goes', () => {
       ['cushion', null],
     ]);
     data.goals = [{ ...headphones, initialSavedKopecks: 15000 }, { ...bike, status: 'cancelled' }];
-    data.settings.cushion = { mode: 'fixed', amountKopecks: 0 };
+    data.settings.cushion = fixedCushion(0);
     expect(targetOptions(data, '2026-09-30')).toEqual([]);
     expect(targetOptions(exampleV(), '2026-10-06').map((o) => o.key)).toEqual(['headphones', 'cushion']);
   });
@@ -192,7 +192,7 @@ describe('which savings card the home screen shows', () => {
     expect(pickSavingsCard(context(overspent, '2026-09-27'))).toBeNull();
     const nowhere = dayAfter();
     nowhere.goals = [];
-    nowhere.settings.cushion = { mode: 'fixed', amountKopecks: 0 };
+    nowhere.settings.cushion = fixedCushion(0);
     expect(pickSavingsCard(context(nowhere, '2026-09-27'))).toBeNull();
     expect(pickSavingsCard(context(exampleA(), '2026-09-26'))).toBeNull(); // no limit recorded yesterday
   });
@@ -224,7 +224,7 @@ describe('which savings card the home screen shows', () => {
   it('setting the leftover aside keeps the balance and lowers the limit; the carry pill key is per day', () => {
     const data = dayAfter();
     const before = calculateBudget(data, '2026-09-27');
-    const after = calculateBudget(setAsideLeftover(data, { goalId: 'headphones' }, 2504, '2026-09-27'), '2026-09-27');
+    const after = calculateBudget(putIntoJar(data, { goalId: 'headphones' }, 2504, '2026-09-27', NOW, 'leftover'), '2026-09-27');
     expect(after.balanceKopecks).toBe(before.balanceKopecks);
     expect(after.dailyLimitKopecks).toBeLessThan(before.dailyLimitKopecks);
     expect(carrySavedKey('2026-09-26')).toBe('carry-saved|2026-09-26');

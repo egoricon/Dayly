@@ -58,7 +58,7 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
 
   if (mode === 'expense') {
     const preview = previewExpense(data, today, amount, category, editing?.id ?? null);
-    next = editing ? updateExpense(data, editing.id, amount, category) : addExpense(data, amount, category, today, now);
+    next = editing ? updateExpense(data, editing.id, amount, category, today) : addExpense(data, amount, category, today, now);
     if (isReserve(category) && preview.fromLimitKopecks === 0) {
       hint = `Из резерва «${name}» · дневной лимит не изменится`;
     } else if (isReserve(category)) {

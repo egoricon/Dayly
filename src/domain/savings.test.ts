@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { goalSavedBy } from './budget';
 import { addDays } from './dates';
-import { exampleA, exampleV, expense, headphonesPercent, tx } from './fixtures';
+import { exampleA, exampleV, expense, headphonesPercent, move, tx } from './fixtures';
 import { incomeSplit, periodSavings, periodSummary, rebasedCushion, rebasedGoal } from './savings';
 
 // Savings of update 1, on examples А and В (PROJECT_MAP.md section 2).
@@ -88,16 +88,21 @@ describe('«Итоги периода»', () => {
 });
 
 describe('counting savings afresh', () => {
-  it('a goal keeps what it saved by yesterday', () => {
+  it('a goal keeps what it saved by yesterday; its moves stay moves and are not counted twice', () => {
     const data = exampleV();
-    const goal = rebasedGoal(data, headphonesPercent, '2026-10-06', 800);
-    expect(goal).toMatchObject({ startDate: '2026-10-06', initialSavedKopecks: 4100, percent: 15 });
-    expect(goalSavedBy(data, goal, '2026-10-06')).toBe(goalSavedBy(data, headphonesPercent, '2026-10-06') + 800);
-    expect(rebasedGoal(data, headphonesPercent, '2026-10-06', 99999).initialSavedKopecks).toBe(15000);
+    data.savingsMoves = [move({ goalId: 'headphones', amountKopecks: 800, date: '2026-10-05' })];
+    const goal = rebasedGoal(data, headphonesPercent, '2026-10-06');
+    // 33,00 from the scholarship and 8,00 put in by 5 October; the 8,00 stay a move.
+    expect(goal).toMatchObject({ startDate: '2026-10-06', initialSavedKopecks: 3300, percent: 15 });
+    for (const date of ['2026-10-05', '2026-10-06']) expect(goalSavedBy(data, goal, date)).toBe(4100);
   });
 
-  it('a percent cushion keeps what it held by yesterday, never below 0', () => {
-    expect(rebasedCushion(exampleV(), 5, '2026-10-06')).toEqual({ mode: 'percent', percent: 5, baseKopecks: 7200, sinceDate: '2026-10-06' });
-    expect(rebasedCushion(exampleV(), 5, '2026-10-06', -9999).baseKopecks).toBe(0);
+  it('a percent cushion keeps what it held by yesterday, the target stays', () => {
+    const data = exampleV();
+    expect(rebasedCushion(data, 5, '2026-10-06')).toEqual({ mode: 'percent', percent: 5, baseKopecks: 7200, sinceDate: '2026-10-06', targetKopecks: null });
+    // 72,00 less 10,00 taken out: the base keeps 72,00, the move keeps −10,00.
+    data.savingsMoves = [move({ amountKopecks: -1000, date: '2026-10-05' })];
+    data.settings.cushion = { ...data.settings.cushion, targetKopecks: 20000 };
+    expect(rebasedCushion(data, 5, '2026-10-06')).toMatchObject({ baseKopecks: 7200, targetKopecks: 20000 });
   });
 });

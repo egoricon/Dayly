@@ -1,6 +1,7 @@
 import { activeCategories, defaultCategories, MAX_CATEGORIES } from './domain/categories';
 import { isRecurring, weekdayIndex } from './domain/dates';
-import { rebasedCushion, rebasedGoal } from './domain/savings';
+import { roundUpKopecks, roundUpTarget, targetGoalId, targetOf, withDeposit, withWithdrawal, type SavingsTarget } from './domain/jars';
+import { heldCushion, rebasedCushion } from './domain/savings';
 // events.ts builds on this module too; each only calls the other inside functions.
 import { saveEvent, type EventDraft, type Repeat } from './events';
 import type {
@@ -12,8 +13,11 @@ import type {
   IncomeSource,
   LocalDate,
   MandatoryPayment,
+  SavingsMove,
   Transaction,
 } from './domain/types';
+
+export type { SavingsTarget } from './domain/jars';
 
 // Pure updates of AppData made by the app layer. Each returns a new object.
 
@@ -93,23 +97,25 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
     isActive: true,
   };
   const data: AppData = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     settings: {
       onboardingCompleted: true,
       trackingStartDate: today,
       mainIncomeSourceId: income?.id ?? null,
       categories: defaultCategories(result.reserves?.groceriesKopecks ?? 0, result.reserves?.transportKopecks ?? 0),
-      cushion: { mode: 'fixed', amountKopecks: 0 },
+      cushion: { mode: 'fixed', amountKopecks: 0, targetKopecks: null },
       theme: 'auto',
       lastCategory: 'cafe',
       favorites: [],
       targetDailyLimitKopecks: null,
+      roundUp: null,
     },
     incomeSources: income ? [income] : [],
     payments: [],
     goals: [],
     transactions,
     daySummaries: [],
+    savingsMoves: [],
   };
   // The same payments as «+ Расход» in the calendar makes.
   return result.payments.reduce(
@@ -118,13 +124,33 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
   );
 }
 
+/**
+ * The round-up of an expense already in `data` into `target` (update 2): the rest to whole BYN as a
+ * `roundup` move dated like the expense, within what the jar can take without a shortfall today.
+ */
+function withRoundUp(data: AppData, expense: Transaction, target: SavingsTarget | null, today: LocalDate, meta: Pick<SavingsMove, 'id' | 'createdAt'>): AppData {
+  if (target === null || expense.paymentId !== null || expense.goalId !== null) return data;
+  const kopecks = roundUpKopecks(data, expense.amountKopecks, target, today);
+  return withDeposit(data, target, kopecks, expense.date, today, { ...meta, source: 'roundup', transactionId: expense.id });
+}
+
+/** A new expense; with rounding up on, the rest to whole BYN goes into the chosen jar. */
 export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date, note: string | null = null): AppData {
   const expense = {
     ...blankTransaction({ type: 'expense', amountKopecks, date: today, createdAt: now.toISOString() }),
     category,
     note,
   };
-  return { ...withTransaction(data, expense), settings: { ...data.settings, lastCategory: category } };
+  const next = { ...withTransaction(data, expense), settings: { ...data.settings, lastCategory: category } };
+  return withRoundUp(next, expense, roundUpTarget(data), today, { id: newId(), createdAt: now.toISOString() });
+}
+
+function roundUpOf(data: AppData, transactionId: string): SavingsMove | undefined {
+  return data.savingsMoves.find((m) => m.source === 'roundup' && m.transactionId === transactionId);
+}
+
+function withoutMovesOf(data: AppData, transactionId: string): AppData {
+  return roundUpOf(data, transactionId) ? { ...data, savingsMoves: data.savingsMoves.filter((m) => m.transactionId !== transactionId) } : data;
 }
 
 /** Income received today. With a source and a planned date it confirms that occurrence. */
@@ -143,20 +169,29 @@ export function addIncome(
   });
 }
 
-/** Deleting a goal purchase makes the goal active again: the money is back in the savings. */
+/**
+ * Deleting an expense deletes its round-up too («Отменить» after «Добавить» is a delete). Deleting a
+ * goal purchase makes the goal active again: the money is back in the savings.
+ */
 export function deleteTransaction(data: AppData, id: string): AppData {
   const removed = data.transactions.find((t) => t.id === id);
-  const next = { ...data, transactions: data.transactions.filter((t) => t.id !== id) };
+  const next = withoutMovesOf({ ...data, transactions: data.transactions.filter((t) => t.id !== id) }, id);
   const goal = removed?.goalId ? next.goals.find((g) => g.id === removed.goalId) : undefined;
   return goal && goal.status === 'done' ? saveGoal(next, { ...goal, status: 'active' }) : next;
 }
 
-/** Changes amount and category of an expense; its day and time stay. */
-export function updateExpense(data: AppData, id: string, amountKopecks: number, category: Category): AppData {
-  return {
-    ...data,
-    transactions: data.transactions.map((t) => (t.id === id && t.type === 'expense' ? { ...t, amountKopecks, category } : t)),
-  };
+/**
+ * Changes amount and category of an expense; its day and time stay. A rounded-up expense is rounded
+ * afresh into the same jar (the move keeps its id), or loses its round-up when the new sum is whole BYN.
+ */
+export function updateExpense(data: AppData, id: string, amountKopecks: number, category: Category, today: LocalDate): AppData {
+  const original = data.transactions.find((t) => t.id === id && t.type === 'expense');
+  if (!original) return data;
+  const edited = { ...original, amountKopecks, category };
+  const next = { ...data, transactions: data.transactions.map((t) => (t === original ? edited : t)) };
+  const roundUp = roundUpOf(data, id);
+  if (!roundUp) return next;
+  return withRoundUp(withoutMovesOf(next, id), edited, targetOf(roundUp.goalId), today, { id: roundUp.id, createdAt: roundUp.createdAt });
 }
 
 /** «Сверить баланс»: an adjustment that brings the balance to what the student actually has. */
@@ -256,23 +291,22 @@ export function restoreCategory(data: AppData, id: Category): AppData {
   );
 }
 
-export function setCushionFixed(data: AppData, amountKopecks: number): AppData {
-  return { ...data, settings: { ...data.settings, cushion: { mode: 'fixed', amountKopecks } } };
+/** A fixed cushion that holds `amountKopecks` today: what was put in and taken out is counted in. */
+export function setCushionFixed(data: AppData, amountKopecks: number, today: LocalDate): AppData {
+  return { ...data, settings: { ...data.settings, cushion: heldCushion(data, amountKopecks, today) } };
 }
 
 /**
  * Percent mode starting today. What is already saved stays as the base; today's incomes
  * are counted once, at the new percent.
  */
-export function setCushionPercent(data: AppData, percent: number, today: LocalDate, takeKopecks = 0): AppData {
-  return { ...data, settings: { ...data.settings, cushion: rebasedCushion(data, percent, today, -takeKopecks) } };
+export function setCushionPercent(data: AppData, percent: number, today: LocalDate): AppData {
+  return { ...data, settings: { ...data.settings, cushion: rebasedCushion(data, percent, today) } };
 }
 
-/** «Взять из подушки X»: the cushion shrinks by X, and the money becomes free. */
-export function takeFromCushion(data: AppData, amountKopecks: number, today: LocalDate): AppData {
-  const cushion = data.settings.cushion;
-  if (cushion.mode === 'fixed') return setCushionFixed(data, Math.max(0, cushion.amountKopecks - amountKopecks));
-  return setCushionPercent(data, cushion.percent, today, amountKopecks);
+/** The cushion's target for the piggy and its progress; null: none. The cushion is never capped by it. */
+export function setCushionTarget(data: AppData, targetKopecks: number | null): AppData {
+  return { ...data, settings: { ...data.settings, cushion: { ...data.settings.cushion, targetKopecks } } };
 }
 
 // Goals
@@ -298,31 +332,43 @@ export function cancelGoal(data: AppData, goalId: string): AppData {
   return goal ? saveGoal(data, { ...goal, status: 'cancelled' }) : data;
 }
 
-/** Where «Отложить остаток» puts the money: a goal or the cushion. */
-export type SavingsTarget = { goalId: string } | { cushion: true };
+// Savings moves (update 2)
 
 /**
- * «Отложить остаток» and «Отправить в копилку»: moves money into savings without an operation, so the
- * balance stays and the limit goes down. What a goal or the cushion holds grows by exactly the amount
- * (a goal up to its target):
- * - a deadline goal is counted afresh from today with what it saved by yesterday plus the amount, and
- *   spreads the smaller rest over the days left, so today's own share shrinks a little;
- * - a percent goal and the percent cushion keep their start and get the amount on top of their base,
- *   so their growth in the period stays as it was (see periodSavings);
- * - a fixed cushion simply grows.
+ * «Положить», «Отложить остаток» (`leftover`) and «Отправить в копилку» (`period`): a move into a goal or
+ * the cushion without an operation, so the balance stays and the limit goes down. A goal takes no more
+ * than it still needs; the limits against a shortfall are the screen's (putInMax in src/ui/savings.ts).
+ * A deadline goal spreads the smaller rest over the days left, so today's own share shrinks a little.
  */
-export function setAsideLeftover(data: AppData, target: SavingsTarget, amountKopecks: number, today: LocalDate): AppData {
-  if ('goalId' in target) {
-    const goal = data.goals.find((g) => g.id === target.goalId);
-    if (!goal) return data;
-    if (goal.percent !== null) {
-      return saveGoal(data, { ...goal, initialSavedKopecks: Math.min(goal.targetKopecks, goal.initialSavedKopecks + amountKopecks) });
-    }
-    return saveGoal(data, rebasedGoal(data, goal, today, amountKopecks));
-  }
-  const cushion = data.settings.cushion;
-  if (cushion.mode === 'fixed') return setCushionFixed(data, cushion.amountKopecks + amountKopecks);
-  return { ...data, settings: { ...data.settings, cushion: { ...cushion, baseKopecks: cushion.baseKopecks + amountKopecks } } };
+export function putIntoJar(
+  data: AppData,
+  target: SavingsTarget,
+  amountKopecks: number,
+  today: LocalDate,
+  now: Date,
+  source: Extract<SavingsMove['source'], 'manual' | 'leftover' | 'period'> = 'manual',
+): AppData {
+  return withDeposit(data, target, amountKopecks, today, today, { id: newId(), createdAt: now.toISOString(), source, transactionId: null });
+}
+
+/**
+ * «Забрать» and «Взять из подушки»: a `withdraw` move out of a goal or the cushion, no more than it
+ * holds (takeOutMax). The money becomes free, and the limit goes up.
+ */
+export function takeFromJar(data: AppData, target: SavingsTarget, amountKopecks: number, today: LocalDate, now: Date): AppData {
+  return withWithdrawal(data, target, amountKopecks, today, { id: newId(), createdAt: now.toISOString(), source: 'withdraw', transactionId: null });
+}
+
+/** Deletes a move from the history of «Копилка». A round-up goes only with its expense. */
+export function deleteSavingsMove(data: AppData, id: string): AppData {
+  const found = data.savingsMoves.find((m) => m.id === id);
+  if (!found || found.source === 'roundup') return data;
+  return { ...data, savingsMoves: data.savingsMoves.filter((m) => m !== found) };
+}
+
+/** Rounding expenses up to 1 BYN into a goal or the cushion; null turns it off. */
+export function setRoundUp(data: AppData, target: SavingsTarget | null): AppData {
+  return { ...data, settings: { ...data.settings, roundUp: target === null ? null : { goalId: targetGoalId(target) } } };
 }
 
 /** «Хочу тратить N в день»; null removes the target. */

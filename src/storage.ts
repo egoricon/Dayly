@@ -7,7 +7,8 @@ const CORRUPT_KEY = 'dayly:data:corrupt';
 /**
  * Upgrades saved data step by step: version 2 added a weekday for weekly incomes,
  * version 3 added favourite expenses, version 4 own categories and reserves,
- * version 5 one-off incomes, weekly and one-off payments, percent goals and the target daily limit.
+ * version 5 one-off incomes, weekly and one-off payments, percent goals and the target daily limit,
+ * version 6 savings moves, goals on a schedule and by hand, rounding expenses up and the cushion's target.
  */
 function migrate(data: { schemaVersion: number }): AppData | null {
   let current = data as unknown as Record<string, unknown> & { schemaVersion: number };
@@ -42,7 +43,19 @@ function migrate(data: { schemaVersion: number }): AppData | null {
       goals: goals.map((g) => ({ ...g, percent: null })),
     };
   }
-  return current.schemaVersion === 5 ? (current as unknown as AppData) : null;
+  if (current.schemaVersion === 5) {
+    // Nothing was moved by hand yet: what update 1 set aside is already in the goals' and cushion's base.
+    const settings = current.settings as Omit<AppData['settings'], 'roundUp' | 'cushion'> & { cushion: object };
+    const goals = (current.goals ?? []) as Omit<Goal, 'schedule'>[];
+    current = {
+      ...current,
+      schemaVersion: 6,
+      settings: { ...settings, roundUp: null, cushion: { ...settings.cushion, targetKopecks: null } },
+      goals: goals.map((g) => ({ ...g, schedule: null })),
+      savingsMoves: [],
+    };
+  }
+  return current.schemaVersion === 6 ? (current as unknown as AppData) : null;
 }
 
 /** Any saved or exported data brought to the current version; null when it is not Dayly data. */

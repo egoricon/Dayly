@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import '../styles/savings.css';
-import { setAsideLeftover } from '../appData';
+import { putIntoJar } from '../appData';
 import type { BudgetResult } from '../domain/budget';
 import { addDays } from '../domain/dates';
 import type { AppData, LocalDate } from '../domain/types';
@@ -59,8 +59,8 @@ export function SavingsCards(props: SavingsCardsProps) {
 
   const card = pickSavingsCard(props);
   const yesterday = addDays(today, -1);
-  const setAside = (option: TargetOption, amountKopecks: number) => {
-    update((d) => setAsideLeftover(d, option.target, amountKopecks, today));
+  const setAside = (option: TargetOption, amountKopecks: number, source: 'leftover' | 'period') => {
+    update((d) => putIntoJar(d, option.target, amountKopecks, today, new Date(), source));
     setToast(`Отложено ${moneyInText(amountKopecks)} ${intoTarget(option)}`);
   };
 
@@ -80,7 +80,7 @@ export function SavingsCards(props: SavingsCardsProps) {
           budget={budget}
           today={today}
           onSetAside={(option, amount) => {
-            setAside(option, amount);
+            setAside(option, amount, 'period');
             // On the first day of a period yesterday's leftover is part of the period's one.
             if (today === budget.period.start) onHideBanner(carrySavedKey(yesterday));
           }}
@@ -104,7 +104,7 @@ export function SavingsCards(props: SavingsCardsProps) {
           budget={budget}
           today={today}
           onSetAside={(option, amount) => {
-            setAside(option, amount);
+            setAside(option, amount, 'leftover');
             // The money is in savings now, so «+8,00 с вчера» would say it is still free.
             onHideBanner(carrySavedKey(yesterday));
           }}

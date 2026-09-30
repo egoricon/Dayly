@@ -98,6 +98,8 @@ export function leverTitle(lever: LimitLever, data: AppData, today: LocalDate): 
       return `Сдвинуть «${goal()}» на ${dayMonthYear(lever.newValue, today)}`;
     case 'goalPercent':
       return `Откладывать на «${goal()}» ${lever.newValue}% вместо ${lever.oldValue}%`;
+    case 'goalSchedule':
+      return `Откладывать на «${goal()}» по ${compactKopecks(lever.newValue)} вместо ${compactKopecks(lever.oldValue)}`;
     case 'reserve':
       return `Резерв «${categoryName(data, lever.targetId)}» ${compactKopecks(lever.newValue)} вместо ${compactKopecks(lever.oldValue)}`;
     case 'cushion':

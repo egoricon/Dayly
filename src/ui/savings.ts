@@ -1,6 +1,7 @@
-import { setAsideLeftover, type SavingsTarget } from '../appData';
-import { calculateDay, goalSavedBy, type BudgetResult } from '../domain/budget';
+import type { SavingsTarget } from '../appData';
+import { cushionSavedBy, goalSavedBy, type BudgetResult } from '../domain/budget';
 import { addDays, diffDays } from '../domain/dates';
+import { depositEffect } from '../domain/jars';
 import { formatKopecks } from '../domain/money';
 import { upcomingEvents } from '../domain/planned';
 import { periodSavings, periodSummary, type IncomeSplit, type PeriodSummary } from '../domain/savings';
@@ -181,7 +182,7 @@ export function intoTarget(option: TargetOption): string {
 
 /**
  * Where leftover money can go: active goals that still need money, then the cushion when it is in
- * use (a percent one or a sum above zero). A student who keeps no savings is not asked.
+ * use (a percent one, one with a target or holding money). A student who keeps no savings is not asked.
  */
 export function targetOptions(data: AppData, today: LocalDate): TargetOption[] {
   const options: TargetOption[] = [];
@@ -190,7 +191,7 @@ export function targetOptions(data: AppData, today: LocalDate): TargetOption[] {
     if (goal.status === 'active' && room > 0) options.push({ key: goal.id, target: { goalId: goal.id }, name: goal.name, roomKopecks: room });
   }
   const cushion = data.settings.cushion;
-  if (cushion.mode === 'percent' || cushion.amountKopecks > 0) {
+  if (cushion.mode === 'percent' || cushion.targetKopecks !== null || cushionSavedBy(data, today) > 0) {
     options.push({ key: 'cushion', target: { cushion: true }, name: 'Подушка', roomKopecks: null });
   }
   return options;
@@ -207,8 +208,13 @@ export function setAsideAmount(budget: BudgetResult, option: TargetOption, offer
 
 /** The daily limit once the amount is set aside, for the line above the button. */
 export function limitAfterSetAside(data: AppData, option: TargetOption, amountKopecks: number, today: LocalDate): number {
-  return calculateDay(setAsideLeftover(data, option.target, amountKopecks, today), today).dailyLimitKopecks;
+  return depositEffect(data, option.target, amountKopecks, today).limitKopecks;
 }
+
+// «Положить» and «Забрать» in «Копилка» (update 2): the most each can move. Defined next to the moves
+// in src/domain/jars.ts, because rounding an expense up is limited the same way.
+
+export { putInMax, takeOutMax } from '../domain/jars';
 
 // Which savings card the home screen shows
 

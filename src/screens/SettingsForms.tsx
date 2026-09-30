@@ -18,7 +18,7 @@ import {
   savePayment,
   setCushionFixed,
   setCushionPercent,
-  takeFromCushion,
+  takeFromJar,
 } from '../appData';
 import { ChoiceRows } from '../components/EventSheet';
 import { AmountInput, amountText, DaySelect, Field, firstMissing, FormScreen, Segmented, SubmitButton, type Missing } from '../components/Form';
@@ -448,7 +448,7 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   const cushion = data.settings.cushion;
   const saved = cushionSavedBy(data, today);
   const [mode, setMode] = useState(cushion.mode);
-  const [amount, setAmount] = useState(amountText(cushion.mode === 'fixed' ? cushion.amountKopecks : saved));
+  const [amount, setAmount] = useState(amountText(saved));
   const [percent, setPercent] = useState(String(cushion.mode === 'percent' ? cushion.percent : 3));
   const [take, setTake] = useState('');
   const amountKopecks = parseAmount(amount === '' ? '0' : amount);
@@ -466,7 +466,7 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
   ]);
 
   const save = () => {
-    if (mode === 'fixed') update((d) => setCushionFixed(d, amountKopecks!));
+    if (mode === 'fixed') update((d) => setCushionFixed(d, amountKopecks!, today));
     else if (cushion.mode !== 'percent' || cushion.percent !== percentValue) update((d) => setCushionPercent(d, percentValue!, today));
     onBack();
   };
@@ -513,7 +513,7 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
         className="button-secondary"
         disabled={takeKopecks === 0 || takeKopecks > saved}
         onClick={() => {
-          update((d) => takeFromCushion(d, takeKopecks, today));
+          update((d) => takeFromJar(d, { cushion: true }, takeKopecks, today, new Date()));
           onBack();
         }}
       >
@@ -559,9 +559,10 @@ export function GoalForm({ data, budget, today, update, id, onBack }: FormProps 
     targetKopecks,
     deadline: mode === 'deadline' ? deadline : null,
     percent: mode === 'percent' ? percentValue : null,
+    schedule: null,
   };
   // A new rule starts today; so does a changed percent or way of saving, keeping what is saved by yesterday.
-  const rescheduled = existing !== undefined && existing.percent !== fields.percent;
+  const rescheduled = existing !== undefined && (existing.percent !== fields.percent || existing.schedule !== null);
   const draft: Goal =
     existing === undefined
       ? { id: newGoalId, ...fields, initialSavedKopecks: initialKopecks ?? 0, startDate: today, status: 'active' }
