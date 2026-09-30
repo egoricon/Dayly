@@ -21,8 +21,8 @@ function named(): AppData {
 /** Everything «Копилка» shows: the cushion takes 10 % of every income on top of its 30,00, «Велосипед» 15 %. */
 function withPercents(): AppData {
   const data = named();
-  data.settings.cushion = { mode: 'percent', percent: 10, baseKopecks: 3000, sinceDate: '2026-09-26' };
-  data.goals.push({ id: 'bike', name: 'Велосипед', targetKopecks: 50000, initialSavedKopecks: 2000, startDate: '2026-09-26', deadline: null, percent: 15, status: 'active' });
+  data.settings.cushion = { mode: 'percent', percent: 10, baseKopecks: 3000, sinceDate: '2026-09-26', targetKopecks: null };
+  data.goals.push({ id: 'bike', name: 'Велосипед', targetKopecks: 50000, initialSavedKopecks: 2000, startDate: '2026-09-26', deadline: null, percent: 15, schedule: null, status: 'active' });
   return data;
 }
 
