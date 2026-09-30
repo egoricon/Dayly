@@ -27,6 +27,7 @@ import { addedTransaction, ringTone, runningLowLabel, targetLine, tomorrowIfStop
 import { Explain } from './Explain';
 import { Levers } from './Levers';
 import type { FinanceRoute, Update } from './Finances';
+import type { SavingsRoute } from './Savings';
 import { afterLeave } from '../ui/motion';
 
 // The ring fills and the number counts up once per launch, not on every return to the tab.
@@ -43,7 +44,9 @@ interface HomeProps {
   installHint: InstallPlatform | null;
   onDismissInstallHint: () => void;
   onOpenFinances: (route: FinanceRoute) => void;
-  /** Opens the «Календарь» tab, on a day's sheet when `date` is given. */
+  /** Opens the «Копилка» tab: its list, or the form of the cushion or a goal. */
+  onOpenSavings: (route: SavingsRoute) => void;
+  /** Opens the calendar of «Финансы», on a day's sheet when `date` is given. */
   onOpenCalendar: (date: LocalDate | null) => void;
   /** Whether a feature is on in «Настройки → Функции». */
   feature: (key: FeatureKey) => boolean;
@@ -77,7 +80,7 @@ interface Undo {
 
 /** 2f: the daily limit in a ring, today's expenses, balance and «+ Трата». */
 export function Home(props: HomeProps) {
-  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances, onOpenCalendar, feature } = props;
+  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances, onOpenSavings, onOpenCalendar, feature } = props;
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
@@ -86,8 +89,8 @@ export function Home(props: HomeProps) {
   introPlayed = true;
   const [undo, setUndo] = useState<Undo | null>(null);
   const [expanded, setExpanded] = useState(false);
-  // «Копилка»: the thin outer ring, and how a confirmed income split up.
-  const ring = props.feature('savingsRing') ? savingsRing(data, today) : null;
+  // «Копилка»: the thin outer ring, and how a confirmed income split up. Hidden with the tab as well.
+  const ring = feature('savings') && feature('savingsRing') ? savingsRing(data, today) : null;
   const split = useIncomeSplit(data, budget, ring);
   useEffect(() => {
     if (!undo) return;
@@ -118,7 +121,7 @@ export function Home(props: HomeProps) {
   const tone = ringTone(budget, feature('earlyWarning'));
   const tomorrow = feature('tomorrowHint') ? tomorrowIfStopped(budget) : null;
   const target = targetLine(data, budget);
-  // The week strip and «Ближайшее» open the calendar only while its tab is on.
+  // The week strip and «Ближайшее» open the calendar only while it is on in «Финансы».
   const openCalendar = feature('calendar') ? onOpenCalendar : undefined;
 
   if (explainOpen) return <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />;
@@ -224,12 +227,14 @@ export function Home(props: HomeProps) {
           <div className="ring-pills">
             {carry !== null && carry !== 0 && <div className={`carry-pill${carry < 0 ? ' is-negative' : ''}`}>{signed(carry)} с вчера</div>}
             {ring && (
-              <SavingsCaption ring={ring} addedKopecks={split.addedKopecks} onOpen={() => onOpenFinances({ screen: 'main', section: 'savings' })} />
+              <SavingsCaption ring={ring} addedKopecks={split.addedKopecks} onOpen={() => onOpenSavings({ screen: 'main' })} />
             )}
           </div>
         )}
 
-        {deficit && <DeficitHints data={data} today={today} onOpenFinances={onOpenFinances} />}
+        {deficit && (
+          <DeficitHints data={data} today={today} onOpenFinances={onOpenFinances} onOpenSavings={feature('savings') ? onOpenSavings : undefined} />
+        )}
 
         {overspent && (
           <div className="note-card">
@@ -467,21 +472,23 @@ interface DeficitHintsProps {
   data: AppData;
   today: LocalDate;
   onOpenFinances: (route: FinanceRoute) => void;
+  /** Goals and the cushion live in «Копилка»; without that tab their hints are not shown. */
+  onOpenSavings?: (route: SavingsRoute) => void;
 }
 
 /** What the student can do when money runs short. The app never touches the cushion by itself. */
-function DeficitHints({ data, today, onOpenFinances }: DeficitHintsProps) {
+function DeficitHints({ data, today, onOpenFinances, onOpenSavings }: DeficitHintsProps) {
   const goal = data.goals.find((g) => g.status === 'active' && g.deadline !== null);
   const cushion = cushionSavedBy(data, today);
   return (
     <div className="card hint-list" data-testid="deficit-hints">
-      {goal && (
-        <button type="button" className="link-accent" onClick={() => onOpenFinances({ screen: 'goal', id: goal.id })}>
+      {onOpenSavings && goal && (
+        <button type="button" className="link-accent" onClick={() => onOpenSavings({ screen: 'goal', id: goal.id })}>
           Сдвинуть срок цели «{goal.name}» →
         </button>
       )}
-      {cushion > 0 && (
-        <button type="button" className="link-accent" onClick={() => onOpenFinances({ screen: 'cushion' })}>
+      {onOpenSavings && cushion > 0 && (
+        <button type="button" className="link-accent" onClick={() => onOpenSavings({ screen: 'cushion' })}>
           Взять из подушки (там {formatMoney(cushion)}) →
         </button>
       )}

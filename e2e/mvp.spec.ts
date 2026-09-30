@@ -447,7 +447,6 @@ test('own categories: a reserve «Спорт», removing «Кафе» and bringi
   await expect(page.getByTestId('reserve-status')).toContainText('В этом периоде: 27,00 BYN');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByTestId('finance-categories')).toContainText('Спортрезерв 90,00 BYN на период');
-  await expect(page.getByTestId('settings-set-aside')).toContainText('Резерв «Спорт»27,00');
 
   // The limit makes room for the reserve; an expense from it leaves the limit as it is.
   await page.getByRole('button', { name: 'Сегодня' }).click();

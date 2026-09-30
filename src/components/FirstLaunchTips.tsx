@@ -10,13 +10,13 @@ interface Tip {
   shape: 'circle' | 'card' | 'tab';
 }
 
-/** The «Календарь» tab, or the whole tab bar while that tab is not there. */
-function calendarTab(): Element | null {
+/** The «Финансы» tab, where the calendar is (update 2), or the whole tab bar if it is not found. */
+function financesTab(): Element | null {
   const tabs = Array.from(document.querySelectorAll('.tab-bar .tab'));
-  return tabs.find((tab) => tab.textContent?.trim() === 'Календарь') ?? document.querySelector('.tab-bar');
+  return tabs.find((tab) => tab.textContent?.trim() === 'Финансы') ?? document.querySelector('.tab-bar');
 }
 
-/** The three tips of update 1; the calendar one only while «Календарь» is on in «Настройки → Функции». */
+/** The three tips of update 1; the calendar one only while the calendar is on in «Настройки → Функции». */
 export function firstLaunchTips(calendar: boolean): Tip[] {
   const tips: Tip[] = [
     { text: 'Нажми на круг — покажу, как считается', target: () => document.querySelector('.home [data-testid="ring"]'), shape: 'circle' },
@@ -27,7 +27,7 @@ export function firstLaunchTips(calendar: boolean): Tip[] {
       shape: 'card',
     },
   ];
-  if (calendar) tips.push({ text: 'Во вкладке «Календарь» можно планировать доходы и расходы', target: calendarTab, shape: 'tab' });
+  if (calendar) tips.push({ text: 'Во вкладке «Финансы» можно планировать доходы и расходы в календаре', target: financesTab, shape: 'tab' });
   return tips;
 }
 
@@ -50,7 +50,7 @@ function spotOf(element: Element | null): Rect | null {
 }
 
 interface FirstLaunchTipsProps {
-  /** Whether «Календарь» is on: its tip is left out otherwise. */
+  /** Whether the calendar is on: its tip is left out otherwise. */
   calendar: boolean;
   /** All tips seen or skipped. */
   onDone: () => void;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { calendarMonth, hasPlans, monthOf } from '../calendar';
 import { DaySheet } from '../components/DaySheet';
 import { EventSheet } from '../components/EventSheet';
@@ -11,13 +11,19 @@ import { monthName } from '../ui/labels';
 import type { Update } from './Finances';
 import '../styles/calendar.css';
 
-interface CalendarScreenProps {
+/** A request to show the calendar: from «Ближайшее», the week strip or «Открыть календарь». */
+export interface CalendarFocus {
+  /** Opens on this day's sheet; null: today's month without a sheet. */
+  date: LocalDate | null;
+}
+
+interface CalendarBlockProps {
   data: AppData;
   budget: BudgetResult;
   today: LocalDate;
   update: Update;
-  /** Opens on this day's sheet (from the home screen); null: today's month without a sheet. */
-  initialDate: LocalDate | null;
+  /** Scrolls the calendar into view when set; read once, when the block appears. */
+  focus: CalendarFocus | null;
 }
 
 /** The form over the day sheet: a new income or «расход» on `date`, or a change of `edit` opened on it. */
@@ -41,16 +47,22 @@ function Chevron({ back }: { back?: boolean }) {
 }
 
 /**
- * «Календарь» (update 1), as on a phone: a month grid with dots for planned incomes and payments,
- * a tap on a day opens its sheet, and «+ Доход» / «+ Расход» there plan money on that day.
+ * The calendar at the top of «Финансы» (the «Календарь» tab of update 1), as on a phone: a month grid
+ * with dots for planned incomes and payments, a tap on a day opens its sheet, and «+ Доход» /
+ * «+ Расход» there plan money on that day.
  */
-export function CalendarScreen({ data, budget, today, update, initialDate }: CalendarScreenProps) {
-  const [month, setMonth] = useState(() => monthOf(initialDate ?? today));
+export function CalendarBlock({ data, budget, today, update, focus }: CalendarBlockProps) {
+  const [month, setMonth] = useState(() => monthOf(focus?.date ?? today));
   const [enter, setEnter] = useState<'next' | 'previous' | null>(null);
-  const [openDate, setOpenDate] = useState<LocalDate | null>(initialDate);
+  const [openDate, setOpenDate] = useState<LocalDate | null>(focus?.date ?? null);
   const [form, setForm] = useState<EventForm | null>(null);
   const days = useMemo(() => calendarMonth(data, today, month), [data, today, month]);
   const swiped = useRef(false);
+  const block = useRef<HTMLElement>(null);
+  const focused = focus !== null;
+  useEffect(() => {
+    if (focused) block.current?.scrollIntoView({ block: 'nearest' });
+  }, [focused]);
 
   const start = data.settings.trackingStartDate;
   const earliest = monthOf(start < today ? start : today);
@@ -81,8 +93,7 @@ export function CalendarScreen({ data, budget, today, update, initialDate }: Cal
   };
 
   return (
-    <main className="screen calendar-screen with-tabs">
-      <h1 className="screen-title">Календарь</h1>
+    <section className="cal-block" ref={block} aria-label="Календарь" data-testid="finance-calendar">
       <div className="cal-head">
         <h2 className="cal-month" aria-live="polite" data-testid="calendar-month">
           {monthName(monthNumber)}
@@ -144,6 +155,6 @@ export function CalendarScreen({ data, budget, today, update, initialDate }: Cal
           onClose={() => setForm(null)}
         />
       )}
-    </main>
+    </section>
   );
 }

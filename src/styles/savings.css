@@ -207,19 +207,6 @@
   cursor: default;
 }
 
-.savings-split.is-focused {
-  animation: savings-focus 1600ms ease-out;
-}
-
-@keyframes savings-focus {
-  from {
-    box-shadow: 0 0 0 3px var(--savings);
-  }
-  to {
-    box-shadow: 0 0 0 3px transparent;
-  }
-}
-
 /* Leftover and «Итоги периода» cards: the banner's look with a choice of where the money goes. */
 .savings-card .chips {
   justify-content: flex-start;

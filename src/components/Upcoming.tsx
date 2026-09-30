@@ -10,7 +10,7 @@ const MAX_EVENTS = 2;
 interface UpcomingProps {
   data: AppData;
   today: LocalDate;
-  /** Opens the calendar on a day; without it the events are not tappable. */
+  /** Opens the calendar of «Финансы» on a day; without it the events are not tappable. */
   onOpenDate?: (date: LocalDate) => void;
 }
 

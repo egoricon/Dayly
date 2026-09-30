@@ -4,12 +4,13 @@ import { TabBar, type Tab } from './components/TabBar';
 import { calculateBudget } from './domain/budget';
 import { toLocalDate } from './domain/dates';
 import type { AppData, LocalDate } from './domain/types';
-import { CalendarScreen } from './screens/CalendarScreen';
+import type { CalendarFocus } from './screens/CalendarScreen';
 import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
 import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
 import { Finances, type FinanceRoute, type Update } from './screens/Finances';
+import { Savings, type SavingsRoute } from './screens/Savings';
 import { Settings, type SettingsRoute } from './screens/Settings';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
@@ -86,10 +87,11 @@ export function App() {
   );
   const [tab, setTab] = useState<Tab>('today');
   const [financeRoute, setFinanceRoute] = useState<FinanceRoute>({ screen: 'main' });
+  const [savingsRoute, setSavingsRoute] = useState<SavingsRoute>({ screen: 'main' });
   const [settingsRoute, setSettingsRoute] = useState<SettingsRoute>({ screen: 'main' });
   const [showFirstLimit, setShowFirstLimit] = useState(false);
-  // The day the «Календарь» tab opens on (null: today's month, no day sheet).
-  const [calendarDate, setCalendarDate] = useState<LocalDate | null>(null);
+  // The calendar of «Финансы» was asked for: it scrolls into view, on a day's sheet when a date is given.
+  const [calendarFocus, setCalendarFocus] = useState<CalendarFocus | null>(null);
   const today = useToday();
   const budget = useMemo(() => (data ? calculateBudget(data, today) : null), [data, today]);
 
@@ -130,16 +132,27 @@ export function App() {
   }
 
   const update: Update = (change) => setData((d) => (d ? change(d) : d));
-  const openFinances = (route: FinanceRoute) => {
+  // Any move inside «Финансы» forgets the calendar request, so «Назад» from a form opens no day sheet.
+  const navigateFinances = (route: FinanceRoute) => {
+    setCalendarFocus(null);
     setFinanceRoute(route);
+  };
+  const openFinances = (route: FinanceRoute) => {
+    navigateFinances(route);
     setTab('finances');
   };
   // «Настройки → Функции»: a feature turned off is not shown; its data stays.
   const feature = (key: FeatureKey) => isFeatureOn(ui, key);
   const openCalendar = (date: LocalDate | null) => {
     if (!feature('calendar')) return;
-    setCalendarDate(date);
-    setTab('calendar');
+    setFinanceRoute({ screen: 'main' });
+    setCalendarFocus({ date });
+    setTab('finances');
+  };
+  const openSavings = (route: SavingsRoute) => {
+    if (!feature('savings')) return;
+    setSavingsRoute(route);
+    setTab('savings');
   };
   // «Сбросить всё»: this device forgets everything and the app starts from onboarding.
   const reset = () => {
@@ -148,7 +161,9 @@ export function App() {
     setUi(loadUiState(localStorage));
     setTab('today');
     setFinanceRoute({ screen: 'main' });
+    setSavingsRoute({ screen: 'main' });
     setSettingsRoute({ screen: 'main' });
+    setCalendarFocus(null);
     setData(null);
   };
 
@@ -184,6 +199,7 @@ export function App() {
           installHint={inApp === null && shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
           onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
           onOpenFinances={openFinances}
+          onOpenSavings={openSavings}
           onOpenCalendar={openCalendar}
           feature={feature}
           isCardDismissed={(key) => isCardDismissed(ui, key)}
@@ -194,12 +210,21 @@ export function App() {
           onWhatsNewSeen={() => setUi((state) => ({ ...state, whatsNewSeen: WHATS_NEW_ID }))}
         />
       )}
-      {tab === 'calendar' && feature('calendar') && (
-        <CalendarScreen data={data} budget={budget} today={today} update={update} initialDate={calendarDate} />
+      {tab === 'savings' && feature('savings') && (
+        <Savings data={data} budget={budget} today={today} route={savingsRoute} onNavigate={setSavingsRoute} update={update} />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (
-        <Finances data={data} budget={budget} today={today} route={financeRoute} onNavigate={setFinanceRoute} update={update} feature={feature} />
+        <Finances
+          data={data}
+          budget={budget}
+          today={today}
+          route={financeRoute}
+          onNavigate={navigateFinances}
+          update={update}
+          feature={feature}
+          calendarFocus={calendarFocus}
+        />
       )}
       {tab === 'settings' && (
         <Settings
@@ -228,11 +253,11 @@ export function App() {
       )}
       <TabBar
         active={tab}
-        hidden={feature('calendar') ? [] : ['calendar']}
+        hidden={feature('savings') ? [] : ['savings']}
         onChange={(next) => {
-          if (next === 'finances') setFinanceRoute({ screen: 'main' });
+          if (next === 'finances') navigateFinances({ screen: 'main' });
+          if (next === 'savings') setSavingsRoute({ screen: 'main' });
           if (next === 'settings') setSettingsRoute({ screen: 'main' });
-          if (next === 'calendar') setCalendarDate(null);
           setTab(next);
         }}
       />

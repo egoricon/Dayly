@@ -270,7 +270,7 @@ test('«Отменить» within 5 seconds takes back a new expense or income a
   await expect(toast).toHaveCount(0);
 });
 
-test('week strip, «Завтра будет…» and «Ближайшее»; each tap opens the calendar', async ({ page }) => {
+test('week strip, «Завтра будет…» and «Ближайшее»; each tap opens the calendar in «Финансы»', async ({ page }) => {
   await open(page, lived());
   const strip = page.getByTestId('week-strip');
   await expect(strip.locator('.week-dot')).toHaveCount(7);
@@ -292,14 +292,23 @@ test('week strip, «Завтра будет…» and «Ближайшее»; eac
   await expect(page.getByTestId('tomorrow-hint')).toHaveText('Остановишься сейчас — завтра 31,04 (+2,50)');
 
   await expect(page.getByTestId('upcoming')).toHaveText('Ближайшее: Чт: Общежитие −45 · 3 окт: Интернет −30');
-  // «Ближайшее» opens the calendar on that day's sheet; the week strip opens this month.
+  // «Ближайшее» opens «Финансы» on that day's sheet, the calendar in view; the week strip opens this month.
+  const finances = page.locator('.tab-bar').getByRole('button', { name: 'Финансы', exact: true });
   await page.getByTestId('upcoming-item').nth(1).click();
+  await expect(finances).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('calendar-month')).toHaveText('Октябрь');
+  await expect(page.getByTestId('calendar-grid')).toBeInViewport();
   await expect(page.locator('.day-sheet')).toContainText('3 октября');
   await page.locator('.sheet-dim').click({ position: { x: 20, y: 20 } });
   await expect(page.locator('.day-sheet')).toHaveCount(0);
+  // A form of «Финансы» and back: the day sheet does not open again.
+  await page.getByRole('button', { name: '+ Добавить доход' }).click();
+  await page.getByRole('button', { name: '‹ Назад' }).click();
+  await expect(page.getByTestId('calendar-month')).toHaveText('Сентябрь');
+  await expect(page.locator('.day-sheet')).toHaveCount(0);
   await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня', exact: true }).click();
   await strip.click();
+  await expect(finances).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('calendar-month')).toHaveText('Сентябрь');
   await expect(page.locator('.day-sheet')).toHaveCount(0);
 });
@@ -319,7 +328,7 @@ test('features turned off in «Настройки → Функции» are not s
   await expect(page.getByRole('status')).toHaveCount(0);
 });
 
-test('without the calendar tab the strip and «Ближайшее» stay, but do not open it', async ({ page }) => {
+test('without the calendar the strip and «Ближайшее» stay, but do not open it', async ({ page }) => {
   await open(page, lived(), { features: { calendar: false } });
   await expect(page.getByTestId('week-strip')).toBeVisible();
   await expect(page.getByTestId('week-strip').getByRole('button')).toHaveCount(0);

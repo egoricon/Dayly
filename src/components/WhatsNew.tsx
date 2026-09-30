@@ -28,7 +28,7 @@ function WhatsNewText() {
 }
 
 interface WhatsNewProps {
-  /** «Открыть календарь» is there only while «Календарь» is on in «Настройки → Функции». */
+  /** «Открыть календарь» (in «Финансы») is there only while the calendar is on in «Настройки → Функции». */
   canOpenCalendar: boolean;
   onOpenCalendar: () => void;
   onClose: () => void;

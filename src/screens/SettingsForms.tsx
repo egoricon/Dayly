@@ -35,6 +35,8 @@ import { fromIncomeText, maxPercent, moneyInText, percentLimitText, percentRules
 import type { FinanceProps } from './Finances';
 
 type FormProps = Omit<FinanceProps, 'route'> & { onBack: () => void };
+/** The cushion's and goals' forms open in «Копилка» as well: they take only what they use. */
+type SavingsFormProps = Pick<FormProps, 'data' | 'budget' | 'today' | 'update' | 'onBack'>;
 
 const INCOME_KINDS: IncomeSource['kind'][] = ['scholarship', 'salary', 'parents', 'other'];
 
@@ -444,7 +446,7 @@ export function CategoryForm({ data, today, update, id, onBack }: FormProps & { 
   );
 }
 
-export function CushionForm({ data, today, update, onBack }: FormProps) {
+export function CushionForm({ data, today, update, onBack }: SavingsFormProps) {
   const cushion = data.settings.cushion;
   const saved = cushionSavedBy(data, today);
   const [mode, setMode] = useState(cushion.mode);
@@ -524,7 +526,7 @@ export function CushionForm({ data, today, update, onBack }: FormProps) {
 }
 
 /** A goal saved evenly by a date, or as a percent of every income (update 1). */
-export function GoalForm({ data, budget, today, update, id, onBack }: FormProps & { id: string | null }) {
+export function GoalForm({ data, budget, today, update, id, onBack }: SavingsFormProps & { id: string | null }) {
   const existing = data.goals.find((g) => g.id === id);
   const [newGoalId] = useState(newId);
   const [name, setName] = useState(existing?.name ?? '');
