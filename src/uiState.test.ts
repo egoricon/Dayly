@@ -46,10 +46,11 @@ describe('ui state', () => {
 describe('features and «Что нового» (update 1)', () => {
   it('every feature is on by default, in the order of «Настройки → Функции»', () => {
     expect(FEATURES.map((f) => [f.key, f.label])).toEqual([
-      ['calendar', 'Календарь'],
+      ['savings', 'Копилка'],
       ['savingsRing', 'Кольцо копилки'],
       ['leftover', 'Остаток дня в копилку'],
       ['periodSummary', 'Итоги периода'],
+      ['calendar', 'Календарь в «Финансах»'],
       ['weekStrip', 'Полоска недели и серия'],
       ['tomorrowHint', '«Завтра будет…»'],
       ['earlyWarning', 'Жёлтое кольцо на 80%'],
@@ -79,6 +80,15 @@ describe('features and «Что нового» (update 1)', () => {
     expect(isFeatureOn(setFeature(off, 'calendar', true), 'calendar')).toBe(true);
     const loaded = loadUiState(storageWith(JSON.stringify({ features: { calendar: false, undo: 'no', unknown: false } })));
     expect(loaded.features).toEqual({ ...defaultUiState().features, calendar: false });
+  });
+
+  it('«Копилка» (update 2) is on for state saved before it, and keeps the switches saved then', () => {
+    // The switches of update 1, the calendar turned off.
+    const update1 = { calendar: false, savingsRing: true, leftover: true, periodSummary: true, weekStrip: true, tomorrowHint: true, earlyWarning: true, undo: true, upcoming: true };
+    const loaded = loadUiState(storageWith(JSON.stringify({ ...defaultUiState(), features: update1 })));
+    expect(isFeatureOn(loaded, 'savings')).toBe(true);
+    expect(isFeatureOn(loaded, 'calendar')).toBe(false);
+    expect(isFeatureOn(loadUiState(storageWith(JSON.stringify({ features: { savings: false } }))), 'savings')).toBe(false);
   });
 
   it('keeps which «Что нового» was seen and whether the tips were shown', () => {

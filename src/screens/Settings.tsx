@@ -33,7 +33,7 @@ export interface SettingsProps {
   onFeatureChange: (key: FeatureKey, on: boolean) => void;
   /** «Показать подсказки снова»: the first-launch tips show on the home screen again. */
   onShowTips: () => void;
-  /** «Открыть календарь» in «Что нового». */
+  /** «Открыть календарь» in «Что нового»: the calendar of «Финансы». */
   onOpenCalendar: () => void;
 }
 

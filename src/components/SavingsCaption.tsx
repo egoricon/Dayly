@@ -12,7 +12,7 @@ interface SavingsCaptionProps {
   onOpen: () => void;
 }
 
-/** «копилка 45 из 110» under the day ring; a tap shows where the savings come from in «Финансы». */
+/** «копилка 45 из 110» under the day ring; a tap opens the «Копилка» tab. */
 export function SavingsCaption({ ring, addedKopecks, onOpen }: SavingsCaptionProps) {
   const added = addedKopecks !== null && addedKopecks > 0;
   return (

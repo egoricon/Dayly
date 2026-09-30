@@ -83,6 +83,9 @@ async function open(page: Page, data: AppData, ui: object = UI) {
   await page.goto('/');
 }
 
+/** The «Копилка» tab of update 2, where the cushion, «С каждого поступления» and the goals are. */
+const savingsTab = (page: Page) => page.locator('.tab-bar').getByRole('button', { name: 'Копилка', exact: true });
+
 async function typeAmount(page: Page, amount: string) {
   for (const ch of amount) await page.keyboard.press(ch === ',' ? 'Comma' : ch);
 }
@@ -131,8 +134,10 @@ test('a 15% goal: «Стипендия пришла?» with 300 puts 45,00 into 
   await page.screenshot({ path: test.info().outputPath('savings-ring-filled.png') });
   await expect(page.getByTestId('savings-caption')).toHaveText('копилка 45 из 75', { timeout: 5000 });
 
-  // A tap on the caption shows where the savings come from.
+  // A tap on the caption opens «Копилка»: where the savings come from and the goals.
   await page.getByTestId('savings-caption').click();
+  await expect(savingsTab(page)).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
   await expect(page.getByTestId('savings-split')).toBeInViewport();
   await expect(page.getByTestId('savings-split')).toContainText('15% наушники · 85% на жизнь');
   await expect(page.locator('.goal-card')).toHaveText(/Наушники45 из 150.*15% с каждого поступления/);
@@ -185,7 +190,7 @@ test('«Отложить» yesterday’s 8,00: the goal grows by 8,00, the limit
   await expect(page.getByTestId('hero-amount')).toHaveText('36,66');
   await expect(page.getByTestId('leftover-card')).toHaveCount(0);
   await expect(page.locator('.carry-pill')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Финансы' }).click();
+  await savingsTab(page).click();
   await expect(page.locator('.goal-card')).toContainText('Наушники28 из 150');
 });
 
@@ -296,7 +301,7 @@ test('the savings ring on and off; the day ring keeps its 300×300 box', async (
 
 test('a percent goal in its form: the rules stay below 100 %, the hint counts the main income', async ({ page }) => {
   await open(page, lateScholarship());
-  await page.getByRole('button', { name: 'Финансы' }).click();
+  await savingsTab(page).click();
   await expect(page.getByTestId('savings-split')).toContainText('15% наушники · 85% на жизнь');
   await expect(page.getByTestId('savings-split')).toContainText('Суммы со стипендии 300,00 BYN');
 
@@ -330,7 +335,7 @@ test('a percent goal in its form: the rules stay below 100 %, the hint counts th
   await page.getByRole('button', { name: '‹ Назад' }).click();
 
   // The cushion cannot take the rest either.
-  await page.getByTestId('settings-set-aside').getByRole('button', { name: /Подушка/ }).click();
+  await page.getByTestId('savings-cushion').getByRole('button', { name: /Подушка/ }).click();
   await page.getByRole('radio', { name: 'Процент с дохода' }).click();
   await page.locator('.form-screen input[inputmode="numeric"]').fill('70');
   await page.getByRole('button', { name: 'Сохранить' }).click({ force: true });
@@ -339,7 +344,7 @@ test('a percent goal in its form: the rules stay below 100 %, the hint counts th
   await page.getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByTestId('savings-split')).toContainText('10% подушка · 15% наушники · 20% велосипед · 55% на жизнь');
   await settle(page);
-  await page.screenshot({ path: test.info().outputPath('finances-split.png'), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath('savings-split.png'), fullPage: true });
 });
 
 for (const [name, viewport] of [

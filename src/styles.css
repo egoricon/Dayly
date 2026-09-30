@@ -11,7 +11,8 @@
   --chip-border: #d9d6ce;
   --ring-track: #e6e3da;
   --disabled: #b5b2a9;
-  --tab-inactive: #9b9a95;
+  /* Update 2: tab labels reach 4.5 : 1 on --bg (4.7 : 1 here, 5.0 : 1 in the dark theme). */
+  --tab-inactive: #6e6d68;
   --grabber: #d0cdc4;
   --dim: rgba(20, 20, 22, 0.38);
   /* Accent palette: hue and chroma per data-accent (below), lightness per theme. */
@@ -43,7 +44,7 @@
   --chip-border: #3a4048;
   --ring-track: #23282e;
   --disabled: #3a4048;
-  --tab-inactive: #6f7780;
+  --tab-inactive: #7e8690;
   --grabber: #3a4048;
   --dim: rgba(0, 0, 0, 0.55);
   --accent-soft: oklch(0.27 calc(var(--accent-c) * 0.25) var(--accent-h));
@@ -70,7 +71,7 @@
     --chip-border: #3a4048;
     --ring-track: #23282e;
     --disabled: #3a4048;
-    --tab-inactive: #6f7780;
+    --tab-inactive: #7e8690;
     --grabber: #3a4048;
     --dim: rgba(0, 0, 0, 0.55);
     --accent-soft: oklch(0.27 calc(var(--accent-c) * 0.25) var(--accent-h));
@@ -1478,7 +1479,7 @@ select.input {
 .tab-bar {
   flex-shrink: 0;
   display: grid;
-  /* Equal columns for five tabs, or four when «Календарь» is turned off. */
+  /* Equal columns for five tabs, or four when «Копилка» is turned off. */
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   padding: 10px 0 calc(env(safe-area-inset-bottom) + 12px);
@@ -1487,10 +1488,14 @@ select.input {
 }
 
 .tab {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 5px;
+  min-height: 44px;
   font-size: 12px;
   font-weight: 700;
   color: var(--tab-inactive);
@@ -1504,6 +1509,20 @@ select.input {
 
 .tab.is-active {
   color: var(--ink);
+}
+
+/* The active tab differs by more than colour: its icon sits on a soft accent pill. */
+.tab.is-active::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -3px;
+  left: 50%;
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--accent-soft);
+  transform: translateX(-50%);
 }
 
 /* Ring opens «Как считается» */

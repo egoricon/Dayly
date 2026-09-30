@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-// 'calendar' is the «Календарь» tab of update 1; «Настройки → Функции» can hide it.
-export type Tab = 'today' | 'calendar' | 'history' | 'finances' | 'settings';
+// 'savings' is the «Копилка» tab of update 2; «Настройки → Функции» can hide it.
+export type Tab = 'today' | 'savings' | 'history' | 'finances' | 'settings';
 
 const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
   {
@@ -14,12 +14,19 @@ const TABS: { tab: Tab; label: string; icon: ReactNode }[] = [
     ),
   },
   {
-    tab: 'calendar',
-    label: 'Календарь',
+    tab: 'savings',
+    label: 'Копилка',
+    // The outline of a piggy bank facing right: body, snout, ear, eye, coin slot, legs and tail.
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" strokeWidth="2.2" />
-        <path d="M3.5 10h17M8 3v4M16 3v4" fill="none" strokeWidth="2.2" strokeLinecap="round" />
+        <ellipse cx="11" cy="12.8" rx="8" ry="6" fill="none" strokeWidth="2.2" />
+        <path
+          d="M19 10.8h1.2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H19M13.6 7.3l2.2-2.1.7 3.1M7.5 18v2.8M14.5 18v2.8M9 9.6h3.2M3.1 11.6l-1.5-1.2M15.5 11.2h.01"
+          fill="none"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   },

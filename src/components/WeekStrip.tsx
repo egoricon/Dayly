@@ -14,7 +14,7 @@ const STATUS_TEXT: Record<DayStatus, string> = { in: 'в лимите', over: '�
 interface WeekStripProps {
   data: AppData;
   today: LocalDate;
-  /** Opens the calendar; without it the strip is not tappable. */
+  /** Opens the calendar of «Финансы»; without it the strip is not tappable. */
   onOpen?: () => void;
 }
 

@@ -11,7 +11,7 @@ interface FeatureSettingsProps {
   onOpenCalendar: () => void;
 }
 
-/** «Настройки → Функции»: a switch per feature of update 1, the tips again and «Что нового». */
+/** «Настройки → Функции»: a switch per feature of updates 1 and 2, the tips again and «Что нового». */
 export function FeatureSettings({ features, onChange, onShowTips, onOpenCalendar }: FeatureSettingsProps) {
   const [whatsNew, setWhatsNew] = useState(false);
   return (

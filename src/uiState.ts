@@ -15,8 +15,9 @@ export const ACCENTS: { id: Accent; label: string; hue: number; chroma: number }
   { id: 'coral', label: 'Коралл', hue: 45, chroma: 0.13 },
 ];
 
-/** Update 1 features that «Настройки → Функции» can turn off. Off only hides them; data stays. */
+/** Features of updates 1 and 2 that «Настройки → Функции» can turn off. Off only hides them; data stays. */
 export type FeatureKey =
+  | 'savings'
   | 'calendar'
   | 'savingsRing'
   | 'leftover'
@@ -27,12 +28,16 @@ export type FeatureKey =
   | 'undo'
   | 'upcoming';
 
-/** The switches in the order of «Настройки → Функции». */
+/**
+ * The switches in the order of «Настройки → Функции»: the «Копилка» tab and what goes with it first,
+ * then the calendar block of «Финансы», then the extras of the home screen.
+ */
 export const FEATURES: { key: FeatureKey; label: string }[] = [
-  { key: 'calendar', label: 'Календарь' },
+  { key: 'savings', label: 'Копилка' },
   { key: 'savingsRing', label: 'Кольцо копилки' },
   { key: 'leftover', label: 'Остаток дня в копилку' },
   { key: 'periodSummary', label: 'Итоги периода' },
+  { key: 'calendar', label: 'Календарь в «Финансах»' },
   { key: 'weekStrip', label: 'Полоска недели и серия' },
   { key: 'tomorrowHint', label: '«Завтра будет…»' },
   { key: 'earlyWarning', label: 'Жёлтое кольцо на 80%' },

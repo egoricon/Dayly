@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { exampleA, expense, tx } from '../src/domain/fixtures';
 import type { AppData } from '../src/domain/types';
 
-// «Календарь» of update 1 in a real browser. The data is seeded (no onboarding), the clock is fixed
+// «Календарь» of update 1 in a real browser, at the top of «Финансы» since update 2. The data is seeded (no onboarding), the clock is fixed
 // to 26 September 2026, the day of example А: limit 28,54 until the scholarship on 5 October
 // (256,89 free for 9 days); a payment of X in this period makes it (256,89 − X) ÷ 9.
 
@@ -65,8 +65,10 @@ const dots = (page: Page, date: string, kind: 'income' | 'payment') => day(page,
 const daySheet = (page: Page) => page.locator('.day-sheet');
 const eventSheet = (page: Page) => page.locator('.event-sheet');
 
+/** The calendar is the first block of «Финансы». */
 async function openCalendar(page: Page, months = 0) {
-  await tab(page, 'Календарь').click();
+  await tab(page, 'Финансы').click();
+  await expect(page.getByTestId('finance-calendar')).toBeVisible();
   for (let i = 0; i < months; i++) await page.getByRole('button', { name: 'Следующий месяц' }).click();
 }
 
@@ -244,18 +246,21 @@ test('an empty calendar hints what to do; a swipe turns the month; «Сегод�
   await expect(page.getByTestId('calendar-legend')).toHaveText('расход');
 });
 
-test('«Календарь» turned off in «Функции» hides the tab', async ({ page }) => {
+test('«Календарь» turned off in «Функции» hides the calendar of «Финансы», not a tab', async ({ page }) => {
   await seed(page, example(), { features: { calendar: false } });
   await expect(page.getByTestId('hero-amount')).toHaveText('28,54');
-  await expect(page.locator('.tab-bar .tab')).toHaveCount(4);
-  await expect(tab(page, 'Календарь')).toHaveCount(0);
-  await expect(page.locator('.tab-bar')).toHaveText('СегодняИсторияФинансыНастройки');
+  await expect(page.locator('.tab-bar')).toHaveText('СегодняКопилкаИсторияФинансыНастройки');
+  await tab(page, 'Финансы').click();
+  await expect(page.getByRole('heading', { name: 'Финансы' })).toBeVisible();
+  await expect(page.getByTestId('settings-incomes')).toBeVisible();
+  await expect(page.getByTestId('finance-calendar')).toHaveCount(0);
+  await expect(page.locator('.cal-day')).toHaveCount(0);
 });
 
 test('«Финансы»: a weekly and a one-off payment, a one-off income; the calendar shows them', async ({ page }) => {
   await seed(page, example());
   await tab(page, 'Финансы').click();
-  await page.getByRole('button', { name: /Обязательные платежи/ }).click();
+  await page.getByTestId('finance-payments').getByRole('button', { name: /Все платежи/ }).click();
 
   await page.getByRole('button', { name: '+ Добавить платёж' }).click();
   await page.getByPlaceholder('Например, общежитие').fill('Бассейн');
@@ -319,7 +324,7 @@ test('small iPhone 375×667: the month, the day sheet and five tabs fit without 
     await page.waitForTimeout(400);
 
     const overflow = await page.evaluate(() => {
-      const screen = document.querySelector('.calendar-screen')!;
+      const screen = document.querySelector('.screen.settings')!;
       return [document.documentElement.scrollWidth - window.innerWidth, screen.scrollWidth - screen.clientWidth];
     });
     expect(overflow).toEqual([0, 0]);

@@ -20,7 +20,7 @@ const WHATS_NEW = [
 const TIPS = [
   'Нажми на круг — покажу, как считается',
   'Долгий тап по трате — изменить или удалить',
-  'Во вкладке «Календарь» можно планировать доходы и расходы',
+  'Во вкладке «Финансы» можно планировать доходы и расходы в календаре',
 ];
 
 async function typeAmount(page: Page, amount: string) {
@@ -139,13 +139,13 @@ const PRE_UPDATE_DATA = {
 /** The interface state of before update 1: no features, «Что нового» or tips yet. */
 const PRE_UPDATE_UI = { hiddenBanners: {}, accent: 'mint', launches: 12, installHintDismissed: true, statsEnabled: true };
 
-/** The «Календарь» button of the tab bar. */
-const calendarTab = (page: Page) => page.locator('.tab-bar').getByRole('button', { name: 'Календарь', exact: true });
+/** The «Финансы» button of the tab bar: the calendar is at the top of that tab since update 2. */
+const financesTab = (page: Page) => page.locator('.tab-bar').getByRole('button', { name: 'Финансы', exact: true });
 
-/** The «Календарь» tab is open. */
+/** «Финансы» is open with its calendar in view. */
 async function expectCalendarOpen(page: Page) {
-  await expect(page.getByTestId('calendar-grid')).toBeVisible();
-  await expect(calendarTab(page)).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('calendar-grid')).toBeInViewport();
+  await expect(financesTab(page)).toHaveAttribute('aria-current', 'page');
 }
 
 test('first setup with products and transport: an honest first limit and «Вот твой месяц»', async ({ page }) => {
@@ -335,8 +335,8 @@ test('first-launch tips: three in turn over the home screen, only once; a new pe
   await expect(tips).toContainText('3 из 3');
   await expect(tips.getByRole('button', { name: 'Пропустить' })).toHaveCount(0);
   await settle(page);
-  // The last one lights up the «Календарь» tab.
-  const tab = (await calendarTab(page).boundingBox())!;
+  // The last one lights up the «Финансы» tab.
+  const tab = (await financesTab(page).boundingBox())!;
   const tabSpot = (await tips.locator('.tips-spot').boundingBox())!;
   const [tx, ty] = [tab.x + tab.width / 2, tab.y + tab.height / 2];
   expect(tx > tabSpot.x && tx < tabSpot.x + tabSpot.width && ty > tabSpot.y && ty < tabSpot.y + tabSpot.height).toBe(true);
@@ -420,7 +420,7 @@ test('«Открыть календарь» on the card closes «Что ново
   await expect(page.getByTestId('whats-new')).toHaveCount(0);
 });
 
-test('«Функции»: every feature on by default; «Календарь» turned off leaves the tab bar, the tips and «Что нового», and stays off', async ({ page }) => {
+test('«Функции»: every feature on by default; the calendar turned off leaves «Финансы», the tips and «Что нового», and stays off', async ({ page }) => {
   await page.clock.install({ time: TODAY });
   await page.goto('/');
   await setUpSkippingReserves(page);
@@ -429,10 +429,11 @@ test('«Функции»: every feature on by default; «Календарь» tu
   await page.getByRole('button', { name: 'Настройки' }).click();
   const features = page.getByTestId('settings-features');
   await expect(features.getByRole('switch')).toHaveText([
-    'Календарь',
+    'Копилка',
     'Кольцо копилки',
     'Остаток дня в копилку',
     'Итоги периода',
+    'Календарь в «Финансах»',
     'Полоска недели и серия',
     '«Завтра будет…»',
     'Жёлтое кольцо на 80%',
@@ -441,10 +442,14 @@ test('«Функции»: every feature on by default; «Календарь» tu
   ]);
   for (const s of await features.getByRole('switch').all()) await expect(s).toHaveAttribute('aria-checked', 'true');
   const calendar = features.getByRole('switch', { name: 'Календарь' });
-  await expect(calendarTab(page)).toBeVisible();
   await calendar.click();
   await expect(calendar).toHaveAttribute('aria-checked', 'false');
-  await expect(calendarTab(page)).toHaveCount(0);
+  // The tabs stay; «Финансы» shows no calendar.
+  await expect(page.locator('.tab-bar .tab')).toHaveCount(5);
+  await financesTab(page).click();
+  await expect(page.getByTestId('settings-incomes')).toBeVisible();
+  await expect(page.getByTestId('finance-calendar')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Настройки' }).click();
   await settle(page);
   await page.screenshot({ path: test.info().outputPath('features.png'), fullPage: true });
 
@@ -460,7 +465,6 @@ test('«Функции»: every feature on by default; «Календарь» tu
   await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
   await page.getByRole('button', { name: 'Настройки' }).click();
   await expect(features.getByRole('switch', { name: 'Календарь' })).toHaveAttribute('aria-checked', 'false');
-  await expect(calendarTab(page)).toHaveCount(0);
 
   // «Показать подсказки снова»: the tips come back on the home screen, without the calendar one.
   await page.getByRole('button', { name: /Показать подсказки снова/ }).click();
@@ -472,10 +476,12 @@ test('«Функции»: every feature on by default; «Календарь» tu
   await tips.getByRole('button', { name: 'Понятно' }).click();
   await expect(tips).toHaveCount(0);
 
-  // Back on: the tab and the calendar tip are there again.
+  // Back on: the calendar and its tip are there again.
   await page.getByRole('button', { name: 'Настройки' }).click();
   await features.getByRole('switch', { name: 'Календарь' }).click();
-  await expect(calendarTab(page)).toBeVisible();
+  await financesTab(page).click();
+  await expect(page.getByTestId('finance-calendar')).toBeVisible();
+  await page.getByRole('button', { name: 'Настройки' }).click();
   await page.getByRole('button', { name: /Показать подсказки снова/ }).click();
   await expect(tips).toContainText('1 из 3');
 });

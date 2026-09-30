@@ -43,11 +43,11 @@ describe('who sees «Что нового» and the first-launch tips', () => {
     expect(shouldShowWhatsNew({ ...defaultUiState(), whatsNewSeen: 'update-0', tipsShown: true }, true)).toBe(true);
   });
 
-  it('three tips; the calendar one only while «Календарь» is on', () => {
+  it('three tips; the calendar one, about «Финансы», only while the calendar is on', () => {
     expect(firstLaunchTips(true).map((t) => t.text)).toEqual([
       'Нажми на круг — покажу, как считается',
       'Долгий тап по трате — изменить или удалить',
-      'Во вкладке «Календарь» можно планировать доходы и расходы',
+      'Во вкладке «Финансы» можно планировать доходы и расходы в календаре',
     ]);
     expect(firstLaunchTips(false)).toHaveLength(2);
   });

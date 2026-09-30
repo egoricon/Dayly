@@ -1,5 +1,5 @@
-/* «Календарь» of update 1: the tab, its month grid and the day sheet. Tokens from src/styles.css;
-   green is the colour of money coming in and of days within the limit. */
+/* «Календарь» of update 1, at the top of «Финансы» since update 2: the month grid and the day sheet.
+   Tokens from src/styles.css; green is the colour of money coming in and of days within the limit. */
 
 :root {
   --cal-income: oklch(0.62 0.15 150);
@@ -24,7 +24,9 @@
   }
 }
 
-.calendar-screen {
+.cal-block {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
