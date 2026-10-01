@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { addFavoriteExpense, addIncome, deleteTransaction, markPaymentPaid, MAX_FAVORITES } from '../appData';
 import { ExpenseSheet, type EntryMode, type IncomePreset } from '../components/ExpenseSheet';
-import { FirstLaunchTips } from '../components/FirstLaunchTips';
+import { BackupCard, FirstWeekCard } from '../components/IntroCards';
+import { LessonHint } from '../components/LessonHint';
 import { HeroAmount } from '../components/HeroAmount';
 import { IncomeSplitSheet, useIncomeSplit } from '../components/IncomeSplitSheet';
 import { InstallHint } from '../components/InstallHint';
@@ -9,7 +10,7 @@ import { Ring } from '../components/Ring';
 import { SavingsCaption } from '../components/SavingsCaption';
 import { SavingsCards } from '../components/SavingsCards';
 import { addDays } from '../domain/dates';
-import { carrySavedKey, savingsRing } from '../ui/savings';
+import { carrySavedKey, pickSavingsCard, savingsRing, setAsideAmount, targetOptions } from '../ui/savings';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
 import { TargetLine } from '../components/TargetLine';
 import { TomorrowHint } from '../components/TomorrowHint';
@@ -21,7 +22,8 @@ import { recentOperations } from '../domain/history';
 import { formatKopecks, formatMoney } from '../domain/money';
 import { incomesToConfirm } from '../domain/planned';
 import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
-import type { FeatureKey, InstallPlatform } from '../uiState';
+import type { FeatureKey, InstallPlatform, LessonId } from '../uiState';
+import { pickHomeLesson, type FirstWeekCard as FirstWeekCardInfo, type FirstWeekKey, type GuideSection, type HomeLessonContext } from '../intro';
 import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
 import { addedTransaction, ringLabel, ringTone, runningLowLabel, targetLine, tomorrowIfStopped, undoText } from '../ui/homeHints';
 import { Explain } from './Explain';
@@ -53,12 +55,29 @@ interface HomeProps {
   /** Cards closed for good, like «Итоги периода» of a period. */
   isCardDismissed: (key: string) => boolean;
   onDismissCard: (key: string) => void;
-  /** First-launch tips over the screen; «Показать подсказки снова» in Settings brings them back. */
-  showTips: boolean;
-  onTipsDone: () => void;
-  /** «Что нового» for people who used the app before update 1, until closed. */
-  showWhatsNew: boolean;
+  /** «Знакомство» (update 2): hints at the moment something first happens and one card under the ring. */
+  intro: HomeIntro;
+}
+
+/** The one card under the ring: «Что нового», else «Первая неделя», else «Сохрани копию». */
+export type IntroCard = { kind: 'whatsNew' } | { kind: 'firstWeek'; card: FirstWeekCardInfo } | { kind: 'backup' };
+
+export interface HomeIntro {
+  card: IntroCard | null;
+  lessonsSeen: LessonId[];
+  onLessonSeen: (id: LessonId) => void;
+  /** «Подробнее» on a hint: that page of «Как устроен Dayly». */
+  onLessonMore: (section: GuideSection) => void;
+  /** «Как считается» was opened: a tick in «Первая неделя». */
+  onExplainOpened: () => void;
   onWhatsNewSeen: () => void;
+  onFirstWeekClose: () => void;
+  onBackupSave: () => Promise<void>;
+  onBackupLater: () => void;
+  /** Safari or another browser, for the text of «Сохрани копию». */
+  ios: boolean;
+  /** «Установи Dayly на экран „Домой“»: the install instructions of «Настройки». */
+  onOpenInstall: () => void;
 }
 
 function signed(kopecks: number): string {
@@ -80,7 +99,7 @@ interface Undo {
 
 /** 2f: the daily limit in a ring, today's expenses, balance and «+ Трата». */
 export function Home(props: HomeProps) {
-  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances, onOpenSavings, onOpenCalendar, feature } = props;
+  const { data, budget, today, update, isBannerHidden, onHideBanner, installHint, onDismissInstallHint, onOpenFinances, onOpenSavings, onOpenCalendar, feature, intro: learn } = props;
   const [sheet, setSheet] = useState<SheetState>({ open: false });
   const [actionsFor, setActionsFor] = useState<Transaction | null>(null);
   const [explainOpen, setExplainOpen] = useState(false);
@@ -117,12 +136,44 @@ export function Home(props: HomeProps) {
   // Once yesterday's leftover is set aside it is not free any more, so «+8,00 с вчера» goes.
   const carry = isBannerHidden(carrySavedKey(addDays(today, -1))) ? null : budget.carryFromYesterdayKopecks;
   const banner = pickBanner(data, budget, today, isBannerHidden);
+  // The card SavingsCards shows when there is no banner, for the hint that explains it.
+  const savingsCard = banner ? null : pickSavingsCard(props);
   // Update 1: yellow ring, «Завтра будет…» (it takes over «завтра можно» below), the target daily limit.
   const tone = ringTone(budget, feature('earlyWarning'));
   const tomorrow = feature('tomorrowHint') ? tomorrowIfStopped(budget) : null;
   const target = targetLine(data, budget);
   // The week strip and «Ближайшее» open the calendar only while it is on in «Финансы».
   const openCalendar = feature('calendar') ? onOpenCalendar : undefined;
+
+  const openExplain = () => {
+    setExplainOpen(true);
+    learn.onExplainOpened();
+  };
+  // A hint waits while a sheet or «Отменить» is open: it never stands between the person and an expense.
+  const overlay = sheet.open || actionsFor !== null || split.state?.ready === true || Boolean(undo && undone);
+  const lessonContext: HomeLessonContext = {
+    banner: banner?.kind ?? null,
+    savingsCard:
+      savingsCard === null ? null : savingsCard.kind === 'summary'
+          ? { kind: 'summary', canSetAside: canSetAside(data, budget, today, savingsCard.summary.leftoverKopecks) }
+          : { kind: 'leftover' },
+  };
+  const lesson = overlay ? null : pickHomeLesson(data, budget, today, learn.lessonsSeen, lessonContext);
+  // «Первая неделя»: an item not done yet opens the place where it is done.
+  const firstWeekAction = (key: FirstWeekKey): (() => void) | null => {
+    switch (key) {
+      case 'expense':
+        return () => setSheet({ open: true });
+      case 'explain':
+        return openExplain;
+      case 'calendar':
+        return feature('calendar') ? () => onOpenCalendar(null) : () => onOpenFinances({ screen: 'main' });
+      case 'jar':
+        return feature('savings') ? () => onOpenSavings({ screen: 'main' }) : null;
+      case 'install':
+        return learn.onOpenInstall;
+    }
+  };
 
   if (explainOpen) return <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />;
   if (leversOpen) {
@@ -181,7 +232,7 @@ export function Home(props: HomeProps) {
           fraction={fraction}
           tone={tone}
           label={ringLabel(budget, tone)}
-          onClick={() => setExplainOpen(true)}
+          onClick={openExplain}
           fillIn={intro}
           savings={split.ringFraction}
         >
@@ -216,17 +267,19 @@ export function Home(props: HomeProps) {
           )}
         </Ring>
 
-        {/* Right under the ring, so that a small phone shows it without scrolling until it is closed. */}
-        {props.showWhatsNew && (
+        {/* Right under the ring, so that a small phone shows it without scrolling until it is closed. One at a time. */}
+        {learn.card?.kind === 'whatsNew' && (
           <WhatsNewCard
-            canOpenCalendar={props.feature('calendar')}
-            onOpenCalendar={() => {
-              props.onWhatsNewSeen();
-              props.onOpenCalendar(null);
+            canOpenSavings={feature('savings')}
+            onOpenSavings={() => {
+              learn.onWhatsNewSeen();
+              onOpenSavings({ screen: 'main' });
             }}
-            onClose={props.onWhatsNewSeen}
+            onClose={learn.onWhatsNewSeen}
           />
         )}
+        {learn.card?.kind === 'firstWeek' && <FirstWeekCard card={learn.card.card} onItem={firstWeekAction} onClose={learn.onFirstWeekClose} />}
+        {learn.card?.kind === 'backup' && <BackupCard ios={learn.ios} onSave={learn.onBackupSave} onLater={learn.onBackupLater} />}
 
         {feature('weekStrip') && <WeekStrip data={data} today={today} onOpen={openCalendar && (() => openCalendar(null))} />}
 
@@ -358,7 +411,7 @@ export function Home(props: HomeProps) {
         />
       )}
 
-      {props.showTips && <FirstLaunchTips calendar={props.feature('calendar')} onDone={props.onTipsDone} />}
+      {lesson && <LessonHint key={lesson.id} lesson={lesson} onSeen={learn.onLessonSeen} onMore={learn.onLessonMore} />}
     </main>
   );
 }
@@ -399,6 +452,11 @@ function Favorites({
       )}
     </div>
   );
+}
+
+/** Whether «Итоги периода» offers to send its leftover somewhere, as SavingsCard decides. */
+function canSetAside(data: AppData, budget: BudgetResult, today: LocalDate, leftoverKopecks: number): boolean {
+  return targetOptions(data, today).some((o) => setAsideAmount(budget, o, leftoverKopecks) > 0);
 }
 
 // Banners «Стипендия пришла?» and «Платёж оплачен?», one at a time: incomes first, then payments.

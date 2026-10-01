@@ -10,6 +10,7 @@ import {
   setFeature,
   shouldShowInstallHint,
   UI_KEY,
+  LESSONS_KNOWN_BEFORE_UPDATE_2,
   WHATS_NEW_ID,
   type UiState,
 } from './uiState';
@@ -77,6 +78,10 @@ describe('features and «Что нового» (update 1)', () => {
       features: defaultUiState().features,
       whatsNewSeen: null,
       tipsShown: false,
+      lessonsSeen: [],
+      firstWeek: { startedOn: null, dismissed: false, seenExplain: false, setupPlanIds: [], completedOn: null },
+      lastBackupAt: null,
+      backupCardHiddenOn: null,
       dismissedCards: [],
       largeText: false,
       celebratedJars: [],
@@ -112,7 +117,7 @@ describe('features and «Что нового» (update 1)', () => {
   it('keeps which «Что нового» was seen and whether the tips were shown', () => {
     const saved = { ...defaultUiState(), whatsNewSeen: WHATS_NEW_ID, tipsShown: true };
     expect(loadUiState(storageWith(JSON.stringify(saved)))).toEqual(saved);
-    expect(WHATS_NEW_ID).toBe('update-1');
+    expect(WHATS_NEW_ID).toBe('update-2');
     expect(loadUiState(storageWith(JSON.stringify({ whatsNewSeen: 5 }))).whatsNewSeen).toBeNull();
     expect(loadUiState(storageWith('{broken'))).toEqual(defaultUiState());
   });
@@ -180,5 +185,34 @@ describe('anonymous statistics', () => {
     expect(canCount(false, 'egoricon.github.io', false)).toBe(false);
     expect(canCount(true, 'localhost', false)).toBe(false);
     expect(canCount(true, 'egoricon.github.io', true)).toBe(false);
+  });
+});
+
+describe('«Знакомство» (update 2)', () => {
+  it('whoever saw the tips of update 1 knows the ring and the first expense; the hints of update 2 are new to them', () => {
+    const update1 = { whatsNewSeen: 'update-1', tipsShown: true };
+    const loaded = loadUiState(storageWith(JSON.stringify(update1)));
+    expect(loaded.lessonsSeen).toEqual(LESSONS_KNOWN_BEFORE_UPDATE_2);
+    expect(loaded.lessonsSeen).toEqual(expect.arrayContaining(['ring', 'firstExpense']));
+    expect(loaded.lessonsSeen).not.toEqual(expect.arrayContaining(['savings']));
+    expect(loaded.lessonsSeen.some((id) => id === 'finances' || id === 'tapRow' || id === 'savings')).toBe(false);
+    // Tips of update 1 not finished: every hint is still to come.
+    expect(loadUiState(storageWith(JSON.stringify({ whatsNewSeen: 'update-1', tipsShown: false }))).lessonsSeen).toEqual([]);
+  });
+
+  it('keeps what was saved since update 2, even an emptied list after «Начать знакомство заново»', () => {
+    const saved: UiState = {
+      ...defaultUiState(),
+      tipsShown: true,
+      lessonsSeen: [],
+      firstWeek: { startedOn: '2026-09-26', dismissed: true, seenExplain: true, setupPlanIds: ['a', 'b'], completedOn: '2026-09-30' },
+      lastBackupAt: '2026-09-20',
+      backupCardHiddenOn: '2026-09-21',
+    };
+    expect(loadUiState(storageWith(JSON.stringify(saved)))).toEqual(saved);
+    const odd = loadUiState(storageWith(JSON.stringify({ lessonsSeen: ['ring', 5], firstWeek: { startedOn: 'вчера', setupPlanIds: [1, 'x'] }, lastBackupAt: 20 })));
+    expect(odd.lessonsSeen).toEqual(['ring']);
+    expect(odd.firstWeek).toEqual({ startedOn: null, dismissed: false, seenExplain: false, setupPlanIds: ['x'], completedOn: null });
+    expect(odd.lastBackupAt).toBeNull();
   });
 });

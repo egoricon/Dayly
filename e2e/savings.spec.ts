@@ -7,8 +7,13 @@ import type { AppData, Goal } from '../src/domain/types';
 // and the clock is fixed to 26 September 2026 as in mvp.spec.ts.
 
 const TODAY = new Date('2026-09-26T10:00:00');
-/** The first-launch tips and «Что нового» are done, so only the savings cards show. */
-const UI = { tipsShown: true, whatsNewSeen: 'update-1' };
+/** «Знакомство» is done (every hint seen, «Что нового» closed, a copy just saved), so only the savings cards show. */
+const UI = {
+  tipsShown: true,
+  whatsNewSeen: 'update-2',
+  lessonsSeen: ['ring', 'firstExpense', 'tapRow', 'overspend', 'leftover', 'banner', 'savings', 'finances', 'deficit', 'periodEnd'],
+  lastBackupAt: '2099-12-31',
+};
 
 const headphones: Goal = {
   id: 'headphones',

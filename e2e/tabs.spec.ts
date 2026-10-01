@@ -2,6 +2,17 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { exampleA, oneOffPayment } from '../src/domain/fixtures';
 import type { AppData } from '../src/domain/types';
 
+/**
+ * «Знакомство» done (update 2): «Что нового» closed, every hint seen and a copy just saved, so no hint
+ * or card of it gets in the way.
+ */
+const INTRO_DONE = {
+  tipsShown: true,
+  whatsNewSeen: 'update-2',
+  lessonsSeen: ['ring', 'firstExpense', 'tapRow', 'overspend', 'leftover', 'banner', 'savings', 'finances', 'deficit', 'periodEnd'],
+  lastBackupAt: '2099-12-31',
+};
+
 // Update 2, task A «Вкладки»: Сегодня · Копилка · История · Финансы · Настройки. The calendar is at the
 // top of «Финансы»; the cushion, «С каждого поступления» and the goals are in «Копилка». Data is seeded,
 // the clock is 26 September 2026, so example А of PROJECT_MAP.md gives the limit 28,54.
@@ -34,7 +45,7 @@ async function open(page: Page, data: AppData, ui: Record<string, unknown> = {})
         localStorage.setItem('dayly:ui', ui);
       }
     },
-    [JSON.stringify(data), JSON.stringify({ tipsShown: true, whatsNewSeen: 'update-1', ...ui })] as const,
+    [JSON.stringify(data), JSON.stringify({ ...INTRO_DONE, ...ui })] as const,
   );
   await page.clock.install({ time: TODAY });
   await page.goto('/');

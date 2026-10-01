@@ -6,15 +6,19 @@ import { FeatureSettings } from '../components/FeatureSettings';
 import { FormScreen, Segmented } from '../components/Form';
 import { InstallSteps, type InstallInfo } from '../components/InstallHint';
 import { toLocalDate } from '../domain/dates';
-import type { AppData } from '../domain/types';
+import type { BudgetResult } from '../domain/budget';
+import type { AppData, LocalDate } from '../domain/types';
+import type { GuideSection } from '../intro';
 import { formatDayMonth } from '../ui/labels';
 import { ACCENTS, type Accent, type FeatureKey } from '../uiState';
 import type { Update } from './Finances';
+import { Guide } from './Guide';
 
-export type SettingsRoute = { screen: 'main' } | { screen: 'install' };
+export type SettingsRoute = { screen: 'main' } | { screen: 'install' } | { screen: 'guide'; section: GuideSection | null };
 
 export interface SettingsProps {
   data: AppData;
+  budget: BudgetResult;
   route: SettingsRoute;
   onNavigate: (route: SettingsRoute) => void;
   update: Update;
@@ -34,10 +38,14 @@ export interface SettingsProps {
   /** «Функции»: a feature turned off is only hidden, its data stays. */
   features: Record<FeatureKey, boolean>;
   onFeatureChange: (key: FeatureKey, on: boolean) => void;
-  /** «Показать подсказки снова»: the first-launch tips show on the home screen again. */
-  onShowTips: () => void;
-  /** «Открыть календарь» in «Что нового»: the calendar of «Финансы». */
-  onOpenCalendar: () => void;
+  /** «Начать знакомство заново»: the hints show again when useful, «Первая неделя» too if still recent. */
+  onRestartIntro: () => void;
+  /** «Открыть копилку» in «Что нового». */
+  onOpenSavings: () => void;
+  /** The day of the last «Сохранить копию», for «Как устроен Dayly». */
+  lastBackupAt: LocalDate | null;
+  /** «Сохранить копию» handed the file over: «Сохрани копию» on the home screen waits two weeks. */
+  onBackupSaved: () => void;
 }
 
 const SHARE_TEXT = 'Dayly считает, сколько можно тратить каждый день, чтобы денег хватило до стипендии или зарплаты.';
@@ -56,6 +64,9 @@ export function Settings(props: SettingsProps) {
   }, [route.screen]);
 
   if (route.screen === 'install') return <InstallGuide install={props.install} onBack={() => onNavigate({ screen: 'main' })} />;
+  if (route.screen === 'guide') {
+    return <Guide data={data} budget={props.budget} lastBackupAt={props.lastBackupAt} section={route.section} onBack={() => onNavigate({ screen: 'main' })} />;
+  }
 
   const share = () => {
     const url = new URL('./', window.location.href).href;
@@ -118,10 +129,18 @@ export function Settings(props: SettingsProps) {
         ))}
       </div>
 
-      <FeatureSettings features={props.features} onChange={props.onFeatureChange} onShowTips={props.onShowTips} onOpenCalendar={props.onOpenCalendar} />
+      <FeatureSettings features={props.features} onChange={props.onFeatureChange} onRestartIntro={props.onRestartIntro} onOpenSavings={props.onOpenSavings} />
 
       <span className="section-label">Приложение</span>
       <ul className="card list">
+        <li>
+          <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'guide', section: null })}>
+            <span className="list-text">
+              <span className="list-name">Как устроен Dayly</span>
+              <span className="list-sub">лимит, резервы, копилка и данные — коротко</span>
+            </span>
+          </button>
+        </li>
         <li>
           <button type="button" className="list-row" onClick={() => onNavigate({ screen: 'install' })}>
             <span className="list-text">
@@ -161,7 +180,7 @@ export function Settings(props: SettingsProps) {
           <button
             type="button"
             className="list-row"
-            onClick={() => void saveBackupFile(makeBackup(data, new Date()), backupFileName(toLocalDate(new Date())))}
+            onClick={() => void saveBackupFile(makeBackup(data, new Date()), backupFileName(toLocalDate(new Date()))).then(props.onBackupSaved)}
           >
             <span className="list-text">
               <span className="list-name">Сохранить копию</span>
