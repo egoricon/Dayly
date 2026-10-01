@@ -6,13 +6,13 @@ import '../styles/intro.css';
 interface FeatureSettingsProps {
   features: Record<FeatureKey, boolean>;
   onChange: (key: FeatureKey, on: boolean) => void;
-  /** «Показать подсказки снова»: the first-launch tips show on the home screen again. */
-  onShowTips: () => void;
-  onOpenCalendar: () => void;
+  /** «Начать знакомство заново»: every hint again, when it is next useful, and «Первая неделя» if still recent. */
+  onRestartIntro: () => void;
+  onOpenSavings: () => void;
 }
 
-/** «Настройки → Функции»: a switch per feature of updates 1 and 2, the tips again and «Что нового». */
-export function FeatureSettings({ features, onChange, onShowTips, onOpenCalendar }: FeatureSettingsProps) {
+/** «Настройки → Функции»: a switch per feature of updates 1 and 2, the hints again and «Что нового». */
+export function FeatureSettings({ features, onChange, onRestartIntro, onOpenSavings }: FeatureSettingsProps) {
   const [whatsNew, setWhatsNew] = useState(false);
   return (
     <>
@@ -30,10 +30,10 @@ export function FeatureSettings({ features, onChange, onShowTips, onOpenCalendar
       <p className="form-note">Выключенное просто не показывается, данные остаются.</p>
       <ul className="card list">
         <li>
-          <button type="button" className="list-row" onClick={onShowTips}>
+          <button type="button" className="list-row" onClick={onRestartIntro}>
             <span className="list-text">
-              <span className="list-name">Показать подсказки снова</span>
-              <span className="list-sub">{features.calendar ? 'про круг, траты и календарь' : 'про круг и траты'}</span>
+              <span className="list-name">Начать знакомство заново</span>
+              <span className="list-sub">подсказки снова появятся, когда пригодятся</span>
             </span>
           </button>
         </li>
@@ -43,7 +43,7 @@ export function FeatureSettings({ features, onChange, onShowTips, onOpenCalendar
           </button>
         </li>
       </ul>
-      {whatsNew && <WhatsNewSheet canOpenCalendar={features.calendar} onOpenCalendar={onOpenCalendar} onClose={() => setWhatsNew(false)} />}
+      {whatsNew && <WhatsNewSheet canOpenSavings={features.savings} onOpenSavings={onOpenSavings} onClose={() => setWhatsNew(false)} />}
     </>
   );
 }

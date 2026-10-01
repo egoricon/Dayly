@@ -7,7 +7,7 @@ import type { AppData, LocalDate } from './domain/types';
 import type { CalendarFocus } from './screens/CalendarScreen';
 import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
-import { Home } from './screens/Home';
+import { Home, type IntroCard } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
 import { Finances, type FinanceRoute, type Update } from './screens/Finances';
 import { Savings, type SavingsRoute } from './screens/Savings';
@@ -16,8 +16,22 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
-import { afterFirstSetup, atLaunch, shouldShowWhatsNew } from './intro';
+import { dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey, type LessonId } from './uiState';
+import {
+  afterFirstSetup,
+  atLaunch,
+  firstWeekCard,
+  markLessonSeen,
+  pickHomeCard,
+  pickTabLesson,
+  restartIntro,
+  shouldShowBackupCard,
+  shouldShowWhatsNew,
+  withFirstWeekCompleted,
+  type GuideSection,
+} from './intro';
+import { backupFileName, makeBackup, saveBackupFile } from './backup';
+import { LessonHint } from './components/LessonHint';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -77,7 +91,7 @@ export function App() {
   const [data, setData] = useState<AppData | null>(() => loadData(localStorage));
   // Each page load counts as a launch; the install hint waits for the second one.
   const [ui, setUi] = useState(() => {
-    // Someone who set the app up before update 1 gets «Что нового» instead of the first-launch tips.
+    // Someone who set the app up before update 1 gets «Что нового», and only the hints about what is new.
     const state = atLaunch(loadUiState(localStorage), data !== null);
     return { ...state, launches: state.launches + 1 };
   });
@@ -121,6 +135,11 @@ export function App() {
     if (next !== data) setData(next);
   }, [data, budget, today]);
 
+  // «Первая неделя» remembers the day of its last tick: «Готово» shows that day only.
+  useEffect(() => {
+    if (data) setUi((state) => withFirstWeekCompleted(state, data, today, install.standalone));
+  }, [data, today, install.standalone]);
+
   if (!data || !budget) {
     return (
       <div className={shellClass}>
@@ -128,9 +147,10 @@ export function App() {
         <Onboarding
           today={today}
           onComplete={(result) => {
-            setData(createInitialData(today, result, new Date()));
-            // «Что нового» is for people who used the app before; a new one gets the tips after the first limit.
-            setUi((state) => afterFirstSetup(state));
+            const created = createInitialData(today, result, new Date());
+            setData(created);
+            // «Что нового» is for people who used the app before; a new one gets the hints and «Первая неделя».
+            setUi((state) => afterFirstSetup(state, created, today));
             setShowFirstLimit(true);
           }}
         />
@@ -174,6 +194,30 @@ export function App() {
     setData(null);
   };
 
+  // «Знакомство» (update 2): hints, «Подробнее» into «Как устроен Dayly», one card under the ring.
+  const onLessonSeen = (id: LessonId) => setUi((state) => markLessonSeen(state, id));
+  const onLessonMore = (section: GuideSection) => {
+    setSettingsRoute({ screen: 'guide', section });
+    setTab('settings');
+  };
+  const firstWeek = firstWeekCard(data, ui, today, install.standalone);
+  const homeCard = pickHomeCard({
+    whatsNew: shouldShowWhatsNew(ui, true),
+    firstWeek: firstWeek !== null,
+    backup: shouldShowBackupCard(data, ui, today, install.standalone),
+  });
+  const introCard: IntroCard | null =
+    homeCard === 'firstWeek' && firstWeek ? { kind: 'firstWeek', card: firstWeek } : homeCard === 'whatsNew' ? { kind: 'whatsNew' } : homeCard === 'backup' ? { kind: 'backup' } : null;
+  const saveBackup = async () => {
+    await saveBackupFile(makeBackup(data, new Date()), backupFileName(today));
+    setUi((state) => ({ ...state, lastBackupAt: today }));
+  };
+  // The first visit to «Копилка», the calendar of «Финансы» and «История» have a hint of their own.
+  const tabLesson =
+    (tab === 'savings' && savingsRoute.screen === 'main') || (tab === 'finances' && financeRoute.screen === 'main') || tab === 'history'
+      ? pickTabLesson(tab, data, today, ui.lessonsSeen, feature)
+      : null;
+
   if (showFirstLimit) {
     return (
       <div className={shellClass}>
@@ -203,7 +247,8 @@ export function App() {
           update={update}
           isBannerHidden={(key) => isBannerHidden(ui, key, today)}
           onHideBanner={(key) => setUi((state) => hideBanner(state, key, today))}
-          installHint={inApp === null && shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
+          // «Первая неделя» has its own install item.
+          installHint={inApp === null && homeCard !== 'firstWeek' && shouldShowInstallHint(ui, install.platform, install.standalone) ? install.platform : null}
           onDismissInstallHint={() => setUi((state) => ({ ...state, installHintDismissed: true }))}
           onOpenFinances={openFinances}
           onOpenSavings={openSavings}
@@ -211,10 +256,22 @@ export function App() {
           feature={feature}
           isCardDismissed={(key) => isCardDismissed(ui, key)}
           onDismissCard={(key) => setUi((state) => dismissCard(state, key))}
-          showTips={!ui.tipsShown}
-          onTipsDone={() => setUi((state) => ({ ...state, tipsShown: true }))}
-          showWhatsNew={shouldShowWhatsNew(ui, true)}
-          onWhatsNewSeen={() => setUi((state) => ({ ...state, whatsNewSeen: WHATS_NEW_ID }))}
+          intro={{
+            card: introCard,
+            lessonsSeen: ui.lessonsSeen,
+            onLessonSeen,
+            onLessonMore,
+            onExplainOpened: () => setUi((state) => (state.firstWeek.seenExplain ? state : { ...state, firstWeek: { ...state.firstWeek, seenExplain: true } })),
+            onWhatsNewSeen: () => setUi((state) => ({ ...state, whatsNewSeen: WHATS_NEW_ID })),
+            onFirstWeekClose: () => setUi((state) => ({ ...state, firstWeek: { ...state.firstWeek, dismissed: true } })),
+            onBackupSave: saveBackup,
+            onBackupLater: () => setUi((state) => ({ ...state, backupCardHiddenOn: today })),
+            ios: install.platform === 'ios',
+            onOpenInstall: () => {
+              setSettingsRoute({ screen: 'install' });
+              setTab('settings');
+            },
+          }}
         />
       )}
       {tab === 'savings' && feature('savings') && (
@@ -236,6 +293,7 @@ export function App() {
       {tab === 'settings' && (
         <Settings
           data={data}
+          budget={budget}
           route={settingsRoute}
           onNavigate={setSettingsRoute}
           update={update}
@@ -253,13 +311,16 @@ export function App() {
           }}
           features={ui.features}
           onFeatureChange={(key, on) => setUi((state) => setFeature(state, key, on))}
-          onShowTips={() => {
-            setUi((state) => ({ ...state, tipsShown: false }));
+          onRestartIntro={() => {
+            setUi((state) => restartIntro(state, today));
             setTab('today');
           }}
-          onOpenCalendar={() => openCalendar(null)}
+          onOpenSavings={() => openSavings({ screen: 'main' })}
+          lastBackupAt={ui.lastBackupAt}
+          onBackupSaved={() => setUi((state) => ({ ...state, lastBackupAt: toLocalDate(new Date()) }))}
         />
       )}
+      {tabLesson && <LessonHint key={`${tab}-${tabLesson.id}`} lesson={tabLesson} onSeen={onLessonSeen} onMore={onLessonMore} />}
       <TabBar
         active={tab}
         hidden={feature('savings') ? [] : ['savings']}

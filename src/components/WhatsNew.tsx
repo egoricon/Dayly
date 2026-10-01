@@ -3,15 +3,15 @@ import { afterLeave } from '../ui/motion';
 import { BottomSheet } from './BottomSheet';
 import '../styles/intro.css';
 
-// «Что нового» of update 1 (reports/update-1-map.md, 1.6): a card on the home screen for people who
+// «Что нового» of update 2 (reports/update-2-full-map.md, 3.5): a card on the home screen for people who
 // used the app before it, and the same text in «Настройки → Что нового».
 
 const ITEMS = [
-  'Календарь: нажми на дату и добавь доход или расход, разово или с повтором.',
-  'Копилка: откладывай процент с каждого поступления, кольцо покажет, сколько уже отложено.',
-  'Цель по лимиту: скажи, сколько хочешь тратить в день, и мы подскажем, как дотянуть.',
-  'Неделя под кругом, отмена траты и итоги периода.',
-  'Лишнее можно выключить в «Настройках → Функции».',
+  'Копилка: свинка, банки, положить и забрать, округление трат.',
+  'Календарь теперь во вкладке «Финансы».',
+  'Трату можно изменить обычным нажатием и добавить вчерашнюю.',
+  'В «Истории» — итоги по категориям за период.',
+  '«Крупный текст» — в «Настройках».',
 ];
 
 function WhatsNewText() {
@@ -28,21 +28,21 @@ function WhatsNewText() {
 }
 
 interface WhatsNewProps {
-  /** «Открыть календарь» (in «Финансы») is there only while the calendar is on in «Настройки → Функции». */
-  canOpenCalendar: boolean;
-  onOpenCalendar: () => void;
+  /** «Открыть копилку» is there only while «Копилка» is on in «Настройки → Функции». */
+  canOpenSavings: boolean;
+  onOpenSavings: () => void;
   onClose: () => void;
 }
 
 /** The card on the home screen; × closes it for good. */
-export function WhatsNewCard({ canOpenCalendar, onOpenCalendar, onClose }: WhatsNewProps) {
+export function WhatsNewCard({ canOpenSavings, onOpenSavings, onClose }: WhatsNewProps) {
   const [leaving, setLeaving] = useState(false);
   return (
     <div className={`card whats-new is-entering${leaving ? ' is-leaving' : ''}`} data-testid="whats-new">
       <WhatsNewText />
-      {canOpenCalendar && (
-        <button type="button" className="banner-yes whats-new-open" onClick={onOpenCalendar}>
-          Открыть календарь
+      {canOpenSavings && (
+        <button type="button" className="banner-yes whats-new-open" onClick={onOpenSavings}>
+          Открыть копилку
         </button>
       )}
       <button
@@ -63,7 +63,7 @@ export function WhatsNewCard({ canOpenCalendar, onOpenCalendar, onClose }: Whats
 }
 
 /** «Настройки → Что нового»: the same text in a sheet. */
-export function WhatsNewSheet({ canOpenCalendar, onOpenCalendar, onClose }: WhatsNewProps) {
+export function WhatsNewSheet({ canOpenSavings, onOpenSavings, onClose }: WhatsNewProps) {
   return (
     <BottomSheet onClose={onClose} className="whats-new-sheet">
       {(close) => (
@@ -71,9 +71,9 @@ export function WhatsNewSheet({ canOpenCalendar, onOpenCalendar, onClose }: What
           <div className="whats-new" data-testid="whats-new-sheet">
             <WhatsNewText />
           </div>
-          {canOpenCalendar ? (
-            <button type="button" className="button-primary button-large" onClick={onOpenCalendar}>
-              Открыть календарь
+          {canOpenSavings ? (
+            <button type="button" className="button-primary button-large" onClick={onOpenSavings}>
+              Открыть копилку
             </button>
           ) : (
             <button type="button" className="button-primary button-large" onClick={close}>

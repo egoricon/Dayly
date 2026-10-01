@@ -1,4 +1,5 @@
-/* Update 1 «Знакомство»: the first setup, «Вот твой месяц», first-launch tips, «Что нового», «Функции». */
+/* «Знакомство»: the first setup, «Вот твой месяц», «Что нового», «Функции» (update 1); hints, «Первая неделя»,
+   «Сохрани копию» and «Как устроен Dayly» (update 2). */
 
 /* Setup steps: the question scrolls if it must, the main button stays at the bottom of the screen. */
 
@@ -263,126 +264,91 @@
   background: var(--dot-payment);
 }
 
-/* First-launch tips: the screen dims except what the tip points at. */
+/* Hints of «Знакомство» (update 2): a bubble with an arrow next to what it explains, nothing dimmed.
+   Inverted colours set it apart from the cards around it in both themes. */
 
-.tips-layer {
-  --tips-dim: rgba(20, 20, 22, 0.55);
+.lesson {
   position: fixed;
-  inset: 0;
-  z-index: 30;
-  cursor: pointer;
-  animation: fade-in 250ms ease-out;
-}
-
-:root[data-theme='dark'] .tips-layer {
-  --tips-dim: rgba(0, 0, 0, 0.72);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='auto'] .tips-layer {
-    --tips-dim: rgba(0, 0, 0, 0.72);
-  }
-}
-
-.tips-layer.is-plain {
-  background: var(--tips-dim);
-}
-
-.tips-spot {
-  position: fixed;
-  box-shadow: 0 0 0 200vmax var(--tips-dim);
-  pointer-events: none;
-  transition:
-    left 300ms ease-out,
-    top 300ms ease-out,
-    width 300ms ease-out,
-    height 300ms ease-out,
-    border-radius 300ms ease-out;
-}
-
-.tips-spot.is-circle {
-  border-radius: 50%;
-}
-
-.tips-spot.is-card {
-  border-radius: 26px;
-}
-
-.tips-spot.is-tab {
-  border-radius: 20px;
-}
-
-.tips-bubble {
-  position: fixed;
+  z-index: 25;
   max-width: 398px;
-  padding: 16px 18px 12px;
-  border-radius: 20px;
-  background: var(--surface);
-  color: var(--ink);
-  cursor: default;
+  padding: 14px 16px 10px 18px;
+  border-radius: 18px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
   animation: card-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.tips-arrow {
+.lesson-arrow {
   position: absolute;
   width: 14px;
   height: 14px;
   margin-left: -7px;
   border-radius: 3px;
-  background: var(--surface);
+  background: var(--ink);
   transform: rotate(45deg);
 }
 
-.tips-bubble.is-below .tips-arrow {
+.lesson.is-below .lesson-arrow {
   top: -6px;
 }
 
-.tips-bubble.is-above .tips-arrow {
+.lesson.is-above .lesson-arrow {
   bottom: -6px;
 }
 
-.tips-text {
+.lesson-text {
   position: relative;
-  font-size: calc(17px * var(--text-scale));
-  font-weight: 700;
-  line-height: 1.35;
+  font-size: calc(16px * var(--text-scale));
+  font-weight: 650;
+  line-height: 1.38;
 }
 
-.tips-actions {
+.lesson-actions {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 4px;
+  margin-top: 8px;
 }
 
-.tips-count {
-  flex: 1;
-  font-size: calc(13px * var(--text-scale));
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.tips-skip {
-  height: 40px;
-  padding: 0 10px;
-  font-size: calc(15px * var(--text-scale));
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.tips-next {
-  height: 40px;
-  padding: 0 18px;
-  border-radius: 20px;
-  background: var(--ink);
-  color: var(--bg);
+.lesson-more,
+.lesson-ok {
+  position: relative;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
   font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   transition: transform 120ms ease-out;
 }
 
-.tips-next:active {
+.lesson-more {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lesson-ok {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.lesson-ok:active,
+.lesson-more:active {
   transform: scale(0.96);
+}
+
+/* 44 px tap areas without changing the look. */
+.lesson-more::before,
+.lesson-ok::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
 }
 
 /* «Что нового» */
@@ -436,6 +402,101 @@
 
 .whats-new-sheet .whats-new {
   padding: 4px 4px 0;
+}
+
+/* «Первая неделя» under the ring: five items that tick themselves. */
+
+.first-week {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 44px 10px 18px;
+  border-radius: 20px;
+  font-size: calc(15px * var(--text-scale));
+  line-height: 1.35;
+}
+
+.first-week.is-entering {
+  animation: card-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.first-week.is-leaving,
+.backup-card.is-leaving {
+  animation: card-out 240ms ease-in forwards;
+  pointer-events: none;
+}
+
+.first-week-title {
+  font-size: calc(17px * var(--text-scale));
+  font-weight: 800;
+}
+
+.first-week-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0 -8px;
+}
+
+.first-week-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-align: left;
+  transition: transform 120ms ease-out;
+}
+
+button.first-week-item:active {
+  transform: scale(0.98);
+}
+
+.first-week li.is-done .first-week-item {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.first-week-mark {
+  flex-shrink: 0;
+}
+
+.first-week-mark-ring {
+  stroke: var(--chip-border);
+}
+
+.first-week-mark-fill {
+  fill: var(--accent);
+}
+
+.first-week-mark-tick {
+  stroke: #121417;
+}
+
+.first-week .banner-sub {
+  padding-bottom: 6px;
+}
+
+/* × of the cards under the ring: 44 px to tap, the look of the install card's. */
+.first-week .install-close::before,
+.whats-new .install-close::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
+/* «Как устроен Dayly» */
+
+.guide-card {
+  gap: 8px;
+  scroll-margin-top: 12px;
 }
 
 /* Short phones (iPhone SE 375×667 and less): every setup screen fits with its main button. */
