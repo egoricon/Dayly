@@ -7,7 +7,7 @@ import { MoveSheet, type MoveKind } from '../components/MoveSheet';
 import { Piggy } from '../components/Piggy';
 import type { BudgetResult } from '../domain/budget';
 import { savingsHistory, type SavingsHistoryRow } from '../domain/jarHistory';
-import { jarRoom, jarsOf, MILESTONES, piggyFill, targetGoalId, targetOf, type Jar, type SavingsTarget } from '../domain/jars';
+import { jarRoom, jarsOf, MILESTONES, piggyFill, targetGoalId, type Jar, type SavingsTarget } from '../domain/jars';
 import { formatMoney } from '../domain/money';
 import type { AppData, LocalDate } from '../domain/types';
 import type { FeatureKey } from '../uiState';
@@ -271,7 +271,7 @@ function SavingsSwitches({ data, today, update, leftover, onLeftover }: { data: 
                 type="button"
                 className={`chip${j.key === chosen ? ' is-selected' : ''}`}
                 aria-pressed={j.key === chosen}
-                onClick={() => choose(targetOf(targetGoalId(j.target)))}
+                onClick={() => choose(j.target)}
               >
                 {j.name}
               </button>
