@@ -495,7 +495,7 @@ function DeficitHints({ data, today, onOpenFinances, onOpenSavings }: DeficitHin
         </button>
       )}
       {onOpenSavings && cushion > 0 && (
-        <button type="button" className="link-accent" onClick={() => onOpenSavings({ screen: 'cushion' })}>
+        <button type="button" className="link-accent" onClick={() => onOpenSavings({ screen: 'main', sheet: { kind: 'take', jar: 'cushion' } })}>
           Взять из подушки (там {formatMoney(cushion)}) →
         </button>
       )}

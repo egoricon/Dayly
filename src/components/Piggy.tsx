@@ -31,6 +31,8 @@ interface PiggyProps {
   totalKopecks: number;
   /** All targets reached: the piggy is happy, and confetti once when it turns full. */
   full?: boolean;
+  /** One jar just got full: the piggy is happy, with confetti once it turns on, and the level stays. */
+  cheer?: boolean;
   /** Fills from empty on mount, as the day ring does at launch; false shows the level at once. */
   fillIn?: boolean;
   onClick?: () => void;
@@ -40,16 +42,17 @@ interface PiggyProps {
  * The piggy bank of «Копилка»: coins inside rise to the share saved. A coin drops into the slot when
  * money goes in; the level fills from empty on mount, like the day ring.
  */
-export function Piggy({ fill, totalKopecks, full = false, fillIn = true, onClick }: PiggyProps) {
+export function Piggy({ fill, totalKopecks, full = false, cheer = false, fillIn = true, onClick }: PiggyProps) {
   const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const target = piggyLevel(fill, full);
+  const happy = full || cheer;
   // With fillIn the first frame draws it empty, then the slow transition fills it (not with reduced motion).
   const [filled, setFilled] = useState(() => !fillIn || prefersReducedMotion());
   const [filling, setFilling] = useState(() => fillIn && !prefersReducedMotion());
   const [level, setLevel] = useState(target);
   const [coin, setCoin] = useState(0); // key of the falling coin, 0 while none
   const [burst, setBurst] = useState(0); // key of the confetti, 0 while none
-  const before = useRef({ fill, totalKopecks, full });
+  const before = useRef({ fill, totalKopecks, happy });
 
   useEffect(() => {
     if (filled) return;
@@ -65,10 +68,10 @@ export function Piggy({ fill, totalKopecks, full = false, fillIn = true, onClick
 
   useEffect(() => {
     const previous = before.current;
-    before.current = { fill, totalKopecks, full };
+    before.current = { fill, totalKopecks, happy };
     const quiet = prefersReducedMotion();
     const drop = !quiet && dropsCoin(previous, { fill, totalKopecks });
-    const cheer = !quiet && becameFull(previous.full, full);
+    const confetti = !quiet && becameFull(previous.happy, happy);
     const timers: number[] = [];
     // The coin first, then the level rises; the confetti once it is at the top.
     if (drop) {
@@ -77,9 +80,9 @@ export function Piggy({ fill, totalKopecks, full = false, fillIn = true, onClick
     } else {
       setLevel(target);
     }
-    if (cheer) timers.push(window.setTimeout(() => setBurst((key) => key + 1), drop ? COIN_DROP_MS + LEVEL_MS : 0));
+    if (confetti) timers.push(window.setTimeout(() => setBurst((key) => key + 1), drop ? COIN_DROP_MS + LEVEL_MS : 0));
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [fill, totalKopecks, full, target]);
+  }, [fill, totalKopecks, happy, target]);
 
   useEffect(() => {
     if (burst === 0) return;
@@ -89,7 +92,7 @@ export function Piggy({ fill, totalKopecks, full = false, fillIn = true, onClick
 
   const label = piggyLabel(totalKopecks, fill, full);
   const shown = filled ? level : 0;
-  const className = `piggy${full ? ' is-full' : ''}${burst > 0 ? ' is-cheering' : ''}${onClick ? ' is-tappable' : ''}`;
+  const className = `piggy${happy ? ' is-full' : ''}${cheer && !full ? ' is-cheer' : ''}${burst > 0 ? ' is-cheering' : ''}${onClick ? ' is-tappable' : ''}`;
   const art = (
     <>
       <svg
@@ -139,7 +142,7 @@ export function Piggy({ fill, totalKopecks, full = false, fillIn = true, onClick
         <ellipse className="piggy-outline" cx={PIGGY_BODY.cx} cy={PIGGY_BODY.cy} rx={PIGGY_BODY.rx} ry={PIGGY_BODY.ry} />
         <path className="piggy-slot" d={`M${SLOT_X - 16} ${SLOT_Y + 1} Q${SLOT_X} ${SLOT_Y - 4} ${SLOT_X + 16} ${SLOT_Y + 1}`} />
 
-        {full ? (
+        {happy ? (
           <g className="piggy-face" data-testid="piggy-happy">
             <path d="M165 97 Q174 86 183 97" />
             <path d="M173 127 Q183 138 195 130" />

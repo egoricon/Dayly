@@ -43,6 +43,9 @@ async function open(page: Page, data: AppData, ui: Record<string, unknown> = {})
 
 const tab = (page: Page, name: string) => page.locator('.tab-bar').getByRole('button', { name, exact: true });
 
+/** The jar cards of «Копилка». */
+const jars = (page: Page) => page.getByTestId('jar-card');
+
 /** Waits for screen, card and ring animations to end, so a screenshot shows the final look. */
 async function settle(page: Page) {
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
@@ -107,7 +110,7 @@ test('«Финансы»: the calendar on top, then incomes, payments, categorie
   // What is set aside lives in «Копилка» now.
   await expect(page.getByText('Коплю на')).toHaveCount(0);
   await expect(page.getByText(/Откладываем/)).toHaveCount(0);
-  await expect(page.locator('.goal-card')).toHaveCount(0);
+  await expect(page.getByTestId('jar-card')).toHaveCount(0);
 
   // The payments keep their row: the unpaid sum until the scholarship, and the list behind it.
   const payments = page.getByTestId('finance-payments');
@@ -129,41 +132,45 @@ test('«Финансы»: the calendar on top, then incomes, payments, categorie
   await expect(payments).toHaveText('Все платежи · 4не оплачено до 5 октября107,00');
 });
 
-test('«Копилка»: the cushion, «С каждого поступления» and the goals; their forms open inside the tab', async ({ page }) => {
+test('«Копилка»: the piggy, the jars and «С каждого поступления»; their forms open inside the tab', async ({ page }) => {
   await open(page, withPercents());
   await tab(page, 'Копилка').click();
   await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
-  await expect(page.getByTestId('savings-cushion')).toHaveText('Подушка · 10% дохода30,00');
+  await expect(page.getByTestId('piggy')).toHaveAttribute('aria-label', 'В копилке 52,68 BYN, заполнено на 3%');
+  await expect(jars(page)).toHaveText([
+    'Подушка30,00 BYN10% с поступления',
+    'Наушники2 из 150к 20 ноября · 2,68 в день',
+    /^Велосипед20 из 50015% с поступления · наполнится ~/,
+  ]);
   await expect(page.getByTestId('savings-split')).toContainText('10% подушка · 15% велосипед · 75% на жизнь');
-  await expect(page.locator('.goal-card')).toHaveText(['Наушники2 из 150по 24,11 за период · к 20 ноября', 'Велосипед20 из 50015% с каждого поступления']);
-  await expect(page.getByRole('button', { name: '+ Добавить цель' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Новая банка' })).toBeVisible();
 
-  // The cushion's form, with «Взять из подушки»; «Назад» comes back to «Копилка».
-  await page.getByTestId('savings-cushion').getByRole('button').click();
+  // The cushion's form, with its optional target; «Назад» comes back to «Копилка».
+  await jars(page).first().getByRole('button').click();
   await expect(page.getByRole('heading', { name: 'Подушка' })).toBeVisible();
-  await expect(page.getByText('Взять из подушки')).toBeVisible();
+  await expect(page.getByText('Цель, необязательно')).toBeVisible();
   await expect(tab(page, 'Копилка')).toHaveAttribute('aria-current', 'page');
   await page.getByRole('button', { name: '‹ Назад' }).click();
   await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
 
-  // A goal card and a row of «С каждого поступления» open the goal.
-  await page.locator('.goal-card', { hasText: 'Наушники' }).click();
+  // A goal card opens the goal.
+  await jars(page).filter({ hasText: 'Наушники' }).getByRole('button').click();
   await expect(page.getByRole('heading', { name: 'Наушники' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Купил за 150,00 BYN' })).toBeVisible();
   await page.getByRole('button', { name: '‹ Назад' }).click();
-  await page.getByTestId('savings-split').getByRole('button', { name: /Велосипед/ }).click();
+  await jars(page).filter({ hasText: 'Велосипед' }).getByRole('button').click();
   await expect(page.getByRole('heading', { name: 'Велосипед' })).toBeVisible();
   await page.getByRole('button', { name: '‹ Назад' }).click();
 
-  // A new goal is saved from here; another tab and back shows the list again.
-  await page.getByRole('button', { name: '+ Добавить цель' }).click();
-  await expect(page.getByRole('heading', { name: 'Новая цель' })).toBeVisible();
+  // A new jar is saved from here; another tab and back shows the list again.
+  await page.getByRole('button', { name: '+ Новая банка' }).click();
+  await expect(page.getByRole('heading', { name: 'Новая банка' })).toBeVisible();
   await page.getByPlaceholder('Например, наушники').fill('Поездка');
   await page.locator('.form-screen').getByPlaceholder('0,00').first().fill('200');
   await page.locator('.form-screen input[type="date"]').fill('2026-12-01');
   await page.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(page.locator('.goal-card')).toHaveCount(3);
-  await page.locator('.goal-card', { hasText: 'Поездка' }).click();
+  await expect(jars(page)).toHaveCount(4);
+  await jars(page).filter({ hasText: 'Поездка' }).getByRole('button').click();
   await expect(page.getByRole('heading', { name: 'Поездка' })).toBeVisible();
   await tab(page, 'Сегодня').click();
   await tab(page, 'Копилка').click();
@@ -176,10 +183,10 @@ test('the savings ring’s caption opens «Копилка»', async ({ page }) =
   await page.getByTestId('savings-caption').click();
   await expect(tab(page, 'Копилка')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
-  await expect(page.locator('.goal-card')).toContainText('Наушники');
+  await expect(jars(page)).toContainText(['Подушка', 'Наушники']);
 });
 
-test('a deficit’s «Сдвинуть срок цели» and «Взять из подушки» open their forms in «Копилка»', async ({ page }) => {
+test('a deficit’s «Сдвинуть срок цели» opens the goal in «Копилка», «Взять из подушки» its «Забрать»', async ({ page }) => {
   const data = named();
   data.payments.push({ ...oneOffPayment('laptop', 60000, '2026-09-30', '2026-09-26'), name: 'Ремонт ноутбука' });
   await open(page, data);
@@ -192,8 +199,13 @@ test('a deficit’s «Сдвинуть срок цели» and «Взять из
 
   await tab(page, 'Сегодня').click();
   await hints.getByRole('button', { name: /Взять из подушки/ }).click();
-  await expect(page.getByRole('heading', { name: 'Подушка' })).toBeVisible();
-  await expect(page.getByTestId('cushion-saved')).toHaveText('Сейчас в подушке 30,00 BYN');
+  const sheet = page.locator('.move-sheet');
+  await expect(sheet.locator('.sheet-title')).toHaveText('Забрать из копилки');
+  await expect(sheet.getByRole('button', { name: 'Подушка' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByTestId('move-preview')).toHaveText('В подушке 30,00 BYN');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
 });
 
 test('«Функции → Копилка» off hides the tab, the savings ring and its caption; the limit still counts the savings', async ({ page }) => {
@@ -224,7 +236,7 @@ test('«Функции → Копилка» off hides the tab, the savings ring 
   await tab(page, 'Настройки').click();
   await features.getByRole('switch', { name: 'Копилка', exact: true }).click();
   await tab(page, 'Копилка').click();
-  await expect(page.locator('.goal-card')).toContainText('Наушники');
+  await expect(jars(page)).toContainText(['Подушка', 'Наушники']);
   await tab(page, 'Сегодня').click();
   await expect(page.getByTestId('savings-caption')).toBeVisible();
 });

@@ -16,7 +16,7 @@ import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
 import { detectInAppBrowser, isStandalone } from './install';
 import { countLaunch, launchMode, RESUME_AS_LAUNCH_MS } from './stats';
-import { dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
+import { celebrateJars, dismissCard, hideBanner, isBannerHidden, isCardDismissed, isFeatureOn, loadUiState, saveUiState, setFeature, shouldShowInstallHint, UI_KEY, WHATS_NEW_ID, type Accent, type FeatureKey } from './uiState';
 import { afterFirstSetup, atLaunch, shouldShowWhatsNew } from './intro';
 
 /** Today's date that follows midnight and a return to the app after a pause. */
@@ -218,7 +218,18 @@ export function App() {
         />
       )}
       {tab === 'savings' && feature('savings') && (
-        <Savings data={data} budget={budget} today={today} route={savingsRoute} onNavigate={setSavingsRoute} update={update} />
+        <Savings
+          data={data}
+          budget={budget}
+          today={today}
+          route={savingsRoute}
+          onNavigate={setSavingsRoute}
+          update={update}
+          feature={feature}
+          onFeatureChange={(key, on) => setUi((state) => setFeature(state, key, on))}
+          celebratedJars={ui.celebratedJars}
+          onCelebrate={(keys) => setUi((state) => celebrateJars(state, keys))}
+        />
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { detectInAppBrowser, detectPlatform } from './install';
 import {
+  celebrateJars,
   defaultUiState,
   FEATURES,
   hideBanner,
@@ -78,7 +79,16 @@ describe('features and «Что нового» (update 1)', () => {
       tipsShown: false,
       dismissedCards: [],
       largeText: false,
+      celebratedJars: [],
     });
+  });
+
+  it('remembers the jars the piggy cheered for, each once, the newest 50', () => {
+    const state = celebrateJars(celebrateJars(defaultUiState(), ['cushion', 'bike']), ['bike', 'trip']);
+    expect(state.celebratedJars).toEqual(['cushion', 'bike', 'trip']);
+    expect(celebrateJars(state, ['trip'])).toBe(state);
+    const many = Array.from({ length: 60 }, (_, i) => `goal${i}`);
+    expect(loadUiState(storageWith(JSON.stringify({ celebratedJars: [...many, 7] }))).celebratedJars).toEqual(many.slice(-50));
   });
 
   it('a feature turned off stays off; the others and unknown values stay on', () => {

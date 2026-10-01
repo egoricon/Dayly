@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { emptyData, expense, fixedCushion, percentCushion, source, tx } from '../src/domain/fixtures';
+import { emptyData, exampleA, exampleG, expense, fixedCushion, move, percentCushion, source, tx } from '../src/domain/fixtures';
 import type { AppData, Goal } from '../src/domain/types';
 
 // Update 1 «Копилка» (task B) in a real browser: a percent goal, the split of a confirmed income,
@@ -71,7 +71,7 @@ function newPeriod(): AppData {
 }
 
 /** Seeds the saved state before the app starts; a reload keeps what the app has saved since. */
-async function open(page: Page, data: AppData, ui: object = UI) {
+async function open(page: Page, data: AppData, ui: object = UI, time: Date = TODAY) {
   await page.addInitScript(
     ([savedData, savedUi]) => {
       if (localStorage.getItem('dayly:data') !== null) return;
@@ -80,12 +80,15 @@ async function open(page: Page, data: AppData, ui: object = UI) {
     },
     [JSON.stringify(data), JSON.stringify(ui)] as const,
   );
-  await page.clock.install({ time: TODAY });
+  await page.clock.install({ time });
   await page.goto('/');
 }
 
 /** The «Копилка» tab of update 2, where the cushion, «С каждого поступления» and the goals are. */
 const savingsTab = (page: Page) => page.locator('.tab-bar').getByRole('button', { name: 'Копилка', exact: true });
+
+/** A jar card of «Копилка»: 'cushion' or a goal's id. */
+const jarCard = (page: Page, key: string) => page.locator(`[data-testid="jar-card"][data-jar="${key}"]`);
 
 async function typeAmount(page: Page, amount: string) {
   for (const ch of amount) await page.keyboard.press(ch === ',' ? 'Comma' : ch);
@@ -135,13 +138,13 @@ test('a 15% goal: «Стипендия пришла?» with 300 puts 45,00 into 
   await page.screenshot({ path: test.info().outputPath('savings-ring-filled.png') });
   await expect(page.getByTestId('savings-caption')).toHaveText('копилка 45 из 75', { timeout: 5000 });
 
-  // A tap on the caption opens «Копилка»: where the savings come from and the goals.
+  // A tap on the caption opens «Копилка»: the piggy, the jars and where the savings come from.
   await page.getByTestId('savings-caption').click();
   await expect(savingsTab(page)).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { name: 'Копилка' })).toBeVisible();
-  await expect(page.getByTestId('savings-split')).toBeInViewport();
+  await expect(page.getByTestId('piggy')).toBeInViewport();
   await expect(page.getByTestId('savings-split')).toContainText('15% наушники · 85% на жизнь');
-  await expect(page.locator('.goal-card')).toHaveText(/Наушники45 из 150.*15% с каждого поступления/);
+  await expect(jarCard(page, 'headphones')).toHaveText(/Наушники45 из 150.*15% с поступления/);
 });
 
 test('«+ Доход» from a planned source splits too, and «Другая сумма» counts the amount that came', async ({ page }) => {
@@ -192,7 +195,7 @@ test('«Отложить» yesterday’s 8,00: the goal grows by 8,00, the limit
   await expect(page.getByTestId('leftover-card')).toHaveCount(0);
   await expect(page.locator('.carry-pill')).toHaveCount(0);
   await savingsTab(page).click();
-  await expect(page.locator('.goal-card')).toContainText('Наушники28 из 150');
+  await expect(jarCard(page, 'headphones')).toContainText('Наушники28 из 150');
 });
 
 test('«Не сейчас» puts the leftover off till tomorrow and keeps the pill', async ({ page }) => {
@@ -306,10 +309,10 @@ test('a percent goal in its form: the rules stay below 100 %, the hint counts th
   await expect(page.getByTestId('savings-split')).toContainText('15% наушники · 85% на жизнь');
   await expect(page.getByTestId('savings-split')).toContainText('Суммы со стипендии 300,00 BYN');
 
-  await page.getByRole('button', { name: '+ Добавить цель' }).click();
+  await page.getByRole('button', { name: '+ Новая банка' }).click();
   await page.getByPlaceholder('Например, наушники').fill('Велосипед');
   await page.locator('.form-screen').getByPlaceholder('0,00').first().fill('500');
-  await page.getByRole('radio', { name: 'Процент с дохода' }).click();
+  await page.getByRole('radio', { name: '% с каждого поступления' }).click();
   const percent = page.getByPlaceholder('15');
   await percent.fill('90');
   await expect(page.locator('.field-hint')).toHaveText('Можно не больше 84%: ещё 15% уходит в «Наушники»');
@@ -321,22 +324,32 @@ test('a percent goal in its form: the rules stay below 100 %, the hint counts th
   await page.screenshot({ path: test.info().outputPath('goal-form-percent.png') });
   await page.getByRole('button', { name: 'Сохранить' }).click();
 
-  await expect(page.getByTestId('savings-split')).toContainText('15% наушники · 20% велосипед · 65% на жизнь');
-  await expect(page.getByTestId('savings-split').locator('.list-row')).toHaveText([
-    'Наушники15%45,00',
-    'Велосипед20%60,00',
-    'На жизнь65%195,00',
-  ]);
-  await expect(page.locator('.goal-card', { hasText: 'Велосипед' })).toContainText('20% с каждого поступления');
+  const split = page.getByTestId('savings-split');
+  await expect(split).toContainText('15% наушники · 20% велосипед · 65% на жизнь');
+  await expect(split.locator('.list-row')).toHaveText(['Наушники45,00%', 'Велосипед60,00%', 'На жизнь195,0065%']);
+  await expect(split.getByLabel('Процент: Наушники')).toHaveValue('15');
+  await expect(split.getByLabel('Процент: Велосипед')).toHaveValue('20');
+  await expect(page.locator('[data-testid="jar-card"]', { hasText: 'Велосипед' })).toContainText('20% с поступления');
 
-  // A row opens the goal; switching it to a date keeps what it has.
-  await page.getByTestId('savings-split').getByRole('button', { name: /Велосипед/ }).click();
+  // A percent typed right in the split counts from today; more than the others leave is refused.
+  await split.getByLabel('Процент: Велосипед').fill('25');
+  await expect(split).toContainText('15% наушники · 25% велосипед · 60% на жизнь');
+  await split.getByLabel('Процент: Велосипед').fill('90');
+  await expect(page.getByTestId('split-problem')).toHaveText('Можно не больше 84%: ещё 15% уходит в «Наушники»');
+  await split.getByLabel('Процент: Велосипед').blur();
+  await expect(page.getByTestId('split-problem')).toHaveCount(0);
+  await expect(split.getByLabel('Процент: Велосипед')).toHaveValue('25');
+  await split.getByLabel('Процент: Велосипед').fill('20');
+  await split.getByLabel('Процент: Велосипед').blur();
+
+  // The card opens the goal; switching it to a date keeps what it has.
+  await page.locator('[data-testid="jar-card"]', { hasText: 'Велосипед' }).getByRole('button').first().click();
   await page.getByRole('radio', { name: 'К дате' }).click();
   await expect(page.getByText('Уже накопленное останется в цели.')).toBeVisible();
   await page.getByRole('button', { name: '‹ Назад' }).click();
 
   // The cushion cannot take the rest either.
-  await page.getByTestId('savings-cushion').getByRole('button', { name: /Подушка/ }).click();
+  await jarCard(page, 'cushion').getByRole('button').click();
   await page.getByRole('radio', { name: 'Процент с дохода' }).click();
   await page.locator('.form-screen input[inputmode="numeric"]').fill('70');
   await page.getByRole('button', { name: 'Сохранить' }).click({ force: true });
@@ -380,4 +393,326 @@ for (const [name, viewport] of [
       await context.close();
     });
   }
+}
+
+// Update 2, task C: the «Копилка» tab on example Г of PROJECT_MAP.md (30 September, a Wednesday): the cushion
+// 30,00, «Наушники» 150,00 by 20 November, «Велосипед» 15 % with 40,00, «Поездка» 20,00 every Monday,
+// expenses rounded up into the cushion. The limit is 39,37.
+
+const G_DAY = new Date('2026-09-30T10:00:00');
+
+async function openG(page: Page, data: AppData = exampleG(), ui: object = UI) {
+  await open(page, data, ui, G_DAY);
+  await expect(page.getByTestId('hero-amount')).toBeVisible();
+}
+
+/** «Положить» or «Забрать»: the jar, the amount on the keypad; returns the sheet. */
+async function moveSheet(page: Page, button: 'Положить' | 'Забрать', jar: string, amount: string) {
+  await page.locator('.savings-actions').getByRole('button', { name: button }).click();
+  const sheet = page.locator('.move-sheet');
+  await sheet.locator('.chip', { hasText: jar }).click();
+  await typeAmount(page, amount);
+  return sheet;
+}
+
+const pigLevel = async (page: Page) => Number(await page.getByTestId('piggy-art').getAttribute('data-level'));
+
+test('«Положить 20» into «Наушники»: the piggy fills up, the history says so, the limit goes down', async ({ page }) => {
+  await openG(page);
+  await expect(page.getByTestId('hero-amount')).toHaveText('39,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('piggy')).toHaveAttribute('aria-label', 'В копилке 103,40 BYN, заполнено на 16%');
+  await expect(page.getByTestId('savings-total')).toHaveText('В копилке 103,40 BYN');
+  await expect(jarCard(page, 'headphones')).toContainText('Наушники13 из 150');
+  await expect(jarCard(page, 'headphones')).toContainText('к 20 ноября · 2,68 в день');
+  await expect(jarCard(page, 'headphones').getByRole('button')).toHaveAccessibleName('Наушники, 13 из 150 BYN, к 20 ноября · 2,68 в день');
+  await expect.poll(() => pigLevel(page)).toBeCloseTo(0.167, 2);
+
+  const sheet = await moveSheet(page, 'Положить', 'Наушники', '20');
+  await expect(sheet.getByTestId('move-preview')).toHaveText('Лимит станет 35,76 BYN в день');
+  await settle(page);
+  await page.screenshot({ path: test.info().outputPath('put-sheet.png') });
+  await sheet.getByRole('button', { name: 'Положить', exact: true }).click();
+  await expect(page.locator('.move-sheet')).toHaveCount(0);
+
+  await expect(page.getByTestId('piggy')).toHaveAttribute('aria-label', 'В копилке 123,02 BYN, заполнено на 21%');
+  await expect.poll(() => pigLevel(page)).toBeCloseTo(0.211, 2);
+  await expect(jarCard(page, 'headphones')).toContainText('Наушники33 из 150');
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/Вручную → Наушники.*30 сен.*\+20,00/);
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('35,76');
+  await expect(page.getByTestId('balance')).toHaveText('Баланс 586,00 BYN');
+});
+
+test('«Положить» beyond the free money is refused with the reason; «Забрать» beyond the jar too', async ({ page }) => {
+  await openG(page);
+  await savingsTab(page).click();
+  let sheet = await moveSheet(page, 'Положить', 'Подушка', '0');
+  await expect(sheet.getByTestId('move-preview')).toHaveText('Можно положить до 196,89 BYN');
+  await typeAmount(page, '500');
+  await expect(sheet.getByTestId('move-preview')).toHaveText('Свободно 196,89 BYN: остальное нужно до 5 октября');
+  await sheet.getByRole('button', { name: 'Положить', exact: true }).click({ force: true });
+  await expect(sheet.getByTestId('form-missing')).toHaveText('Свободно 196,89 BYN: остальное нужно до 5 октября');
+  await expect(page.locator('.move-sheet')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.move-sheet')).toHaveCount(0);
+
+  sheet = await moveSheet(page, 'Забрать', 'Велосипед', '50');
+  await expect(sheet.getByTestId('move-preview')).toHaveText('Можно забрать не больше 40,00 BYN');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('savings-total')).toHaveText('В копилке 103,40 BYN');
+});
+
+test('«Забрать 20» from a deadline goal warns how much a day it will take, then the limit goes up', async ({ page }) => {
+  const data = exampleG();
+  data.savingsMoves.push(move({ goalId: 'headphones', amountKopecks: 3000, date: '2026-09-29' }));
+  await openG(page, data);
+  await expect(page.getByTestId('hero-amount')).toHaveText('34,05');
+  await savingsTab(page).click();
+  const sheet = await moveSheet(page, 'Забрать', 'Наушники', '20');
+  await expect(sheet.locator('.sheet-hint')).toHaveText([
+    'Чтобы успеть к 20 ноября, в день будет уходить 2,50 вместо 2,12',
+    'Лимит станет 37,67 BYN в день',
+  ]);
+  await expect(sheet.locator('.sheet-hint').first()).toHaveClass(/is-danger/);
+  await settle(page);
+  await page.screenshot({ path: test.info().outputPath('take-sheet.png') });
+  await sheet.getByRole('button', { name: 'Забрать', exact: true }).click();
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/Забрал · Наушники.*−20,00/);
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('37,67');
+});
+
+test('a move by hand opens «Удалить»: it asks first, then the move and its effect are gone', async ({ page }) => {
+  const data = exampleG();
+  data.savingsMoves.push(move({ goalId: 'headphones', amountKopecks: 1000, date: '2026-09-30' }));
+  await openG(page, data);
+  await savingsTab(page).click();
+  const rows = page.getByTestId('savings-move');
+  // Computed rows are not buttons: only the move by hand opens the sheet.
+  await expect(rows.getByRole('button')).toHaveCount(1);
+  await rows.getByRole('button', { name: /Вручную → Наушники/ }).click();
+  await expect(page.locator('.action-title')).toHaveText('Вручную → Наушники · +10,00 BYN · 30 сен');
+  await page.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await expect(page.getByTestId('move-delete-text')).toHaveText('Удалить? Лимит станет 39,37 BYN в день');
+  await page.getByRole('button', { name: 'Да, удалить' }).click();
+  await expect(rows.getByRole('button')).toHaveCount(0);
+  await expect(rows.first()).toHaveText(/По расписанию → Поездка.*28 сен/);
+
+  // Money taken out and already spent cannot go back into the jar.
+  const spent = exampleG();
+  spent.savingsMoves.push(move({ goalId: null, amountKopecks: -3000, date: '2026-09-29' }));
+  spent.transactions.push(expense('2026-09-29', 21000, 'fun'));
+  await page.evaluate((d) => localStorage.setItem('dayly:data', d), JSON.stringify(spent));
+  await page.reload();
+  await savingsTab(page).click();
+  await rows.getByRole('button', { name: /Забрал из подушки/ }).click();
+  await page.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await expect(page.getByTestId('move-delete-text')).toHaveText('Удалить нельзя: эти деньги уже в лимите, без них до 5 октября не хватит 13,11 BYN');
+  await expect(page.getByRole('button', { name: 'Да, удалить' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Понятно' }).click();
+  await expect(rows.getByRole('button', { name: /Забрал из подушки/ })).toHaveCount(1);
+});
+
+test('rounding up to 1 BYN: an expense of 4,30 puts 0,70 into the cushion, «Отменить» takes both back', async ({ page }) => {
+  await openG(page);
+  await savingsTab(page).click();
+  const roundUp = page.getByRole('switch', { name: /Округлять траты до 1 BYN/ });
+  await expect(roundUp).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('roundup-note')).toHaveText('Трата 4,30 → 0,70 в подушку');
+  await expect(page.getByRole('group', { name: 'Куда округлять' }).getByRole('button', { name: 'Подушка' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await page.getByRole('button', { name: '+ Трата' }).click();
+  await typeAmount(page, '4,30');
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('34,93');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/Округление → Подушка.*30 сен.*\+0,70/);
+  await expect(jarCard(page, 'cushion')).toContainText('30,70');
+
+  // Deleting the expense deletes its round-up.
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await page.getByTestId('operation').first().click({ button: 'right' });
+  await page.getByRole('button', { name: 'Удалить трату' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('39,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/По расписанию → Поездка/);
+  await expect(jarCard(page, 'cushion')).toContainText('30,00');
+
+  // So does «Отменить» right after «Добавить».
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await page.getByRole('button', { name: '+ Трата' }).click();
+  await typeAmount(page, '4,30');
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('34,93');
+  await page.getByRole('button', { name: 'Отменить' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('39,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/По расписанию → Поездка/);
+
+  // Into a goal, or off.
+  await page.getByRole('group', { name: 'Куда округлять' }).getByRole('button', { name: 'Велосипед' }).click();
+  await expect(page.getByTestId('roundup-note')).toHaveText('Трата 4,30 → 0,70 в «Велосипед»');
+  await roundUp.click();
+  await expect(roundUp).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('group', { name: 'Куда округлять' })).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dayly:data')!).settings.roundUp)).toBeNull();
+});
+
+test('«Остаток дня» here is the same switch as in «Функции»', async ({ page }) => {
+  await openG(page);
+  await savingsTab(page).click();
+  const leftover = page.getByRole('switch', { name: /Остаток дня/ });
+  await expect(leftover).toHaveAttribute('aria-checked', 'true');
+  await leftover.click();
+  await expect(leftover).toContainText('не спрашивать');
+  await page.locator('.tab-bar').getByRole('button', { name: 'Настройки' }).click();
+  await expect(page.getByTestId('settings-features').getByRole('switch', { name: 'Остаток дня в копилку' })).toHaveAttribute('aria-checked', 'false');
+});
+
+test('a jar of 50 BYN every week: the limit counts its next day at once, on that day +50 in the history', async ({ page }) => {
+  await openG(page);
+  await savingsTab(page).click();
+  await page.getByRole('button', { name: '+ Новая банка' }).click();
+  await expect(page.getByRole('heading', { name: 'Новая банка' })).toBeVisible();
+  await page.getByPlaceholder('Например, наушники').fill('Концерт');
+  await page.locator('.form-screen').getByPlaceholder('0,00').first().fill('300');
+  await page.getByRole('radio', { name: 'Сумма по расписанию' }).click();
+  await page.getByLabel('Сколько откладывать').fill('50');
+  await page.getByRole('radio', { name: 'Каждую неделю' }).click();
+  await page.getByRole('radio', { name: 'Чт' }).click();
+  await expect(page.locator('.field-hint')).toHaveText('Наполнится ~5 ноя.');
+  await page.getByRole('button', { name: 'Сохранить' }).click();
+
+  const jar = page.locator('[data-testid="jar-card"]', { hasText: 'Концерт' });
+  await expect(jar).toHaveText(/Концерт0 из 300.*50 BYN каждую неделю · наполнится ~5 ноя/);
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  // Thursday 1 October is before the scholarship of 5 October: 196,89 − 50,00 = 146,89 ÷ 5.
+  await expect(page.getByTestId('hero-amount')).toHaveText('29,37');
+
+  await page.clock.setSystemTime(new Date('2026-10-01T10:00:00'));
+  await page.reload();
+  await expect(page.getByTestId('hero-amount')).toHaveText('36,72');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('savings-move').first()).toHaveText(/По расписанию → Концерт.*1 окт.*\+50,00/);
+  await expect(jar).toContainText('Концерт50 из 300');
+});
+
+test('a full jar: the piggy cheers once, «Купил» spends from the jar and the limit stays', async ({ page }) => {
+  const data = exampleG();
+  data.goals = data.goals.map((g) => (g.id === 'trip' ? { ...g, initialSavedKopecks: 8000 } : g));
+  await openG(page, data);
+  await expect(page.getByTestId('hero-amount')).toHaveText('23,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('piggy-happy')).toBeVisible();
+  const trip = jarCard(page, 'trip');
+  await expect(trip).toHaveText(/Поездка100 из 100.*Банка полна!КупилКоплю дальше/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('dayly:ui')!).celebratedJars)).toEqual(['trip']);
+  await settle(page);
+  await page.screenshot({ path: test.info().outputPath('jar-full.png') });
+  // Not again on the next visit.
+  await page.reload();
+  await savingsTab(page).click();
+  await expect(trip).toBeVisible();
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId('piggy-happy')).toHaveCount(0);
+
+  // «Коплю дальше» opens the jar to raise the target.
+  await trip.getByRole('button', { name: 'Коплю дальше' }).click();
+  await expect(page.getByText('Банка полна. Чтобы копить дальше, подними цель.')).toBeVisible();
+  await page.getByRole('button', { name: '‹ Назад' }).click();
+
+  await trip.getByRole('button', { name: 'Купил' }).click();
+  await expect(page.locator('.action-text')).toHaveText('Покупка спишется из копилки, дневной лимит не изменится.');
+  await page.getByRole('button', { name: 'Купил за 100,00 BYN' }).click();
+  await expect(trip).toHaveCount(0);
+  await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня' }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('23,37');
+  await expect(page.getByTestId('balance')).toHaveText('Баланс 486,00 BYN');
+});
+
+// Node's Buffer for setInputFiles; the project has no Node types (as playwright.config.ts declares process).
+declare const Buffer: { from(text: string): never };
+
+/** Example А with a percent goal as version 5 saved it: no moves, no schedules, no round-up, no cushion target. */
+function exampleV5(): Record<string, unknown> {
+  const data = exampleA();
+  data.goals.push({ id: 'bike', name: 'Велосипед', targetKopecks: 19000, initialSavedKopecks: 4000, startDate: '2026-09-26', deadline: null, percent: 15, schedule: null, status: 'active' });
+  const { savingsMoves: _moves, ...rest } = data;
+  const { roundUp: _roundUp, cushion, ...settings } = data.settings;
+  const { targetKopecks: _target, ...oldCushion } = cushion;
+  return { ...rest, schemaVersion: 5, settings: { ...settings, cushion: oldCushion }, goals: data.goals.map(({ schedule: _s, ...goal }) => goal) };
+}
+
+test('data of version 5 and a copy of version 4 open with their jars', async ({ page }) => {
+  await open(page, exampleV5() as unknown as AppData, UI, G_DAY);
+  await expect(page.getByTestId('hero-amount')).toHaveText('43,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('jar-card')).toHaveText([/Подушка30,00\sBYN/, /Наушники13 из 150.*к 20 ноября/, /Велосипед40 из 190.*15% с поступления/]);
+  await expect(page.getByRole('switch', { name: /Округлять траты/ })).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByText('Здесь будет всё, что положено в копилку и забрано из неё.')).toBeVisible();
+
+  // A copy saved by version 4: goals only by a date.
+  const v5 = exampleV5() as { settings: Record<string, unknown>; goals: Record<string, unknown>[]; incomeSources: Record<string, unknown>[]; payments: Record<string, unknown>[] };
+  const { targetDailyLimitKopecks: _t, ...settings4 } = v5.settings;
+  const v4 = {
+    ...v5,
+    schemaVersion: 4,
+    settings: settings4,
+    incomeSources: v5.incomeSources.map(({ date: _d, ...s }) => s),
+    payments: v5.payments.map(({ weekday: _w, date: _d, ...p }) => p),
+    goals: v5.goals.filter((g) => g.id === 'headphones').map(({ percent: _p, ...g }) => g),
+  };
+  await page.locator('.tab-bar').getByRole('button', { name: 'Настройки' }).click();
+  await page.getByTestId('restore-input').setInputFiles({
+    name: 'dayly-v4.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ app: 'dayly', exportedAt: '2026-09-28T10:00:00.000Z', data: v4 })),
+  });
+  await page.getByRole('button', { name: 'Восстановить', exact: true }).click();
+  await expect(page.getByTestId('hero-amount')).toHaveText('51,37');
+  await savingsTab(page).click();
+  await expect(page.getByTestId('jar-card')).toHaveText([/Подушка30,00\sBYN/, /Наушники13 из 150.*к 20 ноября · 2,68 в день/]);
+});
+
+// «Крупный текст» (task E) is not on this branch yet; the merge checks it on the same screens.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`«Копилка» on 375×667, ${scheme}: the piggy, both buttons and the first jar on the first screen`, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 375, height: 667 }, colorScheme: scheme, locale: 'ru-RU' });
+    const page = await context.newPage();
+    const data = exampleG();
+    data.settings.cushion = { mode: 'percent', percent: 10, baseKopecks: 3000, sinceDate: '2026-09-26', targetKopecks: 10000 };
+    await openG(page, data);
+    await savingsTab(page).click();
+    const bar = (await page.locator('.tab-bar').boundingBox())!;
+    for (const target of [page.getByTestId('piggy'), page.locator('.savings-actions'), jarCard(page, 'cushion')]) {
+      const box = (await target.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
+    }
+    // Every button of the tab is at least 44 px tall to tap.
+    const small = await page.locator('.savings-screen button, .savings-screen input').evaluateAll((els) =>
+      // A chip adds an invisible 3 px above and below (jars.css).
+      els
+        .map((el) => [el.textContent?.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height + (el.classList.contains('chip') ? 6 : 0)] as const)
+        .filter(([, h]) => h < 44),
+    );
+    expect(small).toEqual([]);
+    await expectNoOverflow(page);
+    await settle(page);
+    const name = `savings-${scheme}`;
+    await page.screenshot({ path: test.info().outputPath(`${name}-top.png`) });
+    await page.locator('.screen').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await settle(page);
+    await page.screenshot({ path: test.info().outputPath(`${name}-bottom.png`) });
+    await page.locator('.screen').evaluate((el) => el.scrollTo(0, 0));
+    await page.locator('.savings-actions').getByRole('button', { name: 'Забрать' }).click();
+    await page.locator('.move-sheet .chip', { hasText: 'Велосипед' }).click();
+    await typeAmount(page, '15');
+    const submit = (await page.locator('.move-sheet').getByRole('button', { name: 'Забрать', exact: true }).boundingBox())!;
+    expect(submit.y + submit.height).toBeLessThanOrEqual(667);
+    await settle(page);
+    await page.screenshot({ path: test.info().outputPath(`${name}-take.png`) });
+    await context.close();
+  });
 }

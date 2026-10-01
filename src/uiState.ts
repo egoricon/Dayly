@@ -67,10 +67,15 @@ export interface UiState {
   dismissedCards: string[];
   /** «Крупный текст» in «Настройки → Тема»: every font size 1.2×, through data-text-size on <html>. */
   largeText: boolean;
+  /** «Копилка»: jars (a goal's id or 'cushion') the piggy has cheered for once they got full. */
+  celebratedJars: string[];
 }
 
 /** How many closed cards are remembered: older ones belong to periods long gone. */
 export const MAX_DISMISSED_CARDS = 20;
+
+/** How many cheered jars are remembered: the newest ones. */
+export const MAX_CELEBRATED_JARS = 50;
 
 function isAccent(value: unknown): value is Accent {
   return ACCENTS.some((a) => a.id === value);
@@ -93,6 +98,7 @@ export function defaultUiState(): UiState {
     tipsShown: false,
     dismissedCards: [],
     largeText: false,
+    celebratedJars: [],
   };
 }
 
@@ -114,6 +120,9 @@ export function loadUiState(storage: Storage): UiState {
         ? parsed.dismissedCards.filter((key): key is string => typeof key === 'string').slice(-MAX_DISMISSED_CARDS)
         : [],
       largeText: parsed.largeText === true,
+      celebratedJars: Array.isArray(parsed.celebratedJars)
+        ? parsed.celebratedJars.filter((key): key is string => typeof key === 'string').slice(-MAX_CELEBRATED_JARS)
+        : [],
     };
   } catch {
     return defaultUiState();
@@ -142,6 +151,13 @@ export function dismissCard(state: UiState, key: string): UiState {
 
 export function isCardDismissed(state: UiState, key: string): boolean {
   return state.dismissedCards.includes(key);
+}
+
+/** The piggy has cheered for these jars getting full; each only once. */
+export function celebrateJars(state: UiState, keys: string[]): UiState {
+  const fresh = keys.filter((key) => !state.celebratedJars.includes(key));
+  if (fresh.length === 0) return state;
+  return { ...state, celebratedJars: [...state.celebratedJars, ...fresh].slice(-MAX_CELEBRATED_JARS) };
 }
 
 export function isFeatureOn(state: UiState, key: FeatureKey): boolean {
