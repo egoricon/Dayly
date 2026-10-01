@@ -315,6 +315,11 @@ export function saveGoal(data: AppData, goal: Goal): AppData {
   return { ...data, goals: upsert(data.goals, goal) };
 }
 
+/** A goal that is bought or cancelled takes no round-ups any more: they go to the cushion instead. */
+function withoutRoundUpInto(data: AppData, goalId: string): AppData {
+  return data.settings.roundUp?.goalId === goalId ? setRoundUp(data, { cushion: true }) : data;
+}
+
 /** «Купил»: the purchase is spent from the saved money, not from the limit. */
 export function buyGoal(data: AppData, goalId: string, amountKopecks: number, today: LocalDate, now: Date): AppData {
   const goal = data.goals.find((g) => g.id === goalId);
@@ -324,12 +329,12 @@ export function buyGoal(data: AppData, goalId: string, amountKopecks: number, to
     goalId,
     note: goal.name,
   });
-  return saveGoal(next, { ...goal, status: 'done' });
+  return withoutRoundUpInto(saveGoal(next, { ...goal, status: 'done' }), goalId);
 }
 
 export function cancelGoal(data: AppData, goalId: string): AppData {
   const goal = data.goals.find((g) => g.id === goalId);
-  return goal ? saveGoal(data, { ...goal, status: 'cancelled' }) : data;
+  return goal ? withoutRoundUpInto(saveGoal(data, { ...goal, status: 'cancelled' }), goalId) : data;
 }
 
 // Savings moves (update 2)

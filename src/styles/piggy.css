@@ -101,6 +101,12 @@
   stroke: var(--piggy-face);
 }
 
+/* One jar got full but the coins are not up to the face: the face in the outline's colour, on the body. */
+.piggy.is-cheer .piggy-face path,
+.piggy.is-cheer .piggy-slot {
+  stroke: var(--piggy-line);
+}
+
 /* Coins inside: a flat level with a texture of coins and a pile on top. */
 .piggy-level {
   transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
