@@ -61,7 +61,7 @@ function lived(): AppData {
   return data;
 }
 
-/** Opens the app with `data`; the tips and «Что нового» are already seen. Seeds only once, so a reload keeps changes. */
+/** Opens the app with `data`; the hints and «Что нового» are already seen. Seeds only once, so a reload keeps changes. */
 async function open(page: Page, data: AppData, ui: Record<string, unknown> = {}) {
   await page.addInitScript(
     ([data, ui]) => {

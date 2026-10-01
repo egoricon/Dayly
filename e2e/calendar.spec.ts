@@ -56,7 +56,7 @@ function lived(): AppData {
   return data;
 }
 
-/** Seeds the data once, so a reload keeps what the test changed. The first-launch tips are done. */
+/** Seeds the data once, so a reload keeps what the test changed. «Знакомство» is done (INTRO_DONE). */
 async function seed(page: Page, data: AppData, ui: Record<string, unknown> = {}) {
   await page.addInitScript(
     ({ data, ui }) => {

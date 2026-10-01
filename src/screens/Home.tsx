@@ -149,8 +149,8 @@ export function Home(props: HomeProps) {
     setExplainOpen(true);
     learn.onExplainOpened();
   };
-  // A hint waits while a sheet is open: it never stands between the person and an expense.
-  const overlay = sheet.open || actionsFor !== null || split.state?.ready === true;
+  // A hint waits while a sheet or «Отменить» is open: it never stands between the person and an expense.
+  const overlay = sheet.open || actionsFor !== null || split.state?.ready === true || Boolean(undo && undone);
   const lessonContext: HomeLessonContext = {
     banner: banner?.kind ?? null,
     savingsCard:

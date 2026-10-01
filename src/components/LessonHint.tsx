@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { GuideSection, Lesson, LessonTarget } from '../intro';
 import type { LessonId } from '../uiState';
@@ -14,6 +14,8 @@ const SHOW_AFTER_MS = 500;
 /** How often a hint looks for its target, which may not be on screen yet (a row below the fold). */
 const LOOK_EVERY_MS = 250;
 const GAP = 12;
+/** Room kept between the bubble and the screen edge or the fixed bottom. */
+const EDGE = 8;
 /** Enough of the target must be on screen for a hint to point at it. */
 const VISIBLE_PX = 40;
 
@@ -46,9 +48,9 @@ function findTarget(target: LessonTarget): Element | null {
   }
 }
 
-/** Where the screen ends above the fixed bottom: the buttons of the home screen or the tab bar. */
+/** Where the screen ends above the fixed bottom: «+ Доход» and «+ Трата» of the home screen, or the tab bar. */
 function visibleBottom(): number {
-  const tops = Array.from(document.querySelectorAll('.home-bottom, .tab-bar')).map((el) => el.getBoundingClientRect().top);
+  const tops = Array.from(document.querySelectorAll('.home-actions, .tab-bar')).map((el) => el.getBoundingClientRect().top);
   return Math.min(window.innerHeight, ...tops.filter((top) => top > 0));
 }
 
@@ -72,6 +74,7 @@ interface LessonHintProps {
 export function LessonHint({ lesson, onSeen, onMore }: LessonHintProps) {
   const [ready, setReady] = useState(false);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [height, setHeight] = useState(0);
   const bubble = useRef<HTMLDivElement>(null);
   const seen = useRef(onSeen);
   seen.current = onSeen;
@@ -107,6 +110,12 @@ export function LessonHint({ lesson, onSeen, onMore }: LessonHintProps) {
 
   const shown = ready && rect !== null;
 
+  // The bubble's height, so that it can keep clear of the buttons at the bottom (with «Крупный текст»).
+  useLayoutEffect(() => {
+    const measured = bubble.current?.offsetHeight ?? 0;
+    if (measured !== height) setHeight(measured);
+  });
+
   // A tap anywhere else closes the hint and still reaches what was tapped.
   useEffect(() => {
     if (!shown) return;
@@ -131,8 +140,11 @@ export function LessonHint({ lesson, onSeen, onMore }: LessonHintProps) {
   const shell = document.querySelector('.app-shell')?.getBoundingClientRect();
   const left = (shell?.left ?? 0) + 16;
   const width = (shell?.width ?? window.innerWidth) - 32;
+  // Next to the target, unless that would cover the buttons at the bottom or go off the top: then the
+  // bubble moves onto the edge of the target instead.
   const below = rect.top + rect.height / 2 < window.innerHeight / 2;
-  const style: CSSProperties = below ? { left, width, top: rect.top + rect.height + GAP } : { left, width, bottom: window.innerHeight - rect.top + GAP };
+  const top = below ? Math.min(rect.top + rect.height + GAP, visibleBottom() - height - EDGE) : Math.max(rect.top - GAP - height, EDGE);
+  const style: CSSProperties = { left, width, top };
   const arrow = Math.min(Math.max(rect.left + rect.width / 2 - left, 28), width - 28);
   const more = lesson.more !== null && onMore ? lesson.more : null;
 

@@ -400,6 +400,11 @@ test('a new person: the ring hint after the setup, then what is left after the f
   await page.getByRole('button', { name: 'Добавить', exact: true }).click();
   await expect(page.locator('.expense-sheet')).toHaveCount(0);
   await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
+  // It waits while «Отменить» is on screen (5 s), so as not to cover it.
+  const undo = page.getByRole('status').filter({ hasText: 'Отменить' });
+  await expect(undo).toBeVisible();
+  await expect(hint).toHaveCount(0);
+  await expect(undo).toHaveCount(0, { timeout: 7000 });
   await expect(hint).toHaveAttribute('data-lesson', 'firstExpense');
   await expect(hint.getByTestId('lesson-text')).toHaveText('Осталось 51,05 BYN. Не потратишь сегодня — завтра можно будет больше');
   await expect(week.getByTestId('first-week-title')).toHaveText('Знакомство с Dayly · 1 из 5');
