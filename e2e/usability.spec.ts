@@ -214,14 +214,10 @@ test('tap areas of at least 44×44 on the home screen, the expense sheet, histor
   await expectTapAreas(page.getByTestId('category-total'));
   await expectTapAreas(page.locator('.history-list').getByRole('button'));
 
-  // «Календарь»: the month arrows.
-  await page.getByRole('button', { name: 'Календарь', exact: true }).click();
-  await settle(page);
-  await expectTapAreas(page.getByRole('button', { name: /месяц$/ }));
-
-  // «Финансы»: the list rows.
+  // «Финансы»: the calendar's month arrows and the list rows.
   await page.getByRole('button', { name: 'Финансы' }).click();
   await settle(page);
+  await expectTapAreas(page.getByRole('button', { name: /месяц$/ }));
   await expectTapAreas(page.locator('.screen .list-row'));
 
   // «Настройки»: the theme, «Крупный текст», the accents and the rows.
