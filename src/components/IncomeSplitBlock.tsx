@@ -1,22 +1,15 @@
 import { useState } from 'react';
 import '../styles/savings.css';
-import { saveGoal, setCushionPercent } from '../appData';
 import { formatKopecks } from '../domain/money';
-import { incomeSplit, rebasedGoal } from '../domain/savings';
+import { incomeSplit } from '../domain/savings';
 import type { AppData, LocalDate } from '../domain/types';
+import { withPercent } from '../ui/jars';
 import { fromIncomeText, lifePercent, maxPercent, percentLimitText, percentLine, percentRules, referenceIncome, type PercentRule } from '../ui/savings';
 
 interface IncomeSplitBlockProps {
   data: AppData;
   today: LocalDate;
   update: (change: (data: AppData) => AppData) => void;
-}
-
-/** A new percent of a rule, counted from today on: what was saved by yesterday stays. */
-export function withPercent(data: AppData, rule: PercentRule, percent: number, today: LocalDate): AppData {
-  if (rule.goalId === null) return setCushionPercent(data, percent, today);
-  const goal = data.goals.find((g) => g.id === rule.goalId);
-  return goal ? saveGoal(data, { ...rebasedGoal(data, goal, today), percent }) : data;
 }
 
 /**

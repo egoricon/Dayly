@@ -1,4 +1,4 @@
-import { deleteSavingsMove } from '../appData';
+import { deleteSavingsMove, saveGoal, setCushionPercent } from '../appData';
 import { calculateDay } from '../domain/budget';
 import {
   deadlineDailyKopecks,
@@ -17,10 +17,10 @@ import {
 } from '../domain/jars';
 import type { SavingsHistoryRow } from '../domain/jarHistory';
 import { formatKopecks } from '../domain/money';
-import { periodSavings } from '../domain/savings';
+import { periodSavings, rebasedGoal } from '../domain/savings';
 import type { AppData, LocalDate } from '../domain/types';
 import { formatDayMonth } from './labels';
-import { moneyInText, shortMoney, wholeMoney } from './savings';
+import { moneyInText, shortMoney, wholeMoney, type PercentRule } from './savings';
 
 // The «Копилка» tab of update 2 on screen: what a jar card says, the lines of the «Положить» and
 // «Забрать» sheets, the history rows and when a move may be deleted. Pure, so the texts are tested
@@ -253,4 +253,13 @@ export function roundUpNote(data: AppData, today: LocalDate): string | null {
   if (!jar) return null;
   if (jar.kind !== 'cushion' && jarRoom(data, jar.target, today) === 0) return `«${jar.name}» уже полна: пока округление не откладывается`;
   return `Трата 4,30 → 0,70 ${intoJar(jar)}`;
+}
+
+// «Как копим»
+
+/** A new percent of a rule typed in the split, counted from today on: what was saved by yesterday stays. */
+export function withPercent(data: AppData, rule: PercentRule, percent: number, today: LocalDate): AppData {
+  if (rule.goalId === null) return setCushionPercent(data, percent, today);
+  const goal = data.goals.find((g) => g.id === rule.goalId);
+  return goal ? saveGoal(data, { ...rebasedGoal(data, goal, today), percent }) : data;
 }
