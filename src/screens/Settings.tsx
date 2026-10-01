@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { setTheme } from '../appData';
 import { backupFileName, makeBackup, parseBackup, saveBackupFile, type ParsedBackup } from '../backup';
 import { BottomSheet } from '../components/BottomSheet';
@@ -12,8 +12,10 @@ import type { GuideSection } from '../intro';
 import { formatDayMonth } from '../ui/labels';
 import { ACCENTS, type Accent, type FeatureKey } from '../uiState';
 import type { Update } from './Finances';
-import { Guide } from './Guide';
 
+
+// «Как устроен Dayly» is read once or twice; it loads when opened.
+const Guide = lazy(() => import('./Guide').then((m) => ({ default: m.Guide })));
 export type SettingsRoute = { screen: 'main' } | { screen: 'install' } | { screen: 'guide'; section: GuideSection | null };
 
 export interface SettingsProps {
@@ -65,7 +67,11 @@ export function Settings(props: SettingsProps) {
 
   if (route.screen === 'install') return <InstallGuide install={props.install} onBack={() => onNavigate({ screen: 'main' })} />;
   if (route.screen === 'guide') {
-    return <Guide data={data} budget={props.budget} lastBackupAt={props.lastBackupAt} section={route.section} onBack={() => onNavigate({ screen: 'main' })} />;
+    return (
+      <Suspense fallback={null}>
+        <Guide data={data} budget={props.budget} lastBackupAt={props.lastBackupAt} section={route.section} onBack={() => onNavigate({ screen: 'main' })} />
+      </Suspense>
+    );
   }
 
   const share = () => {

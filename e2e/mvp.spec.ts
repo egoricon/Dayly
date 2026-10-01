@@ -111,6 +111,14 @@ test('data survive a browser restart; the app opens offline', async ({}, testInf
     await page.reload();
     await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
     console.log('offline reload:', await page.locator('.ring-center').innerText());
+    // Screens loaded on demand were precached too, so they open offline on the first visit.
+    await page.locator('.tab-bar').getByRole('button', { name: 'Копилка', exact: true }).click();
+    await expect(page.getByTestId('piggy')).toBeVisible();
+    await page.locator('.tab-bar').getByRole('button', { name: 'Финансы', exact: true }).click();
+    await expect(page.getByTestId('finance-calendar')).toBeVisible();
+    await page.locator('.tab-bar').getByRole('button', { name: 'Сегодня', exact: true }).click();
+    await page.getByTestId('ring').click();
+    await expect(page.getByText('Как считается лимит', { exact: true }).first()).toBeVisible();
     await context.close();
   }
 });

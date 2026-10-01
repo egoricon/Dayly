@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { MAX_FAVORITES, restoreCategory } from '../appData';
 import type { BudgetResult } from '../domain/budget';
 import { activeCategories, categoryName, MAX_CATEGORIES } from '../domain/categories';
@@ -8,11 +8,14 @@ import type { AppData, LocalDate } from '../domain/types';
 import { isCurrentPlan } from '../events';
 import type { FeatureKey } from '../uiState';
 import { formatDayMonth, scheduleText } from '../ui/labels';
-import { CalendarBlock, type CalendarFocus } from './CalendarScreen';
+import type { CalendarFocus } from './CalendarScreen';
 import { CategoryForm, FavoriteForm, IncomeForm, PaymentForm, PaymentsList, ReconcileForm } from './SettingsForms';
 import { TargetForm, TargetSection } from './TargetForm';
 
 // The cushion and the goals live in «Копилка» since update 2 (src/screens/Savings.tsx).
+// The calendar is the heaviest part of «Финансы»; it loads when the tab is first opened.
+const CalendarBlock = lazy(() => import('./CalendarScreen').then((m) => ({ default: m.CalendarBlock })));
+
 export type FinanceRoute =
   | { screen: 'main' }
   | { screen: 'income'; id: string | null }
@@ -84,7 +87,11 @@ export function Finances(props: FinanceProps) {
     <main className={`screen settings with-tabs${cameBack ? ' is-back' : ''}`}>
       <h1 className="screen-title">Финансы</h1>
 
-      {feature('calendar') && <CalendarBlock data={data} budget={budget} today={today} update={update} focus={props.calendarFocus ?? null} />}
+      {feature('calendar') && (
+        <Suspense fallback={<div className="cal-placeholder" />}>
+          <CalendarBlock data={data} budget={budget} today={today} update={update} focus={props.calendarFocus ?? null} />
+        </Suspense>
+      )}
 
       <span className="section-label">Доходы</span>
       {incomes.length > 0 && (

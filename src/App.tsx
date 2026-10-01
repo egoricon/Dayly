@@ -1,16 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createInitialData, recordDaySummary } from './appData';
 import { TabBar, type Tab } from './components/TabBar';
 import { calculateBudget } from './domain/budget';
 import { toLocalDate } from './domain/dates';
 import type { AppData, LocalDate } from './domain/types';
 import type { CalendarFocus } from './screens/CalendarScreen';
-import { FirstLimit } from './screens/FirstLimit';
 import { History } from './screens/History';
 import { Home, type IntroCard } from './screens/Home';
-import { Onboarding } from './screens/Onboarding';
 import { Finances, type FinanceRoute, type Update } from './screens/Finances';
-import { Savings, type SavingsRoute } from './screens/Savings';
+import type { SavingsRoute } from './screens/Savings';
 import { Settings, type SettingsRoute } from './screens/Settings';
 import { DATA_KEY, loadData, saveData } from './storage';
 import { InAppBrowserBanner, useInstallInfo } from './components/InstallHint';
@@ -32,6 +30,11 @@ import {
 } from './intro';
 import { backupFileName, makeBackup, saveBackupFile } from './backup';
 import { LessonHint } from './components/LessonHint';
+
+// Screens most launches never open load on demand, so the home screen starts sooner on an old phone.
+const Onboarding = lazy(() => import('./screens/Onboarding').then((m) => ({ default: m.Onboarding })));
+const FirstLimit = lazy(() => import('./screens/FirstLimit').then((m) => ({ default: m.FirstLimit })));
+const Savings = lazy(() => import('./screens/Savings').then((m) => ({ default: m.Savings })));
 
 /** Today's date that follows midnight and a return to the app after a pause. */
 function useToday(): LocalDate {
@@ -144,6 +147,7 @@ export function App() {
     return (
       <div className={shellClass}>
         {inAppBanner}
+        <Suspense fallback={null}>
         <Onboarding
           today={today}
           onComplete={(result) => {
@@ -154,6 +158,7 @@ export function App() {
             setShowFirstLimit(true);
           }}
         />
+        </Suspense>
       </div>
     );
   }
@@ -222,6 +227,7 @@ export function App() {
     return (
       <div className={shellClass}>
         {inAppBanner}
+        <Suspense fallback={null}>
         <FirstLimit
           data={data}
           budget={budget}
@@ -232,6 +238,7 @@ export function App() {
           }}
           onDone={() => setShowFirstLimit(false)}
         />
+        </Suspense>
       </div>
     );
   }
@@ -275,6 +282,7 @@ export function App() {
         />
       )}
       {tab === 'savings' && feature('savings') && (
+        <Suspense fallback={null}>
         <Savings
           data={data}
           budget={budget}
@@ -287,6 +295,7 @@ export function App() {
           celebratedJars={ui.celebratedJars}
           onCelebrate={(keys) => setUi((state) => celebrateJars(state, keys))}
         />
+        </Suspense>
       )}
       {tab === 'history' && <History data={data} budget={budget} today={today} update={update} />}
       {tab === 'finances' && (
