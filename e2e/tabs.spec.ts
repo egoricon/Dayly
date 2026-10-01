@@ -292,6 +292,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     expect(grid.y + grid.height).toBeLessThanOrEqual(bar.y);
     await shoot(page, `finances-${colorScheme}`);
     await tab(page, 'Копилка').click();
+    await expect(page.getByTestId('piggy')).toBeVisible();
     await shoot(page, `savings-${colorScheme}`);
     await context.close();
   });

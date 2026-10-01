@@ -282,7 +282,7 @@ export function App() {
         />
       )}
       {tab === 'savings' && feature('savings') && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<main className="screen settings with-tabs" aria-busy="true" />}>
         <Savings
           data={data}
           budget={budget}

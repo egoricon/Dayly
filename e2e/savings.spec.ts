@@ -690,6 +690,7 @@ for (const scheme of ['light', 'dark'] as const) {
     data.settings.cushion = { mode: 'percent', percent: 10, baseKopecks: 3000, sinceDate: '2026-09-26', targetKopecks: 10000 };
     await openG(page, data);
     await savingsTab(page).click();
+    await expect(page.getByTestId('piggy')).toBeVisible();
     const bar = (await page.locator('.tab-bar').boundingBox())!;
     for (const target of [page.getByTestId('piggy'), page.locator('.savings-actions'), jarCard(page, 'cushion')]) {
       const box = (await target.boundingBox())!;
