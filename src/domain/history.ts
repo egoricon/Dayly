@@ -1,6 +1,6 @@
 import { splitAllExpenses } from './budget';
 import { addDays } from './dates';
-import type { AppData, LocalDate, Transaction } from './types';
+import type { AppData, Category, LocalDate, Transaction } from './types';
 
 // History 2h: operations grouped by day with «потрачено из лимита · перенос».
 
@@ -43,6 +43,51 @@ export function historyDays(data: AppData, today: LocalDate, todayLimitKopecks: 
       const carryKopecks = date === today || dailyLimitKopecks === null ? null : dailyLimitKopecks - spentFromLimitKopecks;
       return { date, entries, spentFromLimitKopecks, dailyLimitKopecks, carryKopecks };
     });
+}
+
+// «Куда уходят деньги» (update 2): totals by category on top of the history.
+
+export interface CategoryTotal {
+  category: Category;
+  totalKopecks: number;
+  fromLimitKopecks: number;
+  fromReserveKopecks: number;
+}
+
+/** Whether an expense counts in a category: payments and goal purchases have none. */
+function inCategory(t: Transaction, category: Category | null): boolean {
+  return t.type === 'expense' && t.category !== null && t.paymentId === null && t.goalId === null && (category === null || t.category === category);
+}
+
+/**
+ * Expenses by category from `from` to `to`, the biggest first (equal ones in the order of the categories),
+ * each split into what came from the limit and from a reserve. Only categories with expenses are listed.
+ */
+export function categoryTotals(data: AppData, from: LocalDate, to: LocalDate): CategoryTotal[] {
+  const splits = splitAllExpenses(data);
+  const totals = new Map<Category, CategoryTotal>();
+  for (const t of data.transactions) {
+    if (!inCategory(t, null) || t.date < from || t.date > to) continue;
+    const fromLimit = splits.get(t.id)?.fromLimitKopecks ?? t.amountKopecks;
+    const total = totals.get(t.category!) ?? { category: t.category!, totalKopecks: 0, fromLimitKopecks: 0, fromReserveKopecks: 0 };
+    total.totalKopecks += t.amountKopecks;
+    total.fromLimitKopecks += fromLimit;
+    total.fromReserveKopecks += t.amountKopecks - fromLimit;
+    totals.set(t.category!, total);
+  }
+  const order = (category: Category) => {
+    const index = data.settings.categories.findIndex((c) => c.id === category);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return [...totals.values()].sort((a, b) => b.totalKopecks - a.totalKopecks || order(a.category) - order(b.category));
+}
+
+/** History days showing only the expenses of `category` from `from` on; days left empty go. */
+export function filterHistoryDays(days: HistoryDay[], category: Category, from: LocalDate): HistoryDay[] {
+  return days
+    .filter((day) => day.date >= from)
+    .map((day) => ({ ...day, entries: day.entries.filter((e) => inCategory(e.transaction, category)) }))
+    .filter((day) => day.entries.length > 0);
 }
 
 /** Expenses and incomes of the last `days` days up to today, newest first: the home screen list. */

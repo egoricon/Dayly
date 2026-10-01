@@ -54,7 +54,7 @@
   border-radius: 20px;
   border: 1.5px solid transparent;
   background: var(--surface);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   text-align: left;
   transition: transform 120ms ease-out;
@@ -82,7 +82,7 @@
 }
 
 .source-card-sub {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -174,14 +174,14 @@
   align-items: center;
   gap: 8px;
   padding: 0 6px 2px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 
 .month-preview-legend {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -198,7 +198,7 @@
 }
 
 .month-preview-weekdays {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale));
   font-weight: 700;
   color: var(--muted);
 }
@@ -210,7 +210,7 @@
   justify-content: center;
   gap: 2px;
   height: 29px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -227,7 +227,7 @@
 }
 
 .month-day-number small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale));
   font-weight: 700;
   color: var(--muted);
 }
@@ -343,7 +343,7 @@
 
 .tips-text {
   position: relative;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   line-height: 1.35;
 }
@@ -357,7 +357,7 @@
 
 .tips-count {
   flex: 1;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 700;
   color: var(--muted);
 }
@@ -365,7 +365,7 @@
 .tips-skip {
   height: 40px;
   padding: 0 10px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -376,7 +376,7 @@
   border-radius: 20px;
   background: var(--ink);
   color: var(--bg);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   transition: transform 120ms ease-out;
 }
@@ -394,7 +394,7 @@
   gap: 10px;
   padding: 18px 44px 18px 20px;
   border-radius: 20px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
 }
 
@@ -408,7 +408,7 @@
 }
 
 .whats-new-title {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 800;
 }
 
@@ -468,11 +468,11 @@
   }
 
   .first-limit-whole {
-    font-size: 80px;
+    font-size: calc(80px * var(--text-scale));
   }
 
   .first-limit-fraction {
-    font-size: 30px;
+    font-size: calc(30px * var(--text-scale));
   }
 
   .first-limit-body > .hint-card {

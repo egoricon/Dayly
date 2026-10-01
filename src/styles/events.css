@@ -7,7 +7,7 @@
 }
 
 .event-sheet-date {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }

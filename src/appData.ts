@@ -118,9 +118,18 @@ export function createInitialData(today: LocalDate, result: OnboardingResult, no
   );
 }
 
-export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date, note: string | null = null): AppData {
+/** An expense of `date`: today unless given («Вчера» in the sheet). Its createdAt is when it was entered. */
+export function addExpense(
+  data: AppData,
+  amountKopecks: number,
+  category: Category,
+  today: LocalDate,
+  now: Date,
+  note: string | null = null,
+  date: LocalDate = today,
+): AppData {
   const expense = {
-    ...blankTransaction({ type: 'expense', amountKopecks, date: today, createdAt: now.toISOString() }),
+    ...blankTransaction({ type: 'expense', amountKopecks, date, createdAt: now.toISOString() }),
     category,
     note,
   };

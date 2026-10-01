@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addExpense, addIncome, setTargetDailyLimit, updateExpense } from './appData';
 import { calculateBudget } from './domain/budget';
+import { addDays } from './domain/dates';
 import { exampleA, exampleV, expense } from './domain/fixtures';
 import { limitLevers } from './domain/levers';
 import { upcomingEvents, type PlannedEvent } from './domain/planned';
@@ -11,6 +12,7 @@ import {
   isRunningLow,
   leverEffect,
   leverTitle,
+  ringLabel,
   ringTone,
   runningLowLabel,
   streakText,
@@ -71,6 +73,25 @@ describe('the ring warns early', () => {
     expect(budget.status).toBe('deficit');
     expect(isRunningLow(budget)).toBe(false);
     expect(ringTone(budget, true)).toBe('danger');
+  });
+});
+
+describe('the ring for a screen reader (update 2)', () => {
+  const label = (data: AppData) => {
+    const budget = budgetOf(data);
+    return ringLabel(budget, ringTone(budget, true));
+  };
+
+  it('says the state and the amount with the currency in one phrase', () => {
+    expect(label(spent(0))).toBe('Сегодня можно 28,54 BYN');
+    expect(label(spent(2426))).toBe('Осталось меньше 20%: сегодня можно 4,28 BYN');
+    expect(label(spent(2854))).toBe('На сегодня всё, осталось 0,00 BYN');
+    expect(label(spent(3174))).toBe('Сегодня перерасход 3,20 BYN');
+    expect(label(deficit())).toBe('Не хватает денег 79,11 BYN до 5 октября');
+  });
+
+  it('without the yellow ring a low day reads as a normal one', () => {
+    expect(ringLabel(budgetOf(spent(2426)), 'accent')).toBe('Сегодня можно 4,28 BYN');
   });
 });
 
@@ -211,7 +232,10 @@ describe('«Отменить» after «Добавить»', () => {
     const withExpense = addExpense(before, 450, 'cafe', TODAY, NOW);
     const added = addedTransaction(before, withExpense)!;
     expect(added).toMatchObject({ type: 'expense', amountKopecks: 450 });
-    expect(undoText(added, withExpense)).toBe('Кафе −4,50');
+    expect(undoText(added, withExpense, TODAY)).toBe('Кафе −4,50');
+    // «Вчера» in the sheet: the toast says where it went.
+    const forgotten = addExpense(before, 450, 'cafe', TODAY, NOW, null, addDays(TODAY, -1));
+    expect(undoText(addedTransaction(before, forgotten)!, forgotten, TODAY)).toBe('Кафе −4,50 · вчера');
 
     const edited = updateExpense(withExpense, added.id, 300, 'cafe');
     expect(addedTransaction(withExpense, edited)).toBeNull();

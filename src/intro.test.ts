@@ -46,7 +46,7 @@ describe('who sees «Что нового» and the first-launch tips', () => {
   it('three tips; the calendar one only while «Календарь» is on', () => {
     expect(firstLaunchTips(true).map((t) => t.text)).toEqual([
       'Нажми на круг — покажу, как считается',
-      'Долгий тап по трате — изменить или удалить',
+      'Нажми на трату, чтобы изменить или удалить',
       'Во вкладке «Календарь» можно планировать доходы и расходы',
     ]);
     expect(firstLaunchTips(false)).toHaveLength(2);

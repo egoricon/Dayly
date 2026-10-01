@@ -1,7 +1,13 @@
-import '@fontsource/manrope/400.css';
-import '@fontsource/manrope/600.css';
-import '@fontsource/manrope/700.css';
-import '@fontsource/manrope/800.css';
+// Only the Cyrillic and Latin subsets (digits, «BYN», the thin space and the minus are Latin): the full
+// set pulls Greek and Vietnamese too, and the service worker would download all of them.
+import '@fontsource/manrope/cyrillic-400.css';
+import '@fontsource/manrope/latin-400.css';
+import '@fontsource/manrope/cyrillic-600.css';
+import '@fontsource/manrope/latin-600.css';
+import '@fontsource/manrope/cyrillic-700.css';
+import '@fontsource/manrope/latin-700.css';
+import '@fontsource/manrope/cyrillic-800.css';
+import '@fontsource/manrope/latin-800.css';
 import './styles.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

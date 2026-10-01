@@ -41,6 +41,13 @@ describe('ui state', () => {
     const state: UiState = { ...defaultUiState(), accent: 'sky', launches: 3 };
     expect(hideBanner(state, 'x', '2026-09-26').accent).toBe('sky');
   });
+
+  it('«Крупный текст» is off by default and only true turns it on', () => {
+    expect(defaultUiState().largeText).toBe(false);
+    expect(loadUiState(storageWith(JSON.stringify({ accent: 'mint' }))).largeText).toBe(false);
+    expect(loadUiState(storageWith(JSON.stringify({ largeText: 'yes' }))).largeText).toBe(false);
+    expect(loadUiState(storageWith(JSON.stringify({ largeText: true }))).largeText).toBe(true);
+  });
 });
 
 describe('features and «Что нового» (update 1)', () => {
@@ -69,6 +76,7 @@ describe('features and «Что нового» (update 1)', () => {
       whatsNewSeen: null,
       tipsShown: false,
       dismissedCards: [],
+      largeText: false,
     });
   });
 

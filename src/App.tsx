@@ -45,6 +45,12 @@ function applyAccent(accent: Accent): void {
   document.documentElement.dataset.accent = accent;
 }
 
+/** «Крупный текст»: data-text-size="large" on <html> sets --text-scale (styles.css); index.html does it before the first paint. */
+function applyTextSize(large: boolean): void {
+  if (large) document.documentElement.dataset.textSize = 'large';
+  else delete document.documentElement.dataset.textSize;
+}
+
 /**
  * Counts this launch, and a return from the background after a long while as another one: an app
  * on the home screen can stay open for days.
@@ -104,6 +110,7 @@ export function App() {
   const theme = data?.settings.theme ?? 'auto';
   useEffect(() => applyTheme(theme), [theme]);
   useEffect(() => applyAccent(ui.accent), [ui.accent]);
+  useEffect(() => applyTextSize(ui.largeText), [ui.largeText]);
 
   // The app layer, not the calculation, records the day's limit for tomorrow's carry-over.
   useEffect(() => {
@@ -209,6 +216,8 @@ export function App() {
           update={update}
           accent={ui.accent}
           onAccentChange={(accent) => setUi((state) => ({ ...state, accent }))}
+          largeText={ui.largeText}
+          onLargeTextChange={(largeText) => setUi((state) => ({ ...state, largeText }))}
           statsEnabled={ui.statsEnabled}
           onStatsChange={(statsEnabled) => setUi((state) => ({ ...state, statsEnabled }))}
           install={install}

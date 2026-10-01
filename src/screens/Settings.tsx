@@ -20,6 +20,9 @@ export interface SettingsProps {
   update: Update;
   accent: Accent;
   onAccentChange: (accent: Accent) => void;
+  /** «Крупный текст»: every font size 1.2×. */
+  largeText: boolean;
+  onLargeTextChange: (large: boolean) => void;
   install: InstallInfo;
   /** «Анонимная статистика»: launches only, see src/stats.ts. */
   statsEnabled: boolean;
@@ -79,6 +82,24 @@ export function Settings(props: SettingsProps) {
         value={data.settings.theme}
         onChange={(theme) => update((d) => setTheme(d, theme))}
       />
+      <ul className="card list">
+        <li>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={props.largeText}
+            className="list-row"
+            data-testid="large-text"
+            onClick={() => props.onLargeTextChange(!props.largeText)}
+          >
+            <span className="list-text">
+              <span className="list-name">Крупный текст</span>
+              <span className="list-sub">все надписи на 20% крупнее</span>
+            </span>
+            <span className={`switch${props.largeText ? ' is-on' : ''}`} aria-hidden="true" />
+          </button>
+        </li>
+      </ul>
 
       <span className="section-label">Цвет акцента</span>
       <div className="card accent-picker" role="radiogroup" aria-label="Цвет акцента">

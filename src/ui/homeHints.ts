@@ -41,6 +41,20 @@ export function ringTone(budget: BudgetResult, earlyWarning: boolean): RingTone 
   return earlyWarning && isRunningLow(budget) ? 'warning' : 'accent';
 }
 
+/**
+ * What the ring says to a screen reader, the state and the amount in one phrase: «Сегодня можно 28,54 BYN»,
+ * «Сегодня перерасход 3,20 BYN», «Не хватает денег 12,00 BYN до 5 октября». The ring adds what a tap does.
+ */
+export function ringLabel(budget: BudgetResult, tone: RingTone): string {
+  if (budget.status === 'deficit' && budget.shortfall) {
+    return `Не хватает денег ${formatMoney(budget.shortfall.amountKopecks)} до ${formatDayMonth(budget.shortfall.until)}`;
+  }
+  const left = budget.remainingTodayKopecks;
+  if (left < 0) return `Сегодня перерасход ${formatMoney(-left)}`;
+  if (tone === 'warning') return left === 0 ? `На сегодня всё, осталось ${formatMoney(0)}` : `${runningLowLabel(budget)}: сегодня можно ${formatMoney(left)}`;
+  return `Сегодня можно ${formatMoney(left)}`;
+}
+
 // «Завтра будет…»
 
 export interface TomorrowIfStopped {
@@ -170,7 +184,8 @@ export function addedTransaction(before: AppData, after: AppData): Transaction |
   return after.transactions.find((t) => !known.has(t.id)) ?? null;
 }
 
-/** What «Отменить» takes back: «Кафе −4,50», «Стипендия +220,00». */
-export function undoText(t: Transaction, data: AppData): string {
-  return `${transactionName(t, data)} ${t.type === 'expense' ? '−' : '+'}${formatKopecks(t.amountKopecks)}`;
+/** What «Отменить» takes back: «Кафе −4,50», «Стипендия +220,00», «Кафе −4,50 · вчера» for a forgotten one. */
+export function undoText(t: Transaction, data: AppData, today: LocalDate = t.date): string {
+  const text = `${transactionName(t, data)} ${t.type === 'expense' ? '−' : '+'}${formatKopecks(t.amountKopecks)}`;
+  return t.date < today ? `${text} · вчера` : text;
 }

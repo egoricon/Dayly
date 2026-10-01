@@ -28,6 +28,12 @@
   --dashed: #cfccc3;
   --expense-button-bg: var(--ink);
   --expense-button-ink: var(--bg);
+  /* Every font size is calc(N px × this); «Крупный текст» in Settings makes it 1.2 (below). */
+  --text-scale: 1;
+}
+
+:root[data-text-size='large'] {
+  --text-scale: 1.2;
 }
 
 /* 2j. The same block twice: for the «Тёмная» setting and for «Авто» with a dark system theme. */
@@ -231,7 +237,7 @@ ul {
   flex-shrink: 0;
   margin: 0;
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--danger);
 }
@@ -239,7 +245,7 @@ ul {
 .button-large {
   height: 60px;
   border-radius: 30px;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
 }
 
 /* Keypad */
@@ -253,7 +259,7 @@ ul {
 .keypad-key {
   border-radius: 14px;
   background: var(--key);
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale));
   font-weight: 600;
   user-select: none;
 }
@@ -319,21 +325,21 @@ ul {
 }
 
 .welcome h1 {
-  font-size: 38px;
+  font-size: calc(38px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 
 .welcome p {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   line-height: 1.5;
   color: var(--muted);
 }
 
 .step-caption {
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   color: var(--muted);
 }
 
@@ -344,7 +350,7 @@ ul {
 }
 
 .first-limit-title {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -359,26 +365,26 @@ ul {
 }
 
 .first-limit-whole {
-  font-size: 112px;
+  font-size: calc(112px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 1;
 }
 
 .first-limit-fraction {
-  font-size: 38px;
+  font-size: calc(38px * var(--text-scale));
   font-weight: 800;
 }
 
 .first-limit-currency {
   margin-left: 6px;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
 
 .first-limit-formula {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.5;
   color: var(--muted);
 }
@@ -389,13 +395,13 @@ ul {
   gap: 8px;
   margin-top: 12px;
   padding: 20px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
   color: var(--muted);
 }
 
 .hint-card strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   color: var(--ink);
 }
 
@@ -412,7 +418,7 @@ ul {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -425,7 +431,7 @@ ul {
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -443,7 +449,7 @@ ul {
 }
 
 .calendar-weekdays {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -451,7 +457,7 @@ ul {
 .calendar-day {
   height: 38px;
   border-radius: 19px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -471,7 +477,7 @@ ul {
   gap: 12px;
   padding: 8px 18px;
   border-radius: 18px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
 }
 
 .amount-row-label {
@@ -495,7 +501,7 @@ ul {
   height: 52px;
   border-radius: 18px;
   border: 1.5px dashed var(--dashed);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -504,7 +510,7 @@ ul {
   display: flex;
   justify-content: space-between;
   padding: 0 8px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   color: var(--muted);
 }
 
@@ -515,7 +521,7 @@ ul {
 .link-muted,
 .link-accent,
 .link-danger {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   text-align: center;
 }
@@ -543,14 +549,14 @@ ul {
 }
 
 .step-title h1 {
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
 
 .step-title p {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
   color: var(--muted);
 }
@@ -564,14 +570,14 @@ ul {
 }
 
 .start-amount-number {
-  font-size: 72px;
+  font-size: calc(72px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
 .start-amount-currency {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -600,7 +606,7 @@ ul {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -610,7 +616,7 @@ ul {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -672,12 +678,16 @@ ul {
 
 .ring-label,
 .ring-caption {
-  font-size: 16px;
+  /* «Крупный текст» grows these by a tenth only, so «Осталось меньше 20%» stays inside the ring. */
+  font-size: calc(16px * min(var(--text-scale), 1.1));
   font-weight: 600;
   color: var(--muted);
 }
 
 .hero-amount {
+  /* The size step by length, below; «Крупный текст» multiplies it like every other size. */
+  --hero-whole: 96px;
+  --hero-fraction: 34px;
   display: flex;
   align-items: baseline;
   max-width: 250px;
@@ -688,56 +698,83 @@ ul {
 }
 
 .hero-whole {
-  font-size: 96px;
+  font-size: calc(var(--hero-whole) * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 1;
 }
 
 .hero-fraction {
-  font-size: 34px;
+  font-size: calc(var(--hero-fraction) * var(--text-scale));
   font-weight: 800;
 }
 
 /* Four characters and more (digits and the minus) shrink to fit the ring. */
-.hero-amount.size-4 .hero-whole {
-  font-size: 74px;
+.hero-amount.size-4 {
+  --hero-whole: 74px;
+  --hero-fraction: 28px;
 }
 
-.hero-amount.size-4 .hero-fraction {
-  font-size: 28px;
+.hero-amount.size-5 {
+  --hero-whole: 62px;
+  --hero-fraction: 24px;
 }
 
-.hero-amount.size-5 .hero-whole {
-  font-size: 62px;
+.hero-amount.size-6 {
+  --hero-whole: 52px;
+  --hero-fraction: 21px;
 }
 
-.hero-amount.size-5 .hero-fraction {
-  font-size: 24px;
+.hero-amount.size-7 {
+  --hero-whole: 44px;
+  --hero-fraction: 18px;
 }
 
-.hero-amount.size-6 .hero-whole {
-  font-size: 52px;
+.hero-amount.size-8 {
+  --hero-whole: 38px;
+  --hero-fraction: 16px;
 }
 
-.hero-amount.size-6 .hero-fraction {
-  font-size: 21px;
+/* «Крупный текст»: the number grows too, but less than the text, and from three characters on each
+   length takes the next step down, so it stays inside the ring with the label and the caption
+   («−40,33», «222,96»). */
+:root[data-text-size='large'] .ring-center {
+  gap: 0;
 }
 
-.hero-amount.size-7 .hero-whole {
-  font-size: 44px;
+:root[data-text-size='large'] .hero-amount {
+  --hero-whole: 84px;
+  --hero-fraction: 30px;
 }
 
-.hero-amount.size-7 .hero-fraction {
-  font-size: 18px;
+:root[data-text-size='large'] .hero-amount.size-3 {
+  --hero-whole: 74px;
+  --hero-fraction: 28px;
 }
 
-.hero-amount.size-8 .hero-whole {
-  font-size: 38px;
+:root[data-text-size='large'] .hero-amount.size-4 {
+  --hero-whole: 62px;
+  --hero-fraction: 24px;
 }
 
-.hero-amount.size-8 .hero-fraction {
-  font-size: 16px;
+:root[data-text-size='large'] .hero-amount.size-5 {
+  --hero-whole: 52px;
+  --hero-fraction: 21px;
+}
+
+:root[data-text-size='large'] .hero-amount.size-6 {
+  --hero-whole: 44px;
+  --hero-fraction: 18px;
+}
+
+:root[data-text-size='large'] .hero-amount.size-7 {
+  --hero-whole: 38px;
+  --hero-fraction: 16px;
+}
+
+:root[data-text-size='large'] .hero-amount.size-8 {
+  --hero-whole: 32px;
+  --hero-fraction: 14px;
 }
 
 .carry-pill {
@@ -749,7 +786,7 @@ ul {
   border-radius: 17px;
   background: var(--accent-soft);
   color: var(--accent-ink-strong);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -765,13 +802,13 @@ ul {
   padding: 18px 20px;
   border-radius: 20px;
   background: var(--surface);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
   color: var(--muted);
 }
 
 .note-card strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   color: var(--ink);
 }
@@ -784,20 +821,41 @@ ul {
   width: 100%;
   height: 48px;
   border-top: 1px solid var(--line-soft);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   color: var(--accent-ink-strong);
 }
 
 .expense-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 13px 0;
   border-bottom: 1px solid var(--line-soft);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* The row's content: a button that opens «Изменить / Удалить», or plain for a balance adjustment. */
+.expense-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 13px 0;
+  text-align: left;
+  -webkit-touch-callout: none;
+}
+
+button.expense-row-main {
+  transition: transform 120ms ease-out;
+}
+
+button.expense-row-main:active {
+  transform: scale(0.98);
+}
+
+button.expense-row-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
 }
 
 .expense-row:last-child {
@@ -811,17 +869,17 @@ ul {
 }
 
 .expense-name {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
 }
 
 .expense-time {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   color: var(--muted);
 }
 
 .expense-amount {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -832,7 +890,7 @@ ul {
 
 .empty-note {
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -862,12 +920,12 @@ ul {
   height: 56px;
   border-radius: 28px;
   border: 1.5px solid var(--chip-border);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
 }
 
 .home-summary {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   line-height: 1.4;
   color: var(--muted);
@@ -878,7 +936,7 @@ ul {
   height: 56px;
   padding: 0 24px;
   border-radius: 28px;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   background: var(--expense-button-bg);
   color: var(--expense-button-ink);
 }
@@ -1009,20 +1067,20 @@ ul {
 }
 
 .sheet-amount-number {
-  font-size: 64px;
+  font-size: calc(64px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
 }
 
 .sheet-amount-currency {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
 
 .sheet-hint {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
   text-align: center;
@@ -1046,7 +1104,7 @@ ul {
   padding: 0 14px;
   border-radius: 19px;
   border: 1px solid var(--chip-border);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -1063,7 +1121,7 @@ ul {
 .button-add {
   height: 60px;
   border-radius: 30px;
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale));
 }
 
 /* Delete action */
@@ -1075,7 +1133,7 @@ ul {
 .action-title {
   padding: 4px 0 8px;
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -1084,7 +1142,7 @@ ul {
   height: 56px;
   border-radius: 18px;
   background: var(--surface);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -1096,7 +1154,7 @@ ul {
 
 .screen-title {
   padding: 8px 4px 4px;
-  font-size: 32px;
+  font-size: calc(32px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -1107,7 +1165,7 @@ ul {
 
 .section-label {
   padding: 6px 4px 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 700;
   text-transform: uppercase;
   color: var(--muted);
@@ -1129,9 +1187,10 @@ ul {
   align-items: center;
   gap: 12px;
   width: 100%;
+  min-height: 44px;
   padding: 11px 0;
   text-align: left;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 
 .list-text {
@@ -1145,7 +1204,7 @@ ul {
 }
 
 .list-sub {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   color: var(--muted);
 }
 
@@ -1159,7 +1218,7 @@ ul {
   height: 28px;
   border-radius: 14px;
   background: var(--key);
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale));
   color: var(--muted);
 }
 
@@ -1171,7 +1230,7 @@ ul {
   padding: 14px 16px;
   border-radius: 20px;
   text-align: left;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 
 .goal-head {
@@ -1202,7 +1261,7 @@ ul {
 .back-link {
   align-self: flex-start;
   padding: 4px 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -1216,7 +1275,7 @@ ul {
 
 .form-note {
   padding: 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
   color: var(--muted);
 }
@@ -1229,14 +1288,14 @@ ul {
 
 .field-label {
   padding: 0 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 700;
   color: var(--muted);
 }
 
 .field-hint {
   padding: 0 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   line-height: 1.4;
   color: var(--muted);
 }
@@ -1250,7 +1309,7 @@ ul {
   background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -1296,7 +1355,7 @@ select.input {
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
   pointer-events: none;
@@ -1322,7 +1381,7 @@ select.input {
   flex: 1;
   height: 36px;
   border-radius: 9px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   color: var(--muted);
 }
@@ -1337,7 +1396,7 @@ select.input {
   align-items: center;
   gap: 12px;
   padding: 0 4px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -1354,7 +1413,7 @@ select.input {
   gap: 10px;
   padding: 16px 18px;
   border-radius: 18px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.45;
 }
 
@@ -1364,7 +1423,7 @@ select.input {
   border-radius: 26px;
   background: var(--accent-soft);
   color: var(--accent-ink-strong);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -1417,7 +1476,7 @@ select.input {
 
 .sheet-title {
   margin: 0;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 800;
 }
 
@@ -1429,11 +1488,11 @@ select.input {
   gap: 4px;
   padding: 16px 18px;
   border-radius: 20px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 
 .banner strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
 }
 
 .banner-sub {
@@ -1452,7 +1511,7 @@ select.input {
   height: 38px;
   padding: 0 14px;
   border-radius: 19px;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -1491,7 +1550,8 @@ select.input {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  /* «Крупный текст» grows the labels by a tenth only: five of them must stay apart on a 375-pt phone. */
+  font-size: calc(12px * min(var(--text-scale), 1.1));
   font-weight: 700;
   color: var(--tab-inactive);
 }
@@ -1539,12 +1599,12 @@ select.input {
 }
 
 .history-date {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
 }
 
 .history-summary {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
   text-align: right;
@@ -1563,8 +1623,115 @@ select.input {
   border-radius: 20px;
 }
 
-.history-list .expense-row {
+.history-list .expense-row-main {
   padding: 12px 0;
+}
+
+/* «Куда уходят деньги»: this period's expenses by category on top of the history. */
+.category-totals {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 8px;
+  border-radius: 20px;
+}
+
+.category-totals-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 4px;
+  font-size: calc(15px * var(--text-scale));
+  font-weight: 700;
+}
+
+.category-totals-sum {
+  flex-shrink: 0;
+}
+
+.category-total {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  padding: 7px 0;
+  text-align: left;
+  transition: transform 120ms ease-out;
+}
+
+.category-total:active {
+  transform: scale(0.98);
+}
+
+.category-total:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.category-total-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: calc(15px * var(--text-scale));
+  font-weight: 600;
+}
+
+.category-total-amount {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.category-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-soft);
+}
+
+.category-bar-fill {
+  display: flex;
+  gap: 2px;
+  height: 100%;
+  min-width: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.category-bar-limit {
+  background: var(--accent);
+}
+
+/* The reserve's part in the muted tone of reserve spending in the list. */
+.category-bar-reserve {
+  background: var(--muted);
+  opacity: 0.45;
+}
+
+.category-total-split {
+  font-size: calc(13px * var(--text-scale));
+  color: var(--muted);
+}
+
+/* The chosen category stands out; the others step back until it is tapped again. */
+.category-total.is-selected .category-total-name {
+  font-weight: 800;
+}
+
+.category-total.is-dimmed .category-total-line {
+  color: var(--muted);
+}
+
+.category-total.is-dimmed .category-bar-fill {
+  opacity: 0.4;
+}
+
+.category-totals-filter {
+  padding: 6px 0 4px;
+  border-top: 1px solid var(--line-soft);
+  font-size: calc(13px * var(--text-scale));
+  font-weight: 600;
+  color: var(--accent-ink);
 }
 
 /* «Как считается» */
@@ -1579,11 +1746,11 @@ select.input {
   align-items: flex-start;
   gap: 12px;
   padding: 14px 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
 }
 
 .explain-row.is-strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -1600,12 +1767,12 @@ select.input {
   border-radius: 20px;
   background: var(--ink);
   color: var(--bg);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 600;
 }
 
 .explain-result strong {
-  font-size: 32px;
+  font-size: calc(32px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -1616,7 +1783,7 @@ select.input {
 }
 
 .explain-row.is-strong .list-sub {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
 }
 
@@ -1634,7 +1801,7 @@ select.input {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -1665,11 +1832,11 @@ select.input {
   padding: 16px 44px 16px 18px;
   border-radius: 20px;
   background: var(--surface);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
 }
 
 .install-card strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
 }
 
 .install-card .banner-yes {
@@ -1865,7 +2032,7 @@ select.input {
 
 @media (max-width: 380px) {
   .segmented button {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale));
   }
 }
 
@@ -1885,7 +2052,7 @@ select.input {
   padding: 0 14px;
   border-radius: 20px;
   background: var(--surface);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   transition: transform 120ms ease-out;
 }
@@ -1912,7 +2079,7 @@ select.input {
   width: 40px;
   justify-content: center;
   padding: 0;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale));
 }
 
 /* «Кофе −3,50 · Отменить» after a tap on a favourite */
@@ -1932,7 +2099,7 @@ select.input {
   border-radius: 24px;
   background: var(--ink);
   color: var(--bg);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 700;
   animation: card-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1952,7 +2119,7 @@ select.input {
 .action-text {
   padding: 0 8px 8px;
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   line-height: 1.4;
   color: var(--muted);
 }
@@ -2029,14 +2196,99 @@ label.list-row {
   border-radius: 18px;
   background: var(--accent-soft);
   color: var(--ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   line-height: 1.4;
 }
 
 .in-app-banner > strong {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
 }
 
 .app-shell.has-top-banner .screen {
   padding-top: 12px;
+}
+
+/* Tap areas of at least 44×44 px (Apple's minimum) for small controls on the main screens, without
+   changing their look: an invisible layer centred on the control takes the taps around it. */
+.chip,
+.banner-yes,
+.banner-other,
+.segmented button,
+.accent-swatch,
+.cal-arrow,
+.cal-today,
+.favorite,
+.keypad-key,
+.savings-caption,
+.week-strip,
+.target-line {
+  position: relative;
+}
+
+.chip::before,
+.banner-yes::before,
+.banner-other::before,
+.segmented button::before,
+.accent-swatch::before,
+.cal-arrow::before,
+.cal-today::before,
+.favorite::before,
+.keypad-key::before,
+.savings-caption::before,
+.week-strip::before,
+.target-line::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* «Сегодня / Вчера» under the amount of a new expense: smaller than a form's segmented control, and
+   the amount moves up a little, so the keypad and «Добавить» still fit a 375×667 screen. */
+.day-switch {
+  display: flex;
+  justify-content: center;
+  margin: -2px 0;
+}
+
+.sheet-amount:has(> .day-switch) {
+  padding-top: 2px;
+}
+
+.day-switch .segmented {
+  width: 208px;
+  padding: 2px;
+  border-radius: 10px;
+}
+
+.day-switch .segmented button {
+  height: 28px;
+  border-radius: 8px;
+  font-size: calc(14px * var(--text-scale));
+}
+
+/* «Крупный текст» on a short screen: the categories scroll sideways in one row instead of wrapping
+   into four, so the keypad and «Добавить» stay on screen. The strip has room for the 44 px tap areas. */
+@media (max-height: 740px) {
+  :root[data-text-size='large'] .expense-sheet > .chips {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin: -3px -20px;
+    padding: 3px 20px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  :root[data-text-size='large'] .expense-sheet > .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  :root[data-text-size='large'] .expense-sheet > .chips > .chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }

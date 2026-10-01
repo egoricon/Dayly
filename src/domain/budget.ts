@@ -374,11 +374,13 @@ export interface ExpensePreview {
   fromLimitKopecks: number;
   fromReserveKopecks: number;
   remainingTodayKopecks: number; // after the expense; < 0 means overspent
+  dailyLimitKopecks: number; // today's limit after the expense: an expense of an earlier day changes it
 }
 
 /**
  * What a new expense would do, for the live preview in the input sheet. With `editId` it
- * previews a change of that expense instead: same day and place in the order.
+ * previews a change of that expense instead: same day and place in the order. A new expense is of
+ * `date`, today unless given («Вчера»).
  */
 export function previewExpense(
   data: AppData,
@@ -386,6 +388,7 @@ export function previewExpense(
   amountKopecks: number,
   category: Category,
   editId: string | null = null,
+  date: LocalDate = today,
 ): ExpensePreview {
   const original = editId === null ? undefined : data.transactions.find((t) => t.id === editId);
   const draft: Transaction = original
@@ -394,7 +397,7 @@ export function previewExpense(
         id: 'preview',
         type: 'expense',
         amountKopecks,
-        date: today,
+        date,
         createdAt: '￿', // sorts after every real expense of the day
         category,
         incomeSourceId: null,
@@ -412,5 +415,6 @@ export function previewExpense(
     fromLimitKopecks: split.fromLimitKopecks,
     fromReserveKopecks: split.fromReserveKopecks,
     remainingTodayKopecks: result.remainingTodayKopecks,
+    dailyLimitKopecks: result.dailyLimitKopecks,
   };
 }

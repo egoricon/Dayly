@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { addExpense, buyGoal, createInitialData, deleteTransaction, recordDaySummary, saveGoal, setCushionFixed, setReserve, updateExpense } from './appData';
 import { calculateBudget, previewExpense } from './domain/budget';
-import { dayResults, historyDays, limitStreak, recentOperations } from './domain/history';
+import { categoryTotals, dayResults, filterHistoryDays, historyDays, limitStreak, recentOperations } from './domain/history';
 import { formatOperationTime } from './ui/labels';
+import { pickSavingsCard } from './ui/savings';
 import type { AppData } from './domain/types';
 
 // Stage 4: history 2h, editing expenses and the terms of «Как считается». Numbers of example А.
@@ -93,6 +94,12 @@ describe('home list', () => {
     expect(formatOperationTime('2026-09-25', createdAt, '2026-09-26')).toBe('вчера, 21:30');
     expect(formatOperationTime('2026-09-25', createdAt, '2026-09-28')).toBe('25 сентября, 21:30');
   });
+
+  it('an expense added today for yesterday shows only its day, not when it was entered', () => {
+    const enteredToday = new Date('2026-09-26T09:05:00').toISOString();
+    expect(formatOperationTime('2026-09-25', enteredToday, '2026-09-26')).toBe('вчера');
+    expect(formatOperationTime('2026-09-25', enteredToday, '2026-09-28')).toBe('25 сентября');
+  });
 });
 
 describe('editing expenses', () => {
@@ -114,6 +121,7 @@ describe('editing expenses', () => {
       fromLimitKopecks: 1000,
       fromReserveKopecks: 15000,
       remainingTodayKopecks: 2854 - 350 - 1000,
+      dailyLimitKopecks: 2854,
     });
   });
 
@@ -170,5 +178,109 @@ describe('days in the limit (update 1)', () => {
     expect(limitStreak(data, '2026-09-28')).toBe(0);
     expect(limitStreak(data, '2026-09-27')).toBe(1);
     expect(limitStreak(data, '2026-10-02')).toBe(0);
+  });
+});
+
+describe('«Вчера» in the expense sheet (update 2)', () => {
+  // 27 September: yesterday (26th) the limit was 28,54 and 3,50 went from it; today's limit is 31,67.
+  const TODAY = '2026-09-27';
+  const YESTERDAY = '2026-09-26';
+  const NOW = new Date('2026-09-27T09:00:00');
+  const forgotten = (kopecks: number) => addExpense(withFirstDay(), kopecks, 'cafe', TODAY, NOW, null, YESTERDAY);
+
+  it('adds the expense to yesterday, entered now', () => {
+    const data = forgotten(1000);
+    const added = data.transactions[data.transactions.length - 1]!;
+    expect(added).toMatchObject({ type: 'expense', amountKopecks: 1000, category: 'cafe', date: YESTERDAY, createdAt: NOW.toISOString() });
+    expect(data.settings.lastCategory).toBe('cafe');
+    // Without the day it stays today's.
+    expect(addExpense(withFirstDay(), 1000, 'cafe', TODAY, NOW).transactions.at(-1)!.date).toBe(TODAY);
+  });
+
+  it('today\'s limit drops by the amount spread over the days left: 31,67 → 30,42, as the preview said', () => {
+    expect(calculateBudget(withFirstDay(), TODAY).dailyLimitKopecks).toBe(3167);
+    const preview = previewExpense(withFirstDay(), TODAY, 1000, 'cafe', null, YESTERDAY);
+    expect(preview).toEqual({ fromLimitKopecks: 1000, fromReserveKopecks: 0, remainingTodayKopecks: 3042, dailyLimitKopecks: 3042 });
+    expect(calculateBudget(forgotten(1000), TODAY).dailyLimitKopecks).toBe(3042);
+  });
+
+  it('yesterday\'s result, the carry, the history, the week strip and the streak recount', () => {
+    const before = withFirstDay();
+    expect(calculateBudget(before, TODAY).carryFromYesterdayKopecks).toBe(2504);
+    expect(limitStreak(before, TODAY)).toBe(1);
+
+    const within = forgotten(1000);
+    expect(calculateBudget(within, TODAY).carryFromYesterdayKopecks).toBe(1504);
+    expect(historyDays(within, TODAY, 3042)[0]).toMatchObject({ date: YESTERDAY, spentFromLimitKopecks: 1350, carryKopecks: 1504 });
+    expect(dayResults(within, YESTERDAY, YESTERDAY)[0]!.status).toBe('in');
+    expect(limitStreak(within, TODAY)).toBe(1);
+
+    // 30,00 more makes yesterday overspent: the carry is negative, the strip turns red, the streak breaks.
+    const over = forgotten(3000);
+    expect(calculateBudget(over, TODAY).carryFromYesterdayKopecks).toBe(2854 - 3350);
+    expect(dayResults(over, YESTERDAY, YESTERDAY)[0]).toMatchObject({ status: 'over', spentFromLimitKopecks: 3350 });
+    expect(limitStreak(over, TODAY)).toBe(0);
+  });
+
+  it('«Вчера осталось» offers the smaller leftover, and none once yesterday is overspent', () => {
+    const context = (data: AppData) => ({
+      data,
+      budget: calculateBudget(data, TODAY),
+      today: TODAY,
+      feature: () => true,
+      isBannerHidden: () => false,
+      isCardDismissed: () => false,
+    });
+    expect(pickSavingsCard(context(withFirstDay()))).toMatchObject({ kind: 'leftover', carryKopecks: 2504 });
+    expect(pickSavingsCard(context(forgotten(1000)))).toMatchObject({ kind: 'leftover', carryKopecks: 1504 });
+    expect(pickSavingsCard(context(forgotten(3000)))).toBeNull();
+  });
+
+  it('a reserve expense for yesterday spends the reserve and leaves today\'s limit', () => {
+    const preview = previewExpense(withFirstDay(), TODAY, 1000, 'groceries', null, YESTERDAY);
+    expect(preview).toMatchObject({ fromLimitKopecks: 0, fromReserveKopecks: 1000, dailyLimitKopecks: 3167 });
+  });
+});
+
+describe('«Куда уходят деньги» (update 2)', () => {
+  // The first period starts on 26 September with the reserve «Продукты» 500,00 × 9/30 = 150,00.
+  function spent(): AppData {
+    let data = withFirstDay(); // 26th: cafe 3,50, groceries 18,40
+    data = addExpense(data, 500, 'delivery', '2026-09-27', new Date('2026-09-27T13:40:00'));
+    data = addExpense(data, 14000, 'groceries', '2026-09-27', new Date('2026-09-27T18:00:00')); // 131,60 left in the reserve
+    data = addExpense(data, 1200, 'cafe', '2026-09-28', new Date('2026-09-28T08:00:00'));
+    data = buyGoal(data, 'headphones', 15000, '2026-09-28', new Date('2026-09-28T12:00:00'));
+    return data;
+  }
+
+  it('sums each category of the period, the biggest first, reserve and limit apart; payments and purchases stay out', () => {
+    expect(categoryTotals(spent(), '2026-09-26', '2026-09-28')).toEqual([
+      { category: 'groceries', totalKopecks: 15840, fromLimitKopecks: 840, fromReserveKopecks: 15000 },
+      { category: 'cafe', totalKopecks: 1550, fromLimitKopecks: 1550, fromReserveKopecks: 0 },
+      { category: 'delivery', totalKopecks: 500, fromLimitKopecks: 500, fromReserveKopecks: 0 },
+    ]);
+    // The totals add up to the period's category expenses.
+    const expenses = spent().transactions.filter((t) => t.type === 'expense' && t.category !== null);
+    const sum = categoryTotals(spent(), '2026-09-26', '2026-09-28').reduce((total, t) => total + t.totalKopecks, 0);
+    expect(sum).toBe(expenses.reduce((total, t) => total + t.amountKopecks, 0));
+  });
+
+  it('counts only the days asked for; equal totals keep the order of the categories', () => {
+    expect(categoryTotals(spent(), '2026-09-28', '2026-09-28').map((t) => t.category)).toEqual(['cafe']);
+    let data = withFirstDay();
+    data = addExpense(data, 350, 'fun', '2026-09-27', new Date('2026-09-27T10:00:00'));
+    data = addExpense(data, 350, 'delivery', '2026-09-27', new Date('2026-09-27T11:00:00'));
+    expect(categoryTotals(data, '2026-09-27', '2026-09-27').map((t) => t.category)).toEqual(['delivery', 'fun']);
+    expect(categoryTotals(configured(), '2026-09-26', '2026-09-28')).toEqual([]);
+  });
+
+  it('a chosen category leaves only its expenses of the period, and days without them go', () => {
+    const data = spent();
+    const days = filterHistoryDays(historyDays(data, '2026-09-28', 2800), 'cafe', '2026-09-26');
+    expect(days.map((d) => [d.date, d.entries.map((e) => e.transaction.amountKopecks)])).toEqual([
+      ['2026-09-28', [1200]],
+      ['2026-09-26', [350]],
+    ]);
+    expect(filterHistoryDays(historyDays(data, '2026-09-28', 2800), 'cafe', '2026-09-27').map((d) => d.date)).toEqual(['2026-09-28']);
   });
 });
