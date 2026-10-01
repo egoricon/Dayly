@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { addFavoriteExpense, addIncome, deleteTransaction, markPaymentPaid, MAX_FAVORITES } from '../appData';
 import { ExpenseSheet, type EntryMode, type IncomePreset } from '../components/ExpenseSheet';
 import { BackupCard, FirstWeekCard } from '../components/IntroCards';
@@ -26,8 +26,6 @@ import type { FeatureKey, InstallPlatform, LessonId } from '../uiState';
 import { pickHomeLesson, type FirstWeekCard as FirstWeekCardInfo, type FirstWeekKey, type GuideSection, type HomeLessonContext } from '../intro';
 import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
 import { addedTransaction, ringLabel, ringTone, runningLowLabel, targetLine, tomorrowIfStopped, undoText } from '../ui/homeHints';
-import { Explain } from './Explain';
-import { Levers } from './Levers';
 import type { FinanceRoute, Update } from './Finances';
 import type { SavingsRoute } from './Savings';
 import { afterLeave } from '../ui/motion';
@@ -60,6 +58,10 @@ interface HomeProps {
 }
 
 /** The one card under the ring: «Что нового», else «Первая неделя», else «Сохрани копию». */
+
+// «Как считается» and «Как дотянуть» open from the ring and the target line; loaded when first opened.
+const Explain = lazy(() => import('./Explain').then((m) => ({ default: m.Explain })));
+const Levers = lazy(() => import('./Levers').then((m) => ({ default: m.Levers })));
 export type IntroCard = { kind: 'whatsNew' } | { kind: 'firstWeek'; card: FirstWeekCardInfo } | { kind: 'backup' };
 
 export interface HomeIntro {
@@ -175,9 +177,16 @@ export function Home(props: HomeProps) {
     }
   };
 
-  if (explainOpen) return <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />;
+  if (explainOpen) {
+    return (
+      <Suspense fallback={null}>
+        <Explain data={data} budget={budget} onBack={() => setExplainOpen(false)} />
+      </Suspense>
+    );
+  }
   if (leversOpen) {
     return (
+      <Suspense fallback={null}>
       <Levers
         data={data}
         budget={budget}
@@ -186,6 +195,7 @@ export function Home(props: HomeProps) {
         onBack={() => setLeversOpen(false)}
         onEditTarget={() => onOpenFinances({ screen: 'target' })}
       />
+      </Suspense>
     );
   }
 

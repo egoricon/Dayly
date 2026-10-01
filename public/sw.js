@@ -5,7 +5,7 @@
 // 10 minutes), so a new version reaches the phone on the next launch.
 
 // All paths are relative to this file, so the app works at the site root and under a subpath.
-const CACHE = 'dayly-v15';
+const CACHE = 'dayly-v16';
 const INDEX = new URL('./', self.location).href;
 const SHELL = ['./', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
@@ -19,12 +19,24 @@ function fresh(request) {
   }
 }
 
-/** The shell plus the built script, styles and the fonts they use, found in index.html and the CSS. */
+/**
+ * The shell plus the built script, styles and the fonts they use: found in index.html, the screens
+ * loaded on demand (named './Savings-….js' in the scripts) and the CSS, so every screen works offline.
+ */
 async function precache() {
   const cache = await caches.open(CACHE);
   await cache.addAll(SHELL.map(fresh));
   const html = await (await cache.match(INDEX)).text();
   const assets = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map((m) => new URL(m[1], INDEX).href);
+  // Screens loaded on demand are named in the scripts relative to them; a shared chunk can name more.
+  for (let i = 0; i < assets.length; i += 1) {
+    if (!assets[i].endsWith('.js')) continue;
+    const text = await (await fetch(assets[i])).text();
+    for (const m of text.matchAll(/["'`]\.\/([\w.-]+\.(?:js|css))["'`]/g)) {
+      const url = new URL(m[1], assets[i]).href;
+      if (!assets.includes(url)) assets.push(url);
+    }
+  }
   const fonts = [];
   for (const css of assets.filter((a) => a.endsWith('.css'))) {
     const text = await (await fetch(css)).text();
