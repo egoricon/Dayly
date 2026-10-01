@@ -1,0 +1,21 @@
+## npm test
+ Test Files  21 passed (21)
+      Tests  315 passed (315)
+
+## npm run typecheck
+
+> dayly@0.1.0 typecheck
+> node node_modules/typescript/bin/tsc --noEmit
+
+exit 0
+
+## npm run e2e (DAYLY_E2E_OUTPUT=/tmp/dayly-e2e-merge), коммит 9b9cb99
+      Tests  315 passed (315)
+  ✓  88 e2e/usability.spec.ts:333:1 › a tap on an operation opens «Изменить / Удалить»; a long press and a right click still do (4.8s)
+  ✓  89 e2e/usability.spec.ts:380:3 › «Вчера» in the expense sheet, light: yesterday's result, the strip, the carry and history recount; «Отменить» works (7.2s)
+  ✓  90 e2e/usability.spec.ts:380:3 › «Вчера» in the expense sheet, dark: yesterday's result, the strip, the carry and history recount; «Отменить» works (7.2s)
+  ✓  91 e2e/usability.spec.ts:454:1 › «Вчера» is not offered on the first day of tracking (555ms)
+  ✓  92 e2e/usability.spec.ts:462:3 › «История», light: totals by category for the period; a tap on one shows only its expenses (1.7s)
+  ✓  93 e2e/usability.spec.ts:462:3 › «История», dark: totals by category for the period; a tap on one shows only its expenses (1.7s)
+  ✓  94 e2e/usability.spec.ts:499:1 › fonts: only the Cyrillic and Latin files load and are cached; Latin text and digits are Manrope (279ms)
+  94 passed (8.3m)
