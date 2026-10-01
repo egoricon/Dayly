@@ -29,8 +29,9 @@ function Page({ id, title, children }: { id: GuideSection; title: string; childr
 
 /** «Как устроен Dayly» (update 2, 3.3): the whole app in six short pages, with the person's own numbers. */
 export function Guide({ data, budget, lastBackupAt, section, onBack }: GuideProps) {
+  // The first page is right under the title; a later one scrolls up to the top.
   useEffect(() => {
-    if (section) document.getElementById(`guide-${section}`)?.scrollIntoView({ block: 'start' });
+    if (section && section !== 'limit') document.getElementById(`guide-${section}`)?.scrollIntoView({ block: 'start' });
   }, [section]);
 
   const until = formatDayMonth(addDays(budget.period.end, 1));

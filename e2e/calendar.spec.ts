@@ -2,6 +2,17 @@ import { expect, test, type Page } from '@playwright/test';
 import { exampleA, expense, tx } from '../src/domain/fixtures';
 import type { AppData } from '../src/domain/types';
 
+/**
+ * «Знакомство» done (update 2): «Что нового» closed, every hint seen and a copy just saved, so no hint
+ * or card of it gets in the way.
+ */
+const INTRO_DONE = {
+  tipsShown: true,
+  whatsNewSeen: 'update-2',
+  lessonsSeen: ['ring', 'firstExpense', 'tapRow', 'overspend', 'leftover', 'banner', 'savings', 'finances', 'deficit', 'periodEnd'],
+  lastBackupAt: '2099-12-31',
+};
+
 // «Календарь» of update 1 in a real browser, at the top of «Финансы» since update 2. The data is seeded (no onboarding), the clock is fixed
 // to 26 September 2026, the day of example А: limit 28,54 until the scholarship on 5 October
 // (256,89 free for 9 days); a payment of X in this period makes it (256,89 − X) ÷ 9.
@@ -53,7 +64,7 @@ async function seed(page: Page, data: AppData, ui: Record<string, unknown> = {})
       localStorage.setItem('dayly:data', data);
       localStorage.setItem('dayly:ui', ui);
     },
-    { data: JSON.stringify(data), ui: JSON.stringify({ tipsShown: true, whatsNewSeen: 'update-1', ...ui }) },
+    { data: JSON.stringify(data), ui: JSON.stringify({ ...INTRO_DONE, ...ui }) },
   );
   await page.clock.install({ time: TODAY });
   await page.goto('/');

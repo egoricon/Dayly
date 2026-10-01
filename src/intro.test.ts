@@ -172,10 +172,10 @@ describe('hints on the home screen', () => {
     expect(homeLessons(data, TODAY, ['ring'], { banner: null, savingsCard: { kind: 'leftover' } })).toEqual([
       'leftover: Остаток можно отложить в копилку или оставить — тогда лимит на следующие дни чуть вырастет',
     ]);
-    expect(homeLessons(data, TODAY, ['ring'], { banner: null, savingsCard: { kind: 'summary', leftoverKopecks: 1400 } })).toEqual([
+    expect(homeLessons(data, TODAY, ['ring'], { banner: null, savingsCard: { kind: 'summary', canSetAside: true } })).toEqual([
       'periodEnd: Так прошёл твой первый период. Остаток можно отправить в копилку',
     ]);
-    expect(homeLessons(data, TODAY, ['ring'], { banner: null, savingsCard: { kind: 'summary', leftoverKopecks: 0 } })).toEqual([
+    expect(homeLessons(data, TODAY, ['ring'], { banner: null, savingsCard: { kind: 'summary', canSetAside: false } })).toEqual([
       'periodEnd: Так прошёл твой первый период. Новый лимит считается до следующего поступления',
     ]);
   });

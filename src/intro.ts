@@ -92,7 +92,8 @@ export interface Lesson {
 /** What the home screen shows above the ring right now: a confirmation banner or a savings card. */
 export interface HomeLessonContext {
   banner: 'income' | 'payment' | null;
-  savingsCard: { kind: 'leftover' } | { kind: 'summary'; leftoverKopecks: number } | null;
+  /** «Итоги периода» says whether its leftover can go into savings (a jar or the cushion to take it). */
+  savingsCard: { kind: 'leftover' } | { kind: 'summary'; canSetAside: boolean } | null;
 }
 
 /** The day the money has to last to: the next main income, or the day after the period. */
@@ -138,7 +139,7 @@ function homeLessons(data: AppData, budget: BudgetResult, today: LocalDate, { ba
     lessons.push({
       id: 'periodEnd',
       text:
-        savingsCard.leftoverKopecks > 0
+        savingsCard.canSetAside
           ? 'Так прошёл твой первый период. Остаток можно отправить в копилку'
           : 'Так прошёл твой первый период. Новый лимит считается до следующего поступления',
       target: { kind: 'summaryCard' },

@@ -11,15 +11,17 @@ async function typeAmount(page: Page, amount: string) {
   for (const ch of amount) await page.keyboard.press(ch === ',' ? 'Comma' : ch);
 }
 
-/** The first-launch tips over the home screen: «Пропустить» closes them all. */
-async function skipTips(page: Page) {
-  await page.getByTestId('tips').getByRole('button', { name: 'Пропустить' }).click();
-  await expect(page.getByTestId('tips')).toHaveCount(0);
+/** The hint at the ring after the first setup (update 2): «Понятно» closes it. */
+async function closeRingHint(page: Page) {
+  const hint = page.getByTestId('lesson');
+  await expect(hint).toHaveAttribute('data-lesson', 'ring');
+  await hint.getByRole('button', { name: 'Понятно' }).click();
+  await expect(hint).toHaveCount(0);
 }
 
 /**
  * The first setup with example А: 586 on hand, «Стипендия» 220 every month from 5 October, three
- * payments from the chips; products and transport skipped, then the first-launch tips skipped.
+ * payments from the chips; products and transport skipped, then the hint at the ring closed.
  */
 async function onboard(page: Page) {
   await page.getByRole('button', { name: 'Начать' }).click();
@@ -48,7 +50,7 @@ async function onboard(page: Page) {
   await page.getByRole('button', { name: 'Пропустить' }).click();
   await expect(page.getByTestId('first-limit')).toHaveText('54,55BYN');
   await page.getByRole('button', { name: 'На главную' }).click();
-  await skipTips(page);
+  await closeRingHint(page);
 }
 
 /** «+ Трата» → amount → «Добавить»: the three actions of the main scenario. */
@@ -153,7 +155,13 @@ test('home-screen hint: iPhone steps from the second launch, gone once dismissed
   await onboard(page);
   await expect(page.getByTestId('install-hint')).toHaveCount(0);
 
+  // While «Первая неделя» is there (update 2), its item takes the place of the card.
   await page.reload();
+  const week = page.getByTestId('first-week');
+  await expect(week.getByRole('button', { name: 'Установи Dayly на экран «Домой»' })).toBeVisible();
+  await expect(page.getByTestId('install-hint')).toHaveCount(0);
+  await week.getByRole('button', { name: 'Скрыть знакомство' }).click();
+  await expect(week).toHaveCount(0);
   await expect(page.getByTestId('install-hint')).toBeVisible();
   await expect(page.getByTestId('install-steps-ios')).toContainText('На экран „Домой“');
   console.log('hint:', (await page.getByTestId('install-hint').innerText()).replace(/\n/g, ' | '));
@@ -290,7 +298,8 @@ test('home: name, «+ Доход», favourites with undo; «Финансы» tab
   await page.getByTestId('favorites').getByRole('button', { name: /Кофе/ }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('51,05');
   await expect(page.getByTestId('recent-operations')).toContainText('Кофе');
-  await expect(page.getByRole('status')).toContainText('Кофе −3,50');
+  // The toast; the hint about the first expense is a status too.
+  await expect(page.getByRole('status').filter({ hasText: 'Отменить' })).toContainText('Кофе −3,50');
   await page.getByRole('button', { name: 'Отменить' }).click();
   await expect(page.getByTestId('hero-amount')).toHaveText('54,55');
   await expect(page.getByTestId('recent-operations')).toHaveCount(0);
@@ -349,7 +358,7 @@ test('backup: save a copy, reset everything, restore the copy', async ({ page },
   await page.getByRole('button', { name: 'Пропустить' }).click();
   await page.getByRole('button', { name: 'Пропустить' }).click();
   await page.getByRole('button', { name: 'На главную' }).click();
-  await skipTips(page);
+  await closeRingHint(page);
   await page.getByRole('button', { name: 'Настройки' }).click();
   await page.getByTestId('restore-input').setInputFiles(file);
   await expect(page.getByText(/Восстановить копию от 26 сентября/)).toBeVisible();
@@ -535,7 +544,7 @@ test('onboarding with a weekly income: next Friday, then every Friday', async ({
   await page.getByRole('button', { name: 'Пропустить' }).click();
   await expect(page.getByTestId('first-limit')).toHaveText('16,66BYN');
   await page.getByRole('button', { name: 'На главную' }).click();
-  await skipTips(page);
+  await closeRingHint(page);
   await page.getByRole('button', { name: 'Финансы' }).click();
   await expect(page.getByTestId('settings-incomes')).toContainText('Зарплата · по пятницам');
 });
@@ -554,7 +563,7 @@ test('onboarding without a planned income: «Пока нет постоянны�
   await expect(page.locator('.first-limit-title')).toHaveText('Каждый день до 26 октября можно тратить');
   await expect(page.getByTestId('first-limit')).toHaveText('3,33BYN'); // 100,00 ÷ 30 days
   await page.getByRole('button', { name: 'На главную' }).click();
-  await skipTips(page);
+  await closeRingHint(page);
   await expect(page.locator('.home-dates')).toContainText('до конца периода 30 дн.');
   // A planned income added later becomes the main one and sets the period.
   await page.getByRole('button', { name: 'Финансы' }).click();

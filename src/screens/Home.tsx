@@ -10,7 +10,7 @@ import { Ring } from '../components/Ring';
 import { SavingsCaption } from '../components/SavingsCaption';
 import { SavingsCards } from '../components/SavingsCards';
 import { addDays } from '../domain/dates';
-import { carrySavedKey, pickSavingsCard, savingsRing } from '../ui/savings';
+import { carrySavedKey, pickSavingsCard, savingsRing, setAsideAmount, targetOptions } from '../ui/savings';
 import { OperationActions, TransactionRow } from '../components/TransactionRow';
 import { TargetLine } from '../components/TargetLine';
 import { TomorrowHint } from '../components/TomorrowHint';
@@ -154,7 +154,9 @@ export function Home(props: HomeProps) {
   const lessonContext: HomeLessonContext = {
     banner: banner?.kind ?? null,
     savingsCard:
-      savingsCard === null ? null : savingsCard.kind === 'summary' ? { kind: 'summary', leftoverKopecks: savingsCard.summary.leftoverKopecks } : { kind: 'leftover' },
+      savingsCard === null ? null : savingsCard.kind === 'summary'
+          ? { kind: 'summary', canSetAside: canSetAside(data, budget, today, savingsCard.summary.leftoverKopecks) }
+          : { kind: 'leftover' },
   };
   const lesson = overlay ? null : pickHomeLesson(data, budget, today, learn.lessonsSeen, lessonContext);
   // «Первая неделя»: an item not done yet opens the place where it is done.
@@ -450,6 +452,11 @@ function Favorites({
       )}
     </div>
   );
+}
+
+/** Whether «Итоги периода» offers to send its leftover somewhere, as SavingsCard decides. */
+function canSetAside(data: AppData, budget: BudgetResult, today: LocalDate, leftoverKopecks: number): boolean {
+  return targetOptions(data, today).some((o) => setAsideAmount(budget, o, leftoverKopecks) > 0);
 }
 
 // Banners «Стипендия пришла?» and «Платёж оплачен?», one at a time: incomes first, then payments.

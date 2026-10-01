@@ -13,6 +13,17 @@ import type { AppData } from '../src/domain/types';
 const TODAY = new Date('2026-09-26T10:00:00');
 declare const process: { env: Record<string, string | undefined> };
 const BASE = `http://localhost:${process.env.DAYLY_E2E_PORT ?? '4173'}/`;
+
+/**
+ * «Знакомство» done (update 2): «Что нового» closed, every hint seen and a copy just saved, so no hint
+ * or card of it gets in the way.
+ */
+const INTRO_DONE = {
+  tipsShown: true,
+  whatsNewSeen: 'update-2',
+  lessonsSeen: ['ring', 'firstExpense', 'tapRow', 'overspend', 'leftover', 'banner', 'savings', 'finances', 'deficit', 'periodEnd'],
+  lastBackupAt: '2099-12-31',
+};
 const SMALL = { width: 375, height: 667 };
 
 /** Example А with the names a student would type. */
@@ -65,7 +76,7 @@ async function open(page: Page, data: AppData, ui: Record<string, unknown> = {})
         localStorage.setItem('dayly:ui', ui);
       }
     },
-    [JSON.stringify(data), JSON.stringify({ tipsShown: true, whatsNewSeen: 'update-1', ...ui })] as const,
+    [JSON.stringify(data), JSON.stringify({ ...INTRO_DONE, ...ui })] as const,
   );
   await page.clock.install({ time: TODAY });
   await page.goto(BASE);
