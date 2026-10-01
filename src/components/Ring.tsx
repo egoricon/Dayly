@@ -11,6 +11,8 @@ interface RingProps {
   fraction: number; // 0..1 of the arc drawn from the top
   tone: 'accent' | 'warning' | 'danger'; // warning: more than 80 % of today's limit spent (home-extras.css)
   children: ReactNode;
+  /** What a screen reader hears instead of the pieces inside: the state and the amount (ringLabel). */
+  label: string;
   onClick?: () => void;
   /** Fills from empty on mount, used once per app launch. */
   fillIn?: boolean;
@@ -19,7 +21,7 @@ interface RingProps {
 }
 
 /** Day ring 300×300; the arc animates through a CSS transition on stroke-dashoffset. */
-export function Ring({ fraction, tone, children, onClick, fillIn = false, savings = null }: RingProps) {
+export function Ring({ fraction, tone, children, label, onClick, fillIn = false, savings = null }: RingProps) {
   // With fillIn the first frame draws an empty arc, then the transition fills it.
   const [filled, setFilled] = useState(!fillIn);
   const [filling, setFilling] = useState(fillIn);
@@ -42,9 +44,10 @@ export function Ring({ fraction, tone, children, onClick, fillIn = false, saving
   return (
     <div
       className={`ring${onClick ? ' is-tappable' : ''}`}
-      role={onClick ? 'button' : undefined}
+      // One phrase for VoiceOver, «Сегодня можно 28,54 BYN. Как считается лимит», not «28» «,54» «BYN из 28,54».
+      role={onClick ? 'button' : 'img'}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick ? 'Как считается лимит' : undefined}
+      aria-label={onClick ? `${label}. Как считается лимит` : label}
       data-testid="ring"
       onClick={onClick}
       onKeyDown={(event) => {

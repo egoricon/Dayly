@@ -367,6 +367,8 @@ for (const viewport of [
       // Everything new keeps to one line each.
       for (const id of ['week-strip', 'tomorrow-hint', 'target-line', 'upcoming']) {
         const box = (await page.getByTestId(id).boundingBox())!;
+        // «Ближайшее» has 12 px of padding above and below for its 44 px tap areas (update 2), outside the line.
+        if (id === 'upcoming') box.height -= 24;
         expect(box.height, id).toBeGreaterThanOrEqual(18);
         expect(box.height, id).toBeLessThanOrEqual(34);
         expect(box.x + box.width, id).toBeLessThanOrEqual(viewport.width);

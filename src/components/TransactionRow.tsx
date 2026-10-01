@@ -34,12 +34,18 @@ interface TransactionRowProps {
   fromLimitKopecks: number;
   /** Shown under the name: when the operation was entered. */
   time?: string;
-  onLongPress: () => void;
+  /** Opens «Изменить / Удалить»: a tap, a long press or a right click on an editable row. */
+  onOpenActions: () => void;
 }
 
-/** A row of an operations list. Long press (or right click) opens «Изменить / Удалить». */
-export function TransactionRow({ transaction: t, data, fromLimitKopecks, time, onLongPress }: TransactionRowProps) {
+/**
+ * A row of an operations list. An editable one is a button: a tap (or a long press, or a right click)
+ * opens «Изменить / Удалить». A balance adjustment stays inert.
+ */
+export function TransactionRow({ transaction: t, data, fromLimitKopecks, time, onOpenActions }: TransactionRowProps) {
   const timer = useRef<number | null>(null);
+  // A long press has opened the actions already; the click that ends it must not open them again.
+  const opened = useRef(false);
   const cancel = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
@@ -58,33 +64,64 @@ export function TransactionRow({ transaction: t, data, fromLimitKopecks, time, o
     muted = t.type === 'adjustment';
   }
 
+  const name = transactionName(t, data);
+  const amount = signedAmount(t);
+  const content = (
+    <>
+      <div className="expense-text">
+        <span className="expense-name">
+          {name}
+          {note}
+        </span>
+        {time && <span className="expense-time">{time}</span>}
+      </div>
+      <span className="expense-amount">{amount}</span>
+    </>
+  );
+
   return (
     <li
       className={`expense-row${muted ? ' is-reserve' : ''}${Date.now() - Date.parse(t.createdAt) < NEW_ROW_MS ? ' is-new' : ''}`}
       data-testid="operation"
       data-transaction-id={t.id}
-      onPointerDown={() => {
-        if (!editable) return;
-        cancel();
-        timer.current = window.setTimeout(onLongPress, LONG_PRESS_MS);
-      }}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onPointerCancel={cancel}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        cancel();
-        if (editable) onLongPress();
-      }}
     >
-      <div className="expense-text">
-        <span className="expense-name">
-          {transactionName(t, data)}
-          {note}
-        </span>
-        {time && <span className="expense-time">{time}</span>}
-      </div>
-      <span className="expense-amount">{signedAmount(t)}</span>
+      {editable ? (
+        <button
+          type="button"
+          className="expense-row-main"
+          aria-haspopup="dialog"
+          // «Кафе · из резерва, −3,50 BYN, 09:12» in one phrase instead of the pieces.
+          aria-label={`${name}${note}, ${amount} BYN${time ? `, ${time}` : ''}`}
+          onClick={() => {
+            if (opened.current) opened.current = false;
+            else onOpenActions();
+          }}
+          onPointerDown={(event) => {
+            opened.current = false;
+            cancel();
+            if (event.button !== 0) return;
+            timer.current = window.setTimeout(() => {
+              timer.current = null;
+              opened.current = true;
+              onOpenActions();
+            }, LONG_PRESS_MS);
+          }}
+          onPointerUp={cancel}
+          onPointerLeave={cancel}
+          onPointerCancel={cancel}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            cancel();
+            onOpenActions();
+          }}
+        >
+          {content}
+        </button>
+      ) : (
+        <div className="expense-row-main" onContextMenu={(event) => event.preventDefault()}>
+          {content}
+        </div>
+      )}
     </li>
   );
 }
@@ -98,7 +135,7 @@ interface OperationActionsProps {
 }
 
 /**
- * «Изменить / Удалить» after a long press. Only ordinary expenses are edited: payments and goal
+ * «Изменить / Удалить» after a tap on a row. Only ordinary expenses are edited: payments and goal
  * purchases are deleted and marked again; an income is deleted and entered again.
  */
 export function OperationActions({ transaction: t, data, update, onEdit, onClose }: OperationActionsProps) {

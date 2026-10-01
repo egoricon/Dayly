@@ -21,7 +21,7 @@ export function firstLaunchTips(calendar: boolean): Tip[] {
   const tips: Tip[] = [
     { text: 'Нажми на круг — покажу, как считается', target: () => document.querySelector('.home [data-testid="ring"]'), shape: 'circle' },
     {
-      text: 'Долгий тап по трате — изменить или удалить',
+      text: 'Нажми на трату, чтобы изменить или удалить',
       // A new person has no operations yet: the tip points where they will appear.
       target: () => document.querySelector('.home [data-testid="recent-operations"], .home .empty-note'),
       shape: 'card',

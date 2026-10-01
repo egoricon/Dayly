@@ -76,11 +76,13 @@ describe('reserves', () => {
       fromLimitKopecks: 0,
       fromReserveKopecks: 1840,
       remainingTodayKopecks: 2854,
+      dailyLimitKopecks: 2854,
     });
     expect(previewExpense(data, '2026-09-26', 16000, 'groceries')).toEqual({
       fromLimitKopecks: 1000,
       fromReserveKopecks: 15000,
       remainingTodayKopecks: 1854,
+      dailyLimitKopecks: 2854,
     });
     expect(previewExpense(data, '2026-09-26', 4000, 'fun').remainingTodayKopecks).toBe(-1146);
   });

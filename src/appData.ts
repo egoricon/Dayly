@@ -134,10 +134,21 @@ function withRoundUp(data: AppData, expense: Transaction, target: SavingsTarget 
   return withDeposit(data, target, kopecks, expense.date, today, { ...meta, source: 'roundup', transactionId: expense.id });
 }
 
-/** A new expense; with rounding up on, the rest to whole BYN goes into the chosen jar. */
-export function addExpense(data: AppData, amountKopecks: number, category: Category, today: LocalDate, now: Date, note: string | null = null): AppData {
+/**
+ * A new expense of `date`: today unless given («Вчера» in the sheet); its createdAt is when it was
+ * entered. With rounding up on, the rest to whole BYN goes into the chosen jar.
+ */
+export function addExpense(
+  data: AppData,
+  amountKopecks: number,
+  category: Category,
+  today: LocalDate,
+  now: Date,
+  note: string | null = null,
+  date: LocalDate = today,
+): AppData {
   const expense = {
-    ...blankTransaction({ type: 'expense', amountKopecks, date: today, createdAt: now.toISOString() }),
+    ...blankTransaction({ type: 'expense', amountKopecks, date, createdAt: now.toISOString() }),
     category,
     note,
   };

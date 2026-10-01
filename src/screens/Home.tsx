@@ -23,7 +23,7 @@ import { incomesToConfirm } from '../domain/planned';
 import type { AppData, Favorite, IncomeSource, LocalDate, Transaction } from '../domain/types';
 import type { FeatureKey, InstallPlatform } from '../uiState';
 import { formatDayHeader, formatDayMonth, formatOperationTime, untilPeriodEnd } from '../ui/labels';
-import { addedTransaction, ringTone, runningLowLabel, targetLine, tomorrowIfStopped, undoText } from '../ui/homeHints';
+import { addedTransaction, ringLabel, ringTone, runningLowLabel, targetLine, tomorrowIfStopped, undoText } from '../ui/homeHints';
 import { Explain } from './Explain';
 import { Levers } from './Levers';
 import type { FinanceRoute, Update } from './Finances';
@@ -177,7 +177,14 @@ export function Home(props: HomeProps) {
         {/* «Итоги периода» or «Вчера осталось…»; a confirmation banner goes first. */}
         {!banner && <SavingsCards {...props} />}
 
-        <Ring fraction={fraction} tone={tone} onClick={() => setExplainOpen(true)} fillIn={intro} savings={split.ringFraction}>
+        <Ring
+          fraction={fraction}
+          tone={tone}
+          label={ringLabel(budget, tone)}
+          onClick={() => setExplainOpen(true)}
+          fillIn={intro}
+          savings={split.ringFraction}
+        >
           {deficit && budget.shortfall ? (
             <>
               <span className="ring-label">Не хватает денег</span>
@@ -266,7 +273,7 @@ export function Home(props: HomeProps) {
                   data={data}
                   fromLimitKopecks={fromLimitKopecks}
                   time={formatOperationTime(t.date, t.createdAt, today)}
-                  onLongPress={() => setActionsFor(t)}
+                  onOpenActions={() => setActionsFor(t)}
                 />
               ))}
             </ul>
@@ -283,7 +290,7 @@ export function Home(props: HomeProps) {
 
       {undo && undone && (
         <div className="toast" role="status" key={undo.transactionId}>
-          <span>{undoText(undone, data)}</span>
+          <span>{undoText(undone, data, today)}</span>
           <button
             type="button"
             className="toast-action"

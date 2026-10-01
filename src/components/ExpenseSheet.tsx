@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { addExpense, addIncome, updateExpense } from '../appData';
 import { calculateBudget, previewExpense, type ReserveState } from '../domain/budget';
 import { activeCategories, findCategory, isReserveCategory, startCategory } from '../domain/categories';
+import { addDays } from '../domain/dates';
 import { formatMoney, parseAmount } from '../domain/money';
 import { occurrenceToClose } from '../domain/planned';
 import type { AppData, Category, LocalDate, Transaction } from '../domain/types';
@@ -11,6 +12,9 @@ import { amountText, Segmented } from './Form';
 import { Keypad } from './Keypad';
 
 export type EntryMode = 'expense' | 'income';
+
+/** «Сегодня / Вчера» under the amount of a new expense: a forgotten one goes to yesterday. */
+type ExpenseDay = 'today' | 'yesterday';
 
 /** Opens the sheet in «Доход» mode for a planned income that came with another amount. */
 export interface IncomePreset {
@@ -26,7 +30,7 @@ interface ExpenseSheetProps {
   incomePreset?: IncomePreset;
   /** «+ Доход» on the home screen opens the sheet in income mode. */
   initialMode?: EntryMode;
-  /** An expense to change instead of adding a new one (long press → «Изменить»). */
+  /** An expense to change instead of adding a new one (a tap on it → «Изменить»). */
   editing?: Transaction;
   onSave: (next: AppData) => void;
   onClose: () => void;
@@ -43,7 +47,22 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
   const [input, setInput] = useState(() => (editing ? amountText(editing.amountKopecks) : ''));
   const [category, setCategory] = useState<Category>(editing?.category ?? startCategory(data));
   const [incomeSource, setIncomeSource] = useState(incomePreset?.sourceId ?? OTHER_INCOME);
+  // Every opening starts on «Сегодня»; «Вчера» only for a new expense and not before tracking started.
+  const [day, setDay] = useState<ExpenseDay>('today');
+  const yesterday = addDays(today, -1);
+  const canYesterday = !editing && yesterday >= data.settings.trackingStartDate;
+  const expenseDate = editing ? editing.date : day === 'yesterday' && canYesterday ? yesterday : today;
   const amount = parseAmount(input) ?? 0;
+  // With «Крупный текст» on a short screen the chips scroll sideways (styles.css): show the chosen one.
+  const chips = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const strip = chips.current;
+    const chosen = strip?.querySelector('.chip.is-selected');
+    if (!strip || !chosen || strip.scrollWidth <= strip.clientWidth) return;
+    const box = strip.getBoundingClientRect();
+    const chip = chosen.getBoundingClientRect();
+    strip.scrollLeft += chip.left - box.left - (box.width - chip.width) / 2;
+  }, [mode]);
   const sources = data.incomeSources.filter((s) => s.isActive);
   // An edited expense of a removed category still shows its category.
   const edited = findCategory(data, editing?.category ?? null);
@@ -57,9 +76,17 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
   const now = new Date();
 
   if (mode === 'expense') {
-    const preview = previewExpense(data, today, amount, category, editing?.id ?? null);
-    next = editing ? updateExpense(data, editing.id, amount, category, today) : addExpense(data, amount, category, today, now);
-    if (isReserve(category) && preview.fromLimitKopecks === 0) {
+    const preview = previewExpense(data, today, amount, category, editing?.id ?? null, expenseDate);
+    next = editing ? updateExpense(data, editing.id, amount, category, today) : addExpense(data, amount, category, today, now, null, expenseDate);
+    if (expenseDate < today) {
+      // An earlier day's expense leaves less money for the days ahead: say what today's limit becomes.
+      const limit =
+        preview.dailyLimitKopecks === dailyLimitKopecks ? 'не изменится' : `станет ${formatMoney(preview.dailyLimitKopecks)}`;
+      if (amount === 0) hint = `Лимит на сегодня ${formatMoney(dailyLimitKopecks)}`;
+      else if (isReserve(category) && preview.fromLimitKopecks === 0) hint = `Из резерва «${name}» · лимит на сегодня ${limit}`;
+      else hint = `Лимит на сегодня ${limit}`;
+      danger = preview.remainingTodayKopecks < 0;
+    } else if (isReserve(category) && preview.fromLimitKopecks === 0) {
       hint = `Из резерва «${name}» · дневной лимит не изменится`;
     } else if (isReserve(category)) {
       const configured = reserves.some((r) => r.category === category && r.budgetKopecks > 0);
@@ -117,11 +144,24 @@ export function ExpenseSheet({ data, today, reserves, dailyLimitKopecks, incomeP
                 </span>
                 <span className="sheet-amount-currency">BYN</span>
               </div>
+              {mode === 'expense' && canYesterday && (
+                <div className="day-switch" data-testid="day-switch">
+                  <Segmented
+                    label="День траты"
+                    options={[
+                      { value: 'today', label: 'Сегодня' },
+                      { value: 'yesterday', label: 'Вчера' },
+                    ]}
+                    value={day}
+                    onChange={setDay}
+                  />
+                </div>
+              )}
               <span className={`sheet-hint${danger ? ' is-danger' : ''}`} data-testid="sheet-hint">
                 {hint}
               </span>
             </div>
-            <div className="chips">
+            <div className="chips" ref={chips}>
               {mode === 'expense'
                 ? categories.map((c) => (
                     <button

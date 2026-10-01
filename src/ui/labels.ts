@@ -1,4 +1,4 @@
-import { addDays, diffDays, type Schedule } from '../domain/dates';
+import { addDays, diffDays, toLocalDate, type Schedule } from '../domain/dates';
 import type { BudgetResult } from '../domain/budget';
 import type { AppData, IncomeSource, LocalDate } from '../domain/types';
 
@@ -40,12 +40,17 @@ export function formatHistoryDay(date: LocalDate, today: LocalDate): string {
   return `${formatDayMonth(date)}${year}, ${weekday}`;
 }
 
-/** When an operation was entered, for the home list: '09:12', 'вчера, 09:12', '24 сентября, 09:12'. */
+/**
+ * When an operation was entered, for the home list: '09:12', 'вчера, 09:12', '24 сентября, 09:12'. An
+ * expense added later for an earlier day («Вчера» in the sheet) shows only its day: the time it was
+ * entered is not when the money was spent.
+ */
 export function formatOperationTime(date: LocalDate, createdAt: string, today: LocalDate): string {
   const time = formatTime(createdAt);
   if (date === today) return time;
-  if (date === addDays(today, -1)) return `вчера, ${time}`;
-  return `${formatDayMonth(date)}, ${time}`;
+  const day = date === addDays(today, -1) ? 'вчера' : formatDayMonth(date);
+  const entered = new Date(createdAt);
+  return Number.isNaN(entered.getTime()) || toLocalDate(entered) === date ? `${day}, ${time}` : day;
 }
 
 /** Local time of an ISO timestamp: '09:12' */

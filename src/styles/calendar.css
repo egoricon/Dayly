@@ -42,7 +42,7 @@
 
 .cal-month {
   margin: 0;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale));
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -58,7 +58,7 @@
   padding: 0 14px;
   border-radius: 17px;
   border: 1px solid var(--chip-border);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale));
   font-weight: 700;
 }
 
@@ -110,7 +110,7 @@
 .cal-weekdays {
   padding-bottom: 6px;
   text-align: center;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -140,7 +140,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale));
   font-weight: 600;
   transition:
     transform 120ms ease-out,
@@ -233,7 +233,7 @@
   margin: 6px 8px 0;
   padding-top: 10px;
   border-top: 1px solid var(--line-soft);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -269,7 +269,7 @@
 .cal-hint {
   padding: 4px 16px;
   text-align: center;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   line-height: 1.45;
   color: var(--muted);
@@ -284,7 +284,7 @@
 }
 
 .day-sheet-line {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale));
   font-weight: 600;
   color: var(--muted);
 }
@@ -317,7 +317,7 @@
 .day-add {
   height: 56px;
   border-radius: 28px;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale));
   font-weight: 700;
   transition: transform 120ms ease-out;
 }

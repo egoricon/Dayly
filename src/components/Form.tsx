@@ -124,13 +124,16 @@ export function Segmented<T extends string>({
   options,
   value,
   onChange,
+  label,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** Names the group for a screen reader when no field label does. */
+  label?: string;
 }) {
   return (
-    <div className="segmented" role="radiogroup">
+    <div className="segmented" role="radiogroup" aria-label={label}>
       {options.map((o) => (
         <button
           key={o.value}

@@ -11,11 +11,14 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <title>Dayly</title>
     <script>
-      // Theme and accent before the first paint, so a dark phone does not flash light.
+      // Theme, accent and «Крупный текст» before the first paint, so a dark phone does not flash light
+      // and the text does not jump in size.
       try {
         var theme = JSON.parse(localStorage.getItem('dayly:data') || 'null')?.settings?.theme || 'auto';
+        var ui = JSON.parse(localStorage.getItem('dayly:ui') || 'null');
         document.documentElement.dataset.theme = theme;
-        document.documentElement.dataset.accent = JSON.parse(localStorage.getItem('dayly:ui') || 'null')?.accent || 'amber';
+        document.documentElement.dataset.accent = ui?.accent || 'amber';
+        if (ui?.largeText === true) document.documentElement.dataset.textSize = 'large';
       } catch (e) {
         document.documentElement.dataset.theme = 'auto';
       }

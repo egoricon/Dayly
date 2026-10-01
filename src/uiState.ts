@@ -65,6 +65,8 @@ export interface UiState {
   tipsShown: boolean;
   /** Cards closed for good, like «Итоги периода» of one period; the newest MAX_DISMISSED_CARDS. */
   dismissedCards: string[];
+  /** «Крупный текст» in «Настройки → Тема»: every font size 1.2×, through data-text-size on <html>. */
+  largeText: boolean;
 }
 
 /** How many closed cards are remembered: older ones belong to periods long gone. */
@@ -90,6 +92,7 @@ export function defaultUiState(): UiState {
     whatsNewSeen: null,
     tipsShown: false,
     dismissedCards: [],
+    largeText: false,
   };
 }
 
@@ -110,6 +113,7 @@ export function loadUiState(storage: Storage): UiState {
       dismissedCards: Array.isArray(parsed.dismissedCards)
         ? parsed.dismissedCards.filter((key): key is string => typeof key === 'string').slice(-MAX_DISMISSED_CARDS)
         : [],
+      largeText: parsed.largeText === true,
     };
   } catch {
     return defaultUiState();
